@@ -21,7 +21,7 @@ type JobWithPayment = {
   total: number;
   completed_at: string | null;
   created_at: string;
-  clients: { name: string } | null;
+  clients: { name: string; phone: string | null } | null;
   job_line_items: { description: string }[];
   payment: Payment | null;
 };
@@ -64,6 +64,9 @@ export default function PaymentsPage() {
   const [payAmount, setPayAmount] = useState("");
   const [paySaving, setPaySaving] = useState(false);
 
+  // Send invoice
+  const [sentInvoiceId, setSentInvoiceId] = useState<string | null>(null);
+
   useEffect(() => {
     load();
   }, []);
@@ -79,12 +82,15 @@ export default function PaymentsPage() {
       .eq("owner_id", user.id)
       .single();
 
-    if (!business) return;
+    if (!business) {
+      router.replace("/");
+      return;
+    }
     setBusinessId(business.id);
 
     const { data: jobsData } = await supabase
       .from("jobs")
-      .select("id, total, completed_at, created_at, clients(name), job_line_items(description)")
+      .select("id, total, completed_at, created_at, clients(name, phone), job_line_items(description)")
       .eq("business_id", business.id)
       .in("status", ["completed", "in_progress"])
       .order("completed_at", { ascending: false, nullsFirst: false });
@@ -106,12 +112,22 @@ export default function PaymentsPage() {
     setJobs(
       jobsData.map((j) => ({
         ...j,
-        clients: j.clients as { name: string } | null,
+        clients: j.clients as unknown as { name: string; phone: string | null } | null,
         job_line_items: (j.job_line_items as { description: string }[]) ?? [],
         payment: paymentsByJob[j.id] ?? null,
       }))
     );
     setLoading(false);
+  }
+
+  function sendInvoice(jobId: string) {
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job?.clients?.phone) return;
+    const serviceTitle = job.job_line_items[0]?.description ?? "service";
+    const body = `Hi ${job.clients.name}! Your invoice for $${job.total.toFixed(2)} (${serviceTitle}) is ready. Reply to confirm or call to pay. - HustleBricks`;
+    window.location.href = `sms:${job.clients.phone}?body=${encodeURIComponent(body)}`;
+    setSentInvoiceId(jobId);
+    setTimeout(() => setSentInvoiceId(null), 3000);
   }
 
   function openPayModal(job: JobWithPayment) {
@@ -180,7 +196,7 @@ export default function PaymentsPage() {
 
       {/* Earnings summary */}
       <section>
-        <div className="relative overflow-hidden rounded-3xl bg-[#3581f3] p-6 text-white shadow-2xl shadow-[#3581f3]/30">
+        <div className="relative overflow-hidden rounded-3xl bg-[#007AFF] p-6 text-white shadow-2xl shadow-[#007AFF]/30">
           <div className="absolute -right-12 -top-12 size-56 rounded-full bg-white/10 blur-3xl pointer-events-none" />
           <div className="absolute -left-8 -bottom-8 size-36 rounded-full bg-white/5 blur-2xl pointer-events-none" />
           <div className="relative z-10 flex flex-col gap-5">
@@ -235,7 +251,7 @@ export default function PaymentsPage() {
             <Badge
               className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                 filter === tab.value
-                  ? "bg-[#3581f3] text-white hover:bg-[#3581f3]/90"
+                  ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
                   : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
               }`}
               variant={filter === tab.value ? "default" : "outline"}
@@ -324,6 +340,18 @@ export default function PaymentsPage() {
                     >
                       View Job
                     </button>
+                    {!isPaid && job.clients?.phone && (
+                      <button
+                        onClick={() => sendInvoice(job.id)}
+                        className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-colors ${
+                          sentInvoiceId === job.id
+                            ? "text-[#16a34a] bg-[#16a34a]/10"
+                            : "text-[#007AFF] bg-[#007AFF]/10 hover:bg-[#007AFF]/20"
+                        }`}
+                      >
+                        {sentInvoiceId === job.id ? "Opened!" : "Send Invoice"}
+                      </button>
+                    )}
                     {!isPaid && (
                       <button
                         onClick={() => openPayModal(job)}

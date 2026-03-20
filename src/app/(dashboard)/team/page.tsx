@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -45,6 +46,7 @@ function toggleCert(cert: string, certs: string[]): string[] {
 }
 
 export default function TeamPage() {
+  const router = useRouter();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,7 +205,7 @@ export default function TeamPage() {
             <Badge
               className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                 roleFilter === tab.value
-                  ? "bg-[#3581f3] text-white hover:bg-[#3581f3]/90"
+                  ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
                   : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
               }`}
               variant={roleFilter === tab.value ? "default" : "outline"}
@@ -229,11 +231,11 @@ export default function TeamPage() {
         {filtered.map((member) => {
           const jobCount = workload[member.id] ?? 0;
           return (
-            <Card key={member.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-[#3581f3]/30 transition-colors">
+            <Card key={member.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-[#007AFF]/30 transition-colors">
               <div className="p-4 flex gap-4 items-start">
                 {/* Avatar with active dot */}
                 <div className="relative shrink-0">
-                  <div className="flex size-14 items-center justify-center rounded-2xl bg-[#3581f3]/10 text-[#3581f3] text-lg font-extrabold border border-[#3581f3]/20">
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-[#007AFF]/10 text-[#007AFF] text-lg font-extrabold border border-[#007AFF]/20">
                     {getInitials(member.name)}
                   </div>
                   <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-card bg-[#16a34a]" />
@@ -245,7 +247,7 @@ export default function TeamPage() {
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => openEdit(member)}
-                        className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-[#3581f3] hover:bg-[#3581f3]/10 transition-colors"
+                        className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-colors"
                       >
                         <span className="material-symbols-outlined text-[16px]">edit</span>
                       </button>
@@ -267,7 +269,7 @@ export default function TeamPage() {
                           ? "bg-[#ea580c]/10 text-[#ea580c]"
                           : member.role === "sales"
                           ? "bg-[#16a34a]/10 text-[#16a34a]"
-                          : "bg-[#3581f3]/10 text-[#3581f3]"
+                          : "bg-[#007AFF]/10 text-[#007AFF]"
                       }`}
                     >
                       {ROLE_LABELS[member.role]}
@@ -302,7 +304,7 @@ export default function TeamPage() {
 
               <Separator className="bg-border/50" />
               <div className="flex bg-muted/30">
-                <button className="flex-1 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1.5">
+                <button onClick={() => router.push(`/calendar`)} className="flex-1 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1.5">
                   <span className="material-symbols-outlined text-[18px]">calendar_month</span> Schedule
                 </button>
                 <Separator orientation="vertical" className="bg-border/50 h-auto" />
@@ -328,7 +330,7 @@ export default function TeamPage() {
       {/* FAB */}
       <button
         onClick={() => { setShowModal(true); setError(null); setForm(EMPTY_FORM); }}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#3581f3] text-white shadow-[#3581f3]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-[#007AFF]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
       >
         <span className="material-symbols-outlined text-[28px]">person_add</span>
       </button>
@@ -388,7 +390,7 @@ export default function TeamPage() {
                         onClick={() => setForm((f) => ({ ...f, role: r }))}
                         className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all active:scale-95 ${
                           form.role === r
-                            ? "border-[#3581f3] bg-[#3581f3]/10 text-[#3581f3]"
+                            ? "border-[#007AFF] bg-[#007AFF]/10 text-[#007AFF]"
                             : "border-border bg-muted/40 text-foreground hover:bg-muted"
                         }`}
                       >
@@ -477,7 +479,7 @@ export default function TeamPage() {
                       onClick={() => setEditForm((f) => ({ ...f, role: r }))}
                       className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all active:scale-95 ${
                         editForm.role === r
-                          ? "border-[#3581f3] bg-[#3581f3]/10 text-[#3581f3]"
+                          ? "border-[#007AFF] bg-[#007AFF]/10 text-[#007AFF]"
                           : "border-border bg-muted/40 text-foreground hover:bg-muted"
                       }`}
                     >
@@ -510,7 +512,7 @@ export default function TeamPage() {
               <button
                 onClick={handleSaveEdit}
                 disabled={editSaving || !editForm.name.trim()}
-                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#3581f3] text-white shadow-md hover:bg-[#3581f3]/90 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#007AFF] text-white shadow-md hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50"
               >
                 {editSaving ? "Saving…" : "Save Changes"}
               </button>

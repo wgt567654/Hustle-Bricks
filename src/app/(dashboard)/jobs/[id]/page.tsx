@@ -1,11 +1,12 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { getBusinessId } from "@/lib/supabase/get-business";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -23,6 +24,8 @@ type Job = {
   business_id: string | null;
   client_id: string | null;
   quote_id: string | null;
+  before_photo_url: string | null;
+  after_photo_url: string | null;
   clients: {
     name: string;
     phone: string | null;
@@ -107,6 +110,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [editNotes, setEditNotes] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
+  // Send invoice
+  const [invoiceSent, setInvoiceSent] = useState(false);
+
+  // Photo upload
+  const [uploadingPhoto, setUploadingPhoto] = useState<"before" | "after" | null>(null);
+  const beforeInputRef = useRef<HTMLInputElement>(null);
+  const afterInputRef = useRef<HTMLInputElement>(null);
+
   // Recurring bottom sheet
   const [recurringSheetOpen, setRecurringSheetOpen] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<RecurrenceFrequency>(null);
@@ -117,19 +128,26 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     async function load() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: biz } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("owner_id", user.id)
-          .single();
-        if (biz) setBusinessId(biz.id);
+      if (!user) {
+        setNotFound(true);
+        setLoading(false);
+        return;
       }
+
+      const bizId = await getBusinessId(supabase);
+      if (!bizId) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      setBusinessId(bizId);
 
       const { data, error } = await supabase
         .from("jobs")
-        .select("id, status, total, scheduled_at, completed_at, notes, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
+        .select("id, status, total, scheduled_at, completed_at, notes, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
         .eq("id", id)
+        .eq("business_id", bizId)
         .single();
 
       if (error || !data) {
@@ -292,6 +310,32 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     setRecurringSheetOpen(false);
   }
 
+  function sendInvoice() {
+    if (!job?.clients?.phone) return;
+    const body = `Hi ${job.clients.name}! Your invoice for $${job.total.toFixed(2)} is ready. Reply to confirm or call to pay. - HustleBricks`;
+    window.location.href = `sms:${job.clients.phone}?body=${encodeURIComponent(body)}`;
+    setInvoiceSent(true);
+    setTimeout(() => setInvoiceSent(false), 3000);
+  }
+
+  async function handlePhotoUpload(file: File, slot: "before" | "after") {
+    if (!job) return;
+    setUploadingPhoto(slot);
+    const supabase = createClient();
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${job.id}/${slot}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("job-photos")
+      .upload(path, file, { upsert: true });
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from("job-photos").getPublicUrl(path);
+      const column = slot === "before" ? "before_photo_url" : "after_photo_url";
+      await supabase.from("jobs").update({ [column]: publicUrl }).eq("id", job.id);
+      setJob((j) => j ? { ...j, [column]: publicUrl } : j);
+    }
+    setUploadingPhoto(null);
+  }
+
   async function cancelRecurrence() {
     if (!job) return;
     const supabase = createClient();
@@ -316,7 +360,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <p className="font-bold text-foreground">Job not found</p>
-        <button onClick={() => router.push("/jobs")} className="text-sm text-[#3581f3] font-bold">← Back to Jobs</button>
+        <button onClick={() => router.push("/jobs")} className="text-sm text-[#007AFF] font-bold">← Back to Jobs</button>
       </div>
     );
   }
@@ -374,14 +418,25 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <span className="text-sm font-bold text-foreground">{job.clients?.name ?? "—"}</span>
               {job.clients?.email && <span className="text-xs text-muted-foreground">{job.clients.email}</span>}
             </div>
-            {job.clients?.phone && (
-              <a
-                href={`tel:${job.clients.phone}`}
-                className="flex size-8 items-center justify-center rounded-full bg-[#16a34a]/10 text-[#16a34a] hover:bg-[#16a34a]/20 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[16px]">call</span>
-              </a>
-            )}
+            <div className="flex items-center gap-2">
+              {job.clients?.phone && (
+                <a
+                  href={`tel:${job.clients.phone}`}
+                  className="flex size-8 items-center justify-center rounded-full bg-[#16a34a]/10 text-[#16a34a] hover:bg-[#16a34a]/20 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">call</span>
+                </a>
+              )}
+              {job.clients?.phone && (
+                <button
+                  onClick={sendInvoice}
+                  className={`flex size-8 items-center justify-center rounded-full transition-colors ${invoiceSent ? "bg-[#16a34a]/10 text-[#16a34a]" : "bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20"}`}
+                  title={invoiceSent ? "Invoice opened!" : "Send invoice via SMS"}
+                >
+                  <span className="material-symbols-outlined text-[16px]">{invoiceSent ? "check" : "sms"}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <Separator className="bg-border/50" />
@@ -402,7 +457,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 href={`https://maps.apple.com/?q=${encodeURIComponent(job.clients.address)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex size-8 items-center justify-center rounded-full bg-[#3581f3]/10 text-[#3581f3] hover:bg-[#3581f3]/20 transition-colors"
+                className="flex size-8 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20 transition-colors"
               >
                 <span className="material-symbols-outlined text-[16px]">navigation</span>
               </a>
@@ -476,13 +531,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
             <div className="p-4 flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#3581f3]/10 text-[#3581f3]">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#007AFF]/10 text-[#007AFF]">
                   <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>autorenew</span>
                 </div>
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-foreground">Recurring job</span>
-                    <Badge variant="secondary" className="bg-[#3581f3]/10 text-[#3581f3] border-0 text-[10px] uppercase font-bold tracking-wider">
+                    <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-[10px] uppercase font-bold tracking-wider">
                       {FREQUENCY_LABELS[job.recurrence_frequency] ?? job.recurrence_frequency}
                     </Badge>
                   </div>
@@ -518,7 +573,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   setCustomDays("7");
                   setRecurringSheetOpen(true);
                 }}
-                className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-[#3581f3] text-white hover:bg-[#3581f3]/90 active:scale-95 transition-all"
+                className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-[#007AFF] text-white hover:bg-[#007AFF]/90 active:scale-95 transition-all"
               >
                 Make Recurring
               </button>
@@ -527,21 +582,47 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         )}
       </section>
 
-      {/* Photo documentation placeholder */}
+      {/* Photo documentation */}
       <section>
         <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
           <span className="material-symbols-outlined text-[16px]">photo_camera</span>
           Job Documentation
         </h3>
+        <input ref={beforeInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f, "before"); e.target.value = ""; }} />
+        <input ref={afterInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f, "after"); e.target.value = ""; }} />
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-2 p-4 rounded-2xl border border-dashed border-border bg-card/50 items-center justify-center min-h-[120px] text-muted-foreground">
-            <span className="material-symbols-outlined text-[24px]">add_a_photo</span>
-            <span className="font-bold text-sm">Before</span>
-          </div>
-          <div className="flex flex-col gap-2 p-4 rounded-2xl border border-dashed border-border bg-card/50 items-center justify-center min-h-[120px] text-muted-foreground">
-            <span className="material-symbols-outlined text-[24px]">add_a_photo</span>
-            <span className="font-bold text-sm">After</span>
-          </div>
+          {(["before", "after"] as const).map((slot) => {
+            const photoUrl = slot === "before" ? job.before_photo_url : job.after_photo_url;
+            const inputRef = slot === "before" ? beforeInputRef : afterInputRef;
+            const isUploading = uploadingPhoto === slot;
+            return (
+              <button
+                key={slot}
+                onClick={() => inputRef.current?.click()}
+                disabled={isUploading}
+                className="relative flex flex-col rounded-2xl overflow-hidden border border-dashed border-border bg-card/50 items-center justify-center min-h-[140px] transition-colors hover:border-[#007AFF]/50 hover:bg-muted/30 disabled:opacity-60 active:scale-[0.98]"
+              >
+                {photoUrl ? (
+                  <>
+                    <img src={photoUrl} alt={slot} className="absolute inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <span className="material-symbols-outlined text-white text-[22px]">photo_camera</span>
+                      <span className="text-white text-xs font-bold mt-1">Replace</span>
+                    </div>
+                    <span className="absolute bottom-2 left-2 text-[10px] font-bold uppercase tracking-wider text-white bg-black/50 px-2 py-0.5 rounded-full capitalize">{slot}</span>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-2 items-center justify-center text-muted-foreground p-4">
+                    {isUploading
+                      ? <span className="material-symbols-outlined text-[24px] animate-spin">progress_activity</span>
+                      : <span className="material-symbols-outlined text-[24px]">add_a_photo</span>
+                    }
+                    <span className="font-bold text-sm capitalize">{isUploading ? "Uploading…" : slot}</span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -619,8 +700,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             {/* Header */}
             <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#3581f3]/10">
-                  <span className="material-symbols-outlined text-[28px] text-[#3581f3]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#007AFF]/10">
+                  <span className="material-symbols-outlined text-[28px] text-[#007AFF]" style={{ fontVariationSettings: "'FILL' 1" }}>
                     edit_calendar
                   </span>
                 </div>
@@ -641,7 +722,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   type="datetime-local"
                   value={editScheduledAt}
                   onChange={(e) => setEditScheduledAt(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/30"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                 />
               </div>
 
@@ -653,7 +734,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   placeholder="Add job notes…"
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#3581f3]/30 resize-none"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 resize-none"
                 />
               </div>
 
@@ -665,7 +746,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <button
                 onClick={saveJobEdits}
                 disabled={editSaving}
-                className="w-full py-3.5 rounded-2xl bg-[#3581f3] text-white font-extrabold text-sm hover:bg-[#3581f3]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#3581f3]/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-[#007AFF] text-white font-extrabold text-sm hover:bg-[#007AFF]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#007AFF]/20 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>save</span>
                 {editSaving ? "Saving…" : "Save Changes"}
@@ -697,8 +778,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             {/* Header */}
             <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#3581f3]/10">
-                  <span className="material-symbols-outlined text-[28px] text-[#3581f3]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#007AFF]/10">
+                  <span className="material-symbols-outlined text-[28px] text-[#007AFF]" style={{ fontVariationSettings: "'FILL' 1" }}>
                     autorenew
                   </span>
                 </div>
@@ -722,7 +803,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       onClick={() => setSelectedFrequency(opt.value)}
                       className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-sm font-bold transition-all active:scale-95 ${
                         selectedFrequency === opt.value
-                          ? "bg-[#3581f3] text-white shadow-md shadow-[#3581f3]/20"
+                          ? "bg-[#007AFF] text-white shadow-md shadow-[#007AFF]/20"
                           : "bg-muted/50 text-foreground border border-border hover:bg-muted"
                       }`}
                     >
@@ -745,7 +826,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       max="365"
                       value={customDays}
                       onChange={(e) => setCustomDays(e.target.value)}
-                      className="w-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-[#3581f3]/30"
+                      className="w-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                     />
                     <span className="text-sm font-medium text-muted-foreground">days</span>
                   </div>
@@ -760,7 +841,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <button
                 onClick={saveRecurrence}
                 disabled={recurringSaving || !selectedFrequency}
-                className="w-full py-3.5 rounded-2xl bg-[#3581f3] text-white font-extrabold text-sm hover:bg-[#3581f3]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#3581f3]/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-[#007AFF] text-white font-extrabold text-sm hover:bg-[#007AFF]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#007AFF]/20 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                 {recurringSaving ? "Saving…" : "Confirm"}
@@ -788,11 +869,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
             {/* Auto-scheduled toast */}
             {autoScheduledDate && (
-              <div className="mx-5 mt-2 px-4 py-3 rounded-2xl bg-[#3581f3]/10 border border-[#3581f3]/20 flex items-center gap-3 shrink-0">
-                <span className="material-symbols-outlined text-[20px] text-[#3581f3] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <div className="mx-5 mt-2 px-4 py-3 rounded-2xl bg-[#007AFF]/10 border border-[#007AFF]/20 flex items-center gap-3 shrink-0">
+                <span className="material-symbols-outlined text-[20px] text-[#007AFF] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
                   autorenew
                 </span>
-                <p className="text-sm font-bold text-[#3581f3]">
+                <p className="text-sm font-bold text-[#007AFF]">
                   Next job auto-scheduled for {formatDateShort(autoScheduledDate)}
                 </p>
               </div>

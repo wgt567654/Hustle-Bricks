@@ -149,7 +149,7 @@ export default function ServicesPage() {
             <Badge
               className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                 activeCategory === cat
-                  ? "bg-[#3581f3] text-white hover:bg-[#3581f3]/90"
+                  ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
                   : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
               }`}
               variant={activeCategory === cat ? "default" : "outline"}
@@ -175,9 +175,9 @@ export default function ServicesPage() {
         )}
 
         {filtered.map((service) => (
-          <Card key={service.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-[#3581f3]/30 transition-colors">
+          <Card key={service.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-[#007AFF]/30 transition-colors">
             <div className="p-4 flex gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#3581f3] text-white shadow-sm">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#007AFF] text-white shadow-sm">
                 <span className="material-symbols-outlined text-[24px]">home_repair_service</span>
               </div>
               <div className="flex flex-1 flex-col min-w-0">
@@ -211,7 +211,7 @@ export default function ServicesPage() {
       {/* Floating add button */}
       <button
         onClick={() => { setShowModal(true); setError(null); setForm(EMPTY_FORM); }}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#3581f3] text-white shadow-[#3581f3]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-[#007AFF]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
       >
         <span className="material-symbols-outlined text-[28px]">add</span>
       </button>
@@ -320,7 +320,7 @@ export default function ServicesPage() {
               <button
                 type="submit"
                 disabled={saving || !form.name.trim() || !form.price}
-                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#3581f3] text-white shadow-md shadow-[#3581f3]/30 hover:bg-[#3581f3]/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#007AFF] text-white shadow-md shadow-[#007AFF]/30 hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving…" : "Add Service"}
               </button>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { getBusinessId } from "@/lib/supabase/get-business";
 
 type Tag = "residential" | "commercial" | "vip";
 
@@ -63,19 +64,14 @@ export default function ClientsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-
-      if (!business) return;
-      setBusinessId(business.id);
+      const businessId = await getBusinessId(supabase);
+      if (!businessId) return;
+      setBusinessId(businessId);
 
       const { data } = await supabase
         .from("clients")
         .select("id, name, email, phone, address, tag, notes")
-        .eq("business_id", business.id)
+        .eq("business_id", businessId)
         .order("name");
 
       setClients(data ?? []);
@@ -147,7 +143,7 @@ export default function ClientsPage() {
         </div>
         <input
           type="text"
-          className="block w-full rounded-2xl border-0 py-3.5 pl-11 pr-4 text-foreground bg-card shadow-sm ring-1 ring-inset ring-border placeholder:text-muted-foreground focus:ring-2 focus:ring-inset focus:ring-[#3581f3] text-sm transition-all focus:outline-none"
+          className="block w-full rounded-2xl border-0 py-3.5 pl-11 pr-4 text-foreground bg-card shadow-sm ring-1 ring-inset ring-border placeholder:text-muted-foreground focus:ring-2 focus:ring-inset focus:ring-[#007AFF] text-sm transition-all focus:outline-none"
           placeholder="Search by name, email, or phone…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -161,7 +157,7 @@ export default function ClientsPage() {
             <Badge
               className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                 activeFilter === tab.value
-                  ? "bg-[#3581f3] text-white hover:bg-[#3581f3]/90"
+                  ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
                   : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
               }`}
               variant={activeFilter === tab.value ? "default" : "outline"}
@@ -193,7 +189,7 @@ export default function ClientsPage() {
         )}
 
         {filtered.map((client) => (
-          <Card key={client.id} onClick={() => router.push(`/clients/${client.id}`)} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-[#3581f3]/30 transition-colors cursor-pointer p-4">
+          <Card key={client.id} onClick={() => router.push(`/clients/${client.id}`)} className="overflow-hidden rounded-2xl cursor-pointer p-4 press">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 {/* Avatar */}
@@ -202,7 +198,7 @@ export default function ClientsPage() {
                     ? "bg-[#ea580c]/10 text-[#ea580c] border border-[#ea580c]/20"
                     : client.tag === "commercial"
                     ? "bg-foreground/10 text-foreground border border-foreground/10"
-                    : "bg-[#3581f3]/10 text-[#3581f3] border border-[#3581f3]/10"
+                    : "bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/10"
                 }`}>
                   {getInitials(client.name)}
                 </div>
@@ -257,7 +253,8 @@ export default function ClientsPage() {
       {/* Floating add button */}
       <button
         onClick={() => { setShowModal(true); setError(null); setForm(EMPTY_FORM); }}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#3581f3] text-white shadow-[#3581f3]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white press"
+        style={{ boxShadow: "0 4px 20px rgba(0,122,255,0.4), 0 1px 4px rgba(0,122,255,0.3)" }}
       >
         <span className="material-symbols-outlined text-[28px]">person_add</span>
       </button>
@@ -306,7 +303,7 @@ export default function ClientsPage() {
                       onClick={() => setForm((f) => ({ ...f, tag: t }))}
                       className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all active:scale-95 ${
                         form.tag === t
-                          ? "border-[#3581f3] bg-[#3581f3]/10 text-[#3581f3]"
+                          ? "border-[#007AFF] bg-[#007AFF]/10 text-[#007AFF]"
                           : "border-border bg-muted/40 text-foreground hover:bg-muted"
                       }`}
                     >
@@ -328,7 +325,7 @@ export default function ClientsPage() {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email <span className="normal-case font-normal text-muted-foreground/60">(optional)</span></label>
                   <input
                     type="email"
                     placeholder="john@example.com"
@@ -364,7 +361,7 @@ export default function ClientsPage() {
               <button
                 type="submit"
                 disabled={saving || !form.name.trim()}
-                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#3581f3] text-white shadow-md shadow-[#3581f3]/30 hover:bg-[#3581f3]/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#007AFF] text-white shadow-md shadow-[#007AFF]/30 hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving…" : "Add Client"}
               </button>

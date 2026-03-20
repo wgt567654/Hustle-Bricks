@@ -21,7 +21,7 @@ type Lead = {
 
 const STAGES: { value: LeadStage; label: string; color: string; bg: string; icon: string }[] = [
   { value: "new",       label: "New",       color: "#6b7280", bg: "bg-gray-500/10",   icon: "person_add" },
-  { value: "contacted", label: "Contacted", color: "#3581f3", bg: "bg-[#3581f3]/10",  icon: "phone_in_talk" },
+  { value: "contacted", label: "Contacted", color: "#007AFF", bg: "bg-[#007AFF]/10",  icon: "phone_in_talk" },
   { value: "quoted",    label: "Quoted",    color: "#f59e0b", bg: "bg-amber-500/10",  icon: "request_quote" },
   { value: "won",       label: "Won",       color: "#16a34a", bg: "bg-green-600/10",  icon: "check_circle" },
   { value: "lost",      label: "Lost",      color: "#dc2626", bg: "bg-red-600/10",    icon: "cancel" },
@@ -172,7 +172,7 @@ export default function LeadsPage() {
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-1.5 bg-[#3581f3] text-white text-sm font-bold px-3 py-2 rounded-xl shadow-sm active:scale-95 transition-transform"
+          className="flex items-center gap-1.5 bg-[#007AFF] text-white text-sm font-bold px-3 py-2 rounded-xl shadow-sm active:scale-95 transition-transform"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
           Add Lead
@@ -201,7 +201,7 @@ export default function LeadsPage() {
           onClick={() => setStageFilter("all")}
           className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
             stageFilter === "all"
-              ? "bg-[#3581f3] text-white border-[#3581f3]"
+              ? "bg-[#007AFF] text-white border-[#007AFF]"
               : "bg-card text-muted-foreground border-border"
           }`}
         >
@@ -242,7 +242,7 @@ export default function LeadsPage() {
           {stageFilter === "all" && (
             <button
               onClick={openAdd}
-              className="mt-2 px-4 py-2 rounded-xl bg-[#3581f3] text-white text-sm font-bold"
+              className="mt-2 px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-bold"
             >
               Add Lead
             </button>
@@ -275,7 +275,7 @@ export default function LeadsPage() {
                         )}
                       </div>
                       {lead.estimated_value != null && lead.estimated_value > 0 && (
-                        <p className="text-base font-extrabold text-[#3581f3] mt-0.5">
+                        <p className="text-base font-extrabold text-[#007AFF] mt-0.5">
                           ${lead.estimated_value.toFixed(0)}
                           <span className="text-xs font-medium text-muted-foreground ml-1">est. value</span>
                         </p>
@@ -325,7 +325,7 @@ export default function LeadsPage() {
                         {lead.stage === "new" && (
                           <button
                             onClick={() => updateStage(lead.id, "contacted")}
-                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-[#3581f3]/10 text-[#3581f3] text-xs font-bold border border-[#3581f3]/20 active:scale-95 transition-transform"
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-[#007AFF]/10 text-[#007AFF] text-xs font-bold border border-[#007AFF]/20 active:scale-95 transition-transform"
                           >
                             <span className="material-symbols-outlined text-[13px]">phone_in_talk</span>
                             Mark Contacted
@@ -435,7 +435,7 @@ export default function LeadsPage() {
                   Name *
                 </label>
                 <input
-                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/40"
+                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
                   placeholder="Full name or business name"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -447,7 +447,7 @@ export default function LeadsPage() {
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Phone</label>
                   <input
-                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/40"
+                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
                     placeholder="(555) 000-0000"
                     type="tel"
                     value={form.phone ?? ""}
@@ -457,7 +457,7 @@ export default function LeadsPage() {
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Email</label>
                   <input
-                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/40"
+                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
                     placeholder="email@example.com"
                     type="email"
                     value={form.email ?? ""}
@@ -470,7 +470,7 @@ export default function LeadsPage() {
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Address</label>
                 <input
-                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/40"
+                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
                   placeholder="123 Main St, City, State"
                   value={form.address ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
@@ -482,7 +482,7 @@ export default function LeadsPage() {
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Stage</label>
                   <select
-                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/40"
+                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
                     value={form.stage}
                     onChange={(e) => setForm((f) => ({ ...f, stage: e.target.value as LeadStage }))}
                   >
@@ -494,7 +494,7 @@ export default function LeadsPage() {
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Source</label>
                   <select
-                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/40"
+                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
                     value={form.source ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, source: e.target.value || null }))}
                   >
@@ -510,7 +510,7 @@ export default function LeadsPage() {
                   Estimated Value ($)
                 </label>
                 <input
-                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/40"
+                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
                   placeholder="0.00"
                   type="number"
                   min="0"
@@ -524,7 +524,7 @@ export default function LeadsPage() {
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Notes</label>
                 <textarea
-                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3581f3]/40 resize-none"
+                  className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40 resize-none"
                   rows={3}
                   placeholder="Property details, preferences, follow-up reminders…"
                   value={form.notes ?? ""}
@@ -543,7 +543,7 @@ export default function LeadsPage() {
               <button
                 onClick={save}
                 disabled={saving || !form.name.trim()}
-                className="flex-1 py-3 rounded-xl bg-[#3581f3] text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform"
+                className="flex-1 py-3 rounded-xl bg-[#007AFF] text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform"
               >
                 {saving ? "Saving…" : editLead ? "Save Changes" : "Add Lead"}
               </button>

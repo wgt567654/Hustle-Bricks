@@ -212,8 +212,8 @@ export default function ReportsPage() {
                     style={{
                       height: `${Math.max((m.revenue / maxRevenue) * 100, m.revenue > 0 ? 4 : 0)}%`,
                       minHeight: m.revenue > 0 ? 4 : 0,
-                      background: m.key === monthKey(new Date().toISOString()) ? "#3581f3" : "#3581f3/60",
-                      backgroundColor: m.key === monthKey(new Date().toISOString()) ? "#3581f3" : "#93c5fd",
+                      background: m.key === monthKey(new Date().toISOString()) ? "#007AFF" : "#007AFF/60",
+                      backgroundColor: m.key === monthKey(new Date().toISOString()) ? "#007AFF" : "#93c5fd",
                     }}
                   />
                 </div>
@@ -232,7 +232,7 @@ export default function ReportsPage() {
         </div>
         <div className="p-4 grid grid-cols-4 gap-3">
           {([
-            { label: "Scheduled", count: pipeline.scheduled, color: "#3581f3" },
+            { label: "Scheduled", count: pipeline.scheduled, color: "#007AFF" },
             { label: "In Progress", count: pipeline.in_progress, color: "#ea580c" },
             { label: "Completed", count: pipeline.completed, color: "#16a34a" },
             { label: "Cancelled", count: pipeline.cancelled, color: "#6b7280" },
@@ -247,7 +247,7 @@ export default function ReportsPage() {
         <div className="px-4 pb-4">
           <div className="flex rounded-full overflow-hidden h-2">
             {([
-              { count: pipeline.scheduled, color: "#3581f3" },
+              { count: pipeline.scheduled, color: "#007AFF" },
               { count: pipeline.in_progress, color: "#ea580c" },
               { count: pipeline.completed, color: "#16a34a" },
               { count: pipeline.cancelled, color: "#6b7280" },
@@ -279,7 +279,7 @@ export default function ReportsPage() {
                     <span className="font-bold text-sm text-foreground truncate">{client.name}</span>
                     <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-[#3581f3]"
+                        className="h-full rounded-full bg-[#007AFF]"
                         style={{ width: `${(client.revenue / maxClientRevenue) * 100}%` }}
                       />
                     </div>

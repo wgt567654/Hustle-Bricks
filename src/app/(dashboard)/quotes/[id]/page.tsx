@@ -34,14 +34,14 @@ type Quote = {
 
 const STATUS_BADGE: Record<QuoteStatus, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground border-0" },
-  sent: { label: "Quote Sent", className: "bg-[#3581f3]/10 text-[#3581f3] border-0" },
+  sent: { label: "Quote Sent", className: "bg-[#007AFF]/10 text-[#007AFF] border-0" },
   accepted: { label: "Won", className: "bg-[#16a34a]/10 text-[#16a34a] border-0" },
   declined: { label: "Lost", className: "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-0" },
 };
 
 const STATUS_COLOR: Record<QuoteStatus, string> = {
   draft: "#6b7280",
-  sent: "#3581f3",
+  sent: "#007AFF",
   accepted: "#16a34a",
   declined: "#ef4444",
 };
@@ -181,7 +181,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <p className="font-bold text-foreground">Quote not found</p>
-        <button onClick={() => router.push("/sales")} className="text-sm text-[#3581f3] font-bold">← Back to Sales</button>
+        <button onClick={() => router.push("/sales")} className="text-sm text-[#007AFF] font-bold">← Back to Sales</button>
       </div>
     );
   }
@@ -242,7 +242,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               {quote.clients?.email && (
                 <a
                   href={`mailto:${quote.clients.email}`}
-                  className="flex size-8 items-center justify-center rounded-full bg-[#3581f3]/10 text-[#3581f3] hover:bg-[#3581f3]/20 transition-colors"
+                  className="flex size-8 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">mail</span>
                 </a>
@@ -294,7 +294,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <span
-                    className="material-symbols-outlined text-[18px] text-[#3581f3]"
+                    className="material-symbols-outlined text-[18px] text-[#007AFF]"
                     style={{ fontVariationSettings: "'FILL' 1" }}
                   >
                     check_circle
@@ -339,7 +339,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <button
               onClick={sendQuote}
               disabled={acting}
-              className="w-full rounded-xl font-bold py-4 text-sm bg-[#3581f3] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full rounded-xl font-bold py-4 text-sm bg-[#007AFF] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
               {acting ? "Sending…" : "Send Quote"}
@@ -377,7 +377,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           <div className="max-w-xl mx-auto">
             <button
               onClick={() => router.push(`/jobs/${linkedJobId}`)}
-              className="w-full rounded-xl font-bold py-4 text-sm bg-[#3581f3] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full rounded-xl font-bold py-4 text-sm bg-[#007AFF] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>home_repair_service</span>
               View Job
@@ -393,7 +393,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <button
               onClick={reopen}
               disabled={acting}
-              className="w-full rounded-xl font-bold py-4 text-sm border border-[#3581f3]/30 bg-[#3581f3]/5 text-[#3581f3] hover:bg-[#3581f3]/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full rounded-xl font-bold py-4 text-sm border border-[#007AFF]/30 bg-[#007AFF]/5 text-[#007AFF] hover:bg-[#007AFF]/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]">refresh</span>
               {acting ? "Reopening…" : "Reopen Quote"}

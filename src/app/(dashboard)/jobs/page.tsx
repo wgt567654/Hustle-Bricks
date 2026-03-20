@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { getBusinessId } from "@/lib/supabase/get-business";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -27,7 +28,7 @@ const STATUS_FILTERS: { label: string; value: JobStatus | "all" }[] = [
 ];
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  scheduled: "#3581f3",
+  scheduled: "#007AFF",
   in_progress: "#ea580c",
   completed: "#16a34a",
   cancelled: "#6b7280",
@@ -57,21 +58,16 @@ export default function JobsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-
-      if (!business) return;
+      const businessId = await getBusinessId(supabase);
+      if (!businessId) return;
 
       const { data } = await supabase
         .from("jobs")
         .select("id, status, total, scheduled_at, created_at, notes, clients(name, address), job_line_items(description)")
-        .eq("business_id", business.id)
+        .eq("business_id", businessId)
         .order("created_at", { ascending: false });
 
-      setJobs((data as Job[]) ?? []);
+      setJobs((data as unknown as Job[]) ?? []);
       setLoading(false);
     }
     load();
@@ -101,7 +97,7 @@ export default function JobsPage() {
               <Badge
                 className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                   activeFilter === tab.value
-                    ? "bg-[#3581f3] text-white hover:bg-[#3581f3]/90"
+                    ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
                     : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
                 }`}
                 variant={activeFilter === tab.value ? "default" : "outline"}
@@ -134,7 +130,7 @@ export default function JobsPage() {
             <Card
               key={job.id}
               onClick={() => router.push(`/jobs/${job.id}`)}
-              className="overflow-hidden rounded-2xl border-border shadow-sm cursor-pointer flex flex-col hover:shadow-md transition-shadow"
+              className="overflow-hidden rounded-2xl cursor-pointer flex flex-col press"
             >
               <div className="h-1.5 w-full" style={{ backgroundColor: color }} />
               <div className="p-4 flex flex-col gap-3">
@@ -167,7 +163,7 @@ export default function JobsPage() {
 
                 <div className="flex items-center justify-end">
                   {job.status === "in_progress" && <Badge variant="secondary" className="bg-[#ea580c]/10 text-[#ea580c] border-0">In Progress</Badge>}
-                  {job.status === "scheduled" && <Badge variant="secondary" className="bg-[#3581f3]/10 text-[#3581f3] border-0">Scheduled</Badge>}
+                  {job.status === "scheduled" && <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0">Scheduled</Badge>}
                   {job.status === "completed" && <Badge variant="secondary" className="bg-[#16a34a]/10 text-[#16a34a] border-0">Completed ✓</Badge>}
                   {job.status === "cancelled" && <Badge variant="secondary" className="bg-muted text-muted-foreground border-0">Cancelled</Badge>}
                 </div>

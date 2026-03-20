@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { getBusinessId } from "@/lib/supabase/get-business";
 
 type JobStatus = "scheduled" | "in_progress" | "completed";
 
@@ -18,7 +19,7 @@ type TodayJob = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  scheduled: "#3581f3",
+  scheduled: "#007AFF",
   in_progress: "#ea580c",
   completed: "#16a34a",
 };
@@ -42,7 +43,7 @@ function getTodayLabel() {
 }
 
 const QUICK_ACTIONS = [
-  { label: "New Quote", icon: "request_quote", href: "/quotes/new", color: "#3581f3", bg: "bg-[#3581f3]/10" },
+  { label: "New Quote", icon: "request_quote", href: "/quotes/new", color: "#007AFF", bg: "bg-[#007AFF]/10" },
   { label: "Jobs", icon: "home_repair_service", href: "/jobs", color: "#ea580c", bg: "bg-[#ea580c]/10" },
   { label: "Clients", icon: "groups", href: "/clients", color: "#16a34a", bg: "bg-[#16a34a]/10" },
   { label: "Pipeline", icon: "trending_up", href: "/sales", color: "#8b5cf6", bg: "bg-[#8b5cf6]/10" },
@@ -71,12 +72,8 @@ export default function Home() {
       const fullName: string = user.user_metadata?.full_name ?? user.email ?? "";
       setFirstName(fullName.split(" ")[0] || "there");
 
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
-      if (!business) return;
+      const businessId = await getBusinessId(supabase);
+      if (!businessId) return;
 
       const now = new Date();
       const startOfWeek = new Date(now);
@@ -96,28 +93,28 @@ export default function Home() {
         { count: servicesCount },
         { count: quotesCount },
       ] = await Promise.all([
-        supabase.from("payments").select("amount").eq("business_id", business.id)
+        supabase.from("payments").select("amount").eq("business_id", businessId)
           .eq("status", "paid").gte("paid_at", startOfWeek.toISOString()),
-        supabase.from("payments").select("amount").eq("business_id", business.id)
+        supabase.from("payments").select("amount").eq("business_id", businessId)
           .eq("status", "paid").gte("paid_at", startOfMonth.toISOString()),
         supabase.from("jobs")
           .select("id, status, total, scheduled_at, clients(name, address), job_line_items(description)")
-          .eq("business_id", business.id)
+          .eq("business_id", businessId)
           .or(`scheduled_at.gte.${startOfToday.toISOString()},status.eq.in_progress`)
           .lte("scheduled_at", endOfToday.toISOString())
           .in("status", ["scheduled", "in_progress"])
           .order("scheduled_at"),
         supabase.from("jobs").select("id, total, payments(id)")
-          .eq("business_id", business.id).eq("status", "completed"),
+          .eq("business_id", businessId).eq("status", "completed"),
         supabase.from("jobs").select("id")
-          .eq("business_id", business.id).eq("status", "completed")
+          .eq("business_id", businessId).eq("status", "completed")
           .gte("created_at", startOfWeek.toISOString()),
         supabase.from("clients").select("id", { count: "exact", head: true })
-          .eq("business_id", business.id),
+          .eq("business_id", businessId),
         supabase.from("services").select("id", { count: "exact", head: true })
-          .eq("business_id", business.id),
+          .eq("business_id", businessId),
         supabase.from("quotes").select("id", { count: "exact", head: true })
-          .eq("business_id", business.id),
+          .eq("business_id", businessId),
       ]);
 
       setWeekEarnings((weekPayments ?? []).reduce((s: number, p: { amount: number }) => s + p.amount, 0));
@@ -154,7 +151,7 @@ export default function Home() {
       </div>
 
       {/* Hero earnings card */}
-      <div className="relative overflow-hidden rounded-3xl bg-[#3581f3] p-6 text-white shadow-2xl shadow-[#3581f3]/30">
+      <div className="relative overflow-hidden rounded-3xl bg-[#007AFF] p-6 text-white" style={{ boxShadow: "0 8px 32px rgba(0,122,255,0.35), 0 2px 8px rgba(0,122,255,0.2)" }}>
         {/* Background orbs */}
         <div className="absolute -right-12 -top-12 size-56 rounded-full bg-white/10 blur-3xl pointer-events-none" />
         <div className="absolute -left-8 -bottom-8 size-36 rounded-full bg-white/5 blur-2xl pointer-events-none" />
@@ -214,9 +211,9 @@ export default function Home() {
           <button
             key={a.href}
             onClick={() => router.push(a.href)}
-            className="flex flex-col items-center gap-2 group"
+            className="flex flex-col items-center gap-2 press"
           >
-            <div className={`flex size-14 items-center justify-center rounded-2xl ${a.bg} border border-transparent group-hover:scale-105 transition-transform shadow-sm`} style={{ borderColor: `${a.color}20` }}>
+            <div className={`flex size-14 items-center justify-center rounded-2xl ${a.bg} shadow-card`} style={{ borderColor: `${a.color}20` }}>
               <span
                 className="material-symbols-outlined text-[24px]"
                 style={{ color: a.color, fontVariationSettings: "'FILL' 1" }}
@@ -224,14 +221,14 @@ export default function Home() {
                 {a.icon}
               </span>
             </div>
-            <span className="text-[11px] font-bold text-foreground leading-tight text-center">{a.label}</span>
+            <span className="text-[11px] font-semibold text-muted-foreground leading-tight text-center">{a.label}</span>
           </button>
         ))}
       </div>
 
       {/* Onboarding checklist — hidden once all steps complete */}
       {!loading && !(clientCount > 0 && serviceCount > 0 && quoteCount > 0) && (
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+        <Card className="rounded-2xl overflow-hidden">
           <div className="p-4 flex flex-col gap-1 border-b border-border/50">
             <h3 className="text-sm font-extrabold text-foreground">Get started</h3>
             <p className="text-xs text-muted-foreground">Complete these steps to set up your business</p>
@@ -242,11 +239,11 @@ export default function Home() {
               onClick={() => router.push("/clients")}
               className="flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors active:bg-muted/50"
             >
-              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${clientCount > 0 ? "bg-[#16a34a]/10" : "bg-[#3581f3]/10"}`}>
+              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${clientCount > 0 ? "bg-[#16a34a]/10" : "bg-[#007AFF]/10"}`}>
                 <span
                   className="material-symbols-outlined text-[20px]"
                   style={{
-                    color: clientCount > 0 ? "#16a34a" : "#3581f3",
+                    color: clientCount > 0 ? "#16a34a" : "#007AFF",
                     fontVariationSettings: "'FILL' 1",
                   }}
                 >
@@ -261,7 +258,7 @@ export default function Home() {
                   check_circle
                 </span>
               ) : (
-                <span className="material-symbols-outlined text-[20px] text-[#3581f3]">chevron_right</span>
+                <span className="material-symbols-outlined text-[20px] text-[#007AFF]">chevron_right</span>
               )}
             </button>
 
@@ -270,11 +267,11 @@ export default function Home() {
               onClick={() => router.push("/services")}
               className="flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors active:bg-muted/50"
             >
-              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${serviceCount > 0 ? "bg-[#16a34a]/10" : "bg-[#3581f3]/10"}`}>
+              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${serviceCount > 0 ? "bg-[#16a34a]/10" : "bg-[#007AFF]/10"}`}>
                 <span
                   className="material-symbols-outlined text-[20px]"
                   style={{
-                    color: serviceCount > 0 ? "#16a34a" : "#3581f3",
+                    color: serviceCount > 0 ? "#16a34a" : "#007AFF",
                     fontVariationSettings: "'FILL' 1",
                   }}
                 >
@@ -289,7 +286,7 @@ export default function Home() {
                   check_circle
                 </span>
               ) : (
-                <span className="material-symbols-outlined text-[20px] text-[#3581f3]">chevron_right</span>
+                <span className="material-symbols-outlined text-[20px] text-[#007AFF]">chevron_right</span>
               )}
             </button>
 
@@ -298,11 +295,11 @@ export default function Home() {
               onClick={() => router.push("/quotes/new")}
               className="flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors active:bg-muted/50"
             >
-              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${quoteCount > 0 ? "bg-[#16a34a]/10" : "bg-[#3581f3]/10"}`}>
+              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${quoteCount > 0 ? "bg-[#16a34a]/10" : "bg-[#007AFF]/10"}`}>
                 <span
                   className="material-symbols-outlined text-[20px]"
                   style={{
-                    color: quoteCount > 0 ? "#16a34a" : "#3581f3",
+                    color: quoteCount > 0 ? "#16a34a" : "#007AFF",
                     fontVariationSettings: "'FILL' 1",
                   }}
                 >
@@ -317,7 +314,7 @@ export default function Home() {
                   check_circle
                 </span>
               ) : (
-                <span className="material-symbols-outlined text-[20px] text-[#3581f3]">chevron_right</span>
+                <span className="material-symbols-outlined text-[20px] text-[#007AFF]">chevron_right</span>
               )}
             </button>
           </div>
@@ -330,14 +327,14 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Today's Schedule</h3>
             {todayJobs.length > 0 && (
-              <Badge variant="secondary" className="bg-[#3581f3]/10 text-[#3581f3] border-0 text-[10px] font-bold">
+              <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-[10px] font-bold">
                 {todayJobs.length}
               </Badge>
             )}
           </div>
           <button
             onClick={() => router.push("/jobs")}
-            className="flex items-center gap-1 text-xs font-bold text-[#3581f3] uppercase tracking-wide hover:underline"
+            className="flex items-center gap-1 text-xs font-bold text-[#007AFF] uppercase tracking-wide hover:underline"
           >
             All Jobs
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
@@ -365,7 +362,7 @@ export default function Home() {
             </div>
             <button
               onClick={() => router.push("/quotes/new")}
-              className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#3581f3] text-white text-sm font-bold hover:bg-[#3581f3]/90 transition-colors"
+              className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               New Quote
@@ -376,7 +373,7 @@ export default function Home() {
         {todayJobs.length > 0 && (
           <div className="flex flex-col gap-3">
             {todayJobs.map((job) => {
-              const color = STATUS_COLOR[job.status] ?? "#3581f3";
+              const color = STATUS_COLOR[job.status] ?? "#007AFF";
               const time = formatTime(job.scheduled_at);
               const title = job.job_line_items[0]?.description ?? "Job";
 
@@ -384,7 +381,7 @@ export default function Home() {
                 <Card
                   key={job.id}
                   onClick={() => router.push(`/jobs/${job.id}`)}
-                  className="overflow-hidden rounded-2xl border-border shadow-sm cursor-pointer hover:shadow-md transition-all hover:border-[#3581f3]/20"
+                  className="overflow-hidden rounded-2xl cursor-pointer transition-all press"
                 >
                   <div className="h-1 w-full" style={{ backgroundColor: color }} />
                   <div className="p-4 flex items-center gap-4">
@@ -430,7 +427,7 @@ export default function Home() {
                         </Badge>
                       )}
                       {job.status === "scheduled" && (
-                        <Badge variant="secondary" className="bg-[#3581f3]/10 text-[#3581f3] border-0 text-[9px] font-bold uppercase tracking-wide">
+                        <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-[9px] font-bold uppercase tracking-wide">
                           Up Next
                         </Badge>
                       )}
@@ -446,7 +443,8 @@ export default function Home() {
       {/* FAB */}
       <button
         onClick={() => router.push("/quotes/new")}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#3581f3] text-white shadow-[#3581f3]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white press"
+        style={{ boxShadow: "0 4px 20px rgba(0,122,255,0.4), 0 1px 4px rgba(0,122,255,0.3)" }}
       >
         <span className="material-symbols-outlined text-[28px]">add</span>
       </button>

@@ -148,7 +148,7 @@ export default async function ClientPortalPage({
 
         {/* Client card */}
         <div className="bg-white rounded-3xl border border-gray-200 p-5 mb-6 flex items-center gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#3581f3]/10 text-[#3581f3] font-extrabold text-lg border border-[#3581f3]/20">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF] font-extrabold text-lg border border-[#007AFF]/20">
             {getInitials(client.name)}
           </div>
           <div className="flex flex-col gap-0.5 flex-1 min-w-0">

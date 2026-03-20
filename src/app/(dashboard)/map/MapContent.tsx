@@ -26,7 +26,7 @@ type Pin = {
 };
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  scheduled: "#3581f3",
+  scheduled: "#007AFF",
   in_progress: "#ea580c",
   completed: "#16a34a",
   cancelled: "#6b7280",
@@ -149,7 +149,7 @@ export default function MapContent() {
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-[#3581f3] transition-all"
+                  className="h-full rounded-full bg-[#007AFF] transition-all"
                   style={{ width: `${total > 0 ? (progress / total) * 100 : 0}%` }}
                 />
               </div>
@@ -169,7 +169,7 @@ export default function MapContent() {
               <Badge
                 className={`px-3 py-1 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                   filterStatus === f.value
-                    ? "bg-[#3581f3] text-white hover:bg-[#3581f3]/90"
+                    ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
                     : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
                 }`}
                 variant={filterStatus === f.value ? "default" : "outline"}
@@ -235,7 +235,7 @@ export default function MapContent() {
                         marginTop: 8,
                         width: "100%",
                         padding: "6px 0",
-                        background: "#3581f3",
+                        background: "#007AFF",
                         color: "white",
                         border: "none",
                         borderRadius: 8,

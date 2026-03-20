@@ -29,6 +29,19 @@ export default function SettingsPage() {
   const [editingContact, setEditingContact] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
 
+  // Tax & commission
+  const [taxRate, setTaxRate] = useState("8.00");
+  const [commissionRate, setCommissionRate] = useState("5.00");
+  const [editingTax, setEditingTax] = useState(false);
+  const [editingCommission, setEditingCommission] = useState(false);
+  const [savingTax, setSavingTax] = useState(false);
+  const [savingCommission, setSavingCommission] = useState(false);
+
+  // Automations
+  const [smsReminders, setSmsReminders] = useState(false);
+  const [smartScheduling, setSmartScheduling] = useState(false);
+  const [savingAutomation, setSavingAutomation] = useState<string | null>(null);
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -38,10 +51,14 @@ export default function SettingsPage() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id, name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone")
+        .select("id, name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, tax_rate, commission_rate, sms_reminders_enabled, smart_scheduling_enabled")
         .eq("owner_id", user.id)
         .single();
 
+      if (!business) {
+        router.replace("/");
+        return;
+      }
       if (business) {
         setBusinessId(business.id);
         setBusinessName(business.name);
@@ -51,6 +68,10 @@ export default function SettingsPage() {
         setCheckPayableTo(business.check_payable_to ?? business.name ?? "");
         setContactEmail(business.contact_email ?? "");
         setContactPhone(business.contact_phone ?? "");
+        setTaxRate(business.tax_rate != null ? String(business.tax_rate) : "8.00");
+        setCommissionRate(business.commission_rate != null ? String(business.commission_rate) : "5.00");
+        setSmsReminders(business.sms_reminders_enabled ?? false);
+        setSmartScheduling(business.smart_scheduling_enabled ?? false);
       }
       setLoading(false);
     }
@@ -92,6 +113,34 @@ export default function SettingsPage() {
     setEditingContact(false);
   }
 
+  async function saveTax() {
+    if (!businessId) return;
+    setSavingTax(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ tax_rate: parseFloat(taxRate) || 0 }).eq("id", businessId);
+    setSavingTax(false);
+    setEditingTax(false);
+  }
+
+  async function saveCommission() {
+    if (!businessId) return;
+    setSavingCommission(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ commission_rate: parseFloat(commissionRate) || 0 }).eq("id", businessId);
+    setSavingCommission(false);
+    setEditingCommission(false);
+  }
+
+  async function toggleAutomation(key: "sms_reminders_enabled" | "smart_scheduling_enabled", current: boolean) {
+    if (!businessId) return;
+    setSavingAutomation(key);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ [key]: !current }).eq("id", businessId);
+    if (key === "sms_reminders_enabled") setSmsReminders(!current);
+    else setSmartScheduling(!current);
+    setSavingAutomation(null);
+  }
+
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -118,7 +167,7 @@ export default function SettingsPage() {
             <div className="p-4 flex flex-col gap-4">
               {editingName ? (
                 <div className="flex items-center gap-3">
-                  <div className="size-16 rounded-2xl bg-[#3581f3]/10 flex items-center justify-center text-[#3581f3] border-2 border-[#3581f3]/20 shrink-0">
+                  <div className="size-16 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF] border-2 border-[#007AFF]/20 shrink-0">
                     <span className="material-symbols-outlined text-[32px]">store</span>
                   </div>
                   <input
@@ -137,14 +186,14 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-4">
-                  <div className="size-16 rounded-2xl bg-[#3581f3]/10 flex items-center justify-center text-[#3581f3] border-2 border-[#3581f3]/20 shrink-0">
+                  <div className="size-16 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF] border-2 border-[#007AFF]/20 shrink-0">
                     <span className="material-symbols-outlined text-[32px]">store</span>
                   </div>
                   <div className="flex flex-col flex-1">
                     <h4 className="font-bold text-foreground">{loading ? "Loading…" : businessName}</h4>
                     <span className="text-sm text-muted-foreground">{userEmail}</span>
                   </div>
-                  <button onClick={() => setEditingName(true)} className="text-[#3581f3] text-sm font-bold shrink-0">Edit</button>
+                  <button onClick={() => setEditingName(true)} className="text-[#007AFF] text-sm font-bold shrink-0">Edit</button>
                 </div>
               )}
             </div>
@@ -156,7 +205,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Contact Info</h3>
             {!editingContact && (
-              <button onClick={() => setEditingContact(true)} className="text-xs font-bold text-[#3581f3]">
+              <button onClick={() => setEditingContact(true)} className="text-xs font-bold text-[#007AFF]">
                 {hasContactInfo ? "Edit" : "Set up"}
               </button>
             )}
@@ -179,7 +228,7 @@ export default function SettingsPage() {
                     placeholder="you@yourbusiness.com"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#3581f3]/30"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                   />
                 </div>
 
@@ -193,7 +242,7 @@ export default function SettingsPage() {
                     placeholder="(555) 000-0000"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#3581f3]/30"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                   />
                 </div>
 
@@ -207,7 +256,7 @@ export default function SettingsPage() {
                   <button
                     onClick={saveContactInfo}
                     disabled={savingContact}
-                    className="flex-[2] py-2.5 rounded-xl bg-[#3581f3] text-white text-sm font-bold hover:bg-[#3581f3]/90 disabled:opacity-50 transition-colors"
+                    className="flex-[2] py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50 transition-colors"
                   >
                     {savingContact ? "Saving…" : "Save Contact Info"}
                   </button>
@@ -265,7 +314,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Payment Methods</h3>
             {!editingPayments && (
-              <button onClick={() => setEditingPayments(true)} className="text-xs font-bold text-[#3581f3]">
+              <button onClick={() => setEditingPayments(true)} className="text-xs font-bold text-[#007AFF]">
                 {hasPaymentMethods ? "Edit" : "Set up"}
               </button>
             )}
@@ -291,7 +340,7 @@ export default function SettingsPage() {
                       placeholder="yourvenmo"
                       value={venmoUsername}
                       onChange={(e) => setVenmoUsername(e.target.value.replace(/^@/, ""))}
-                      className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#3581f3]/30"
+                      className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                     />
                   </div>
                 </div>
@@ -309,7 +358,7 @@ export default function SettingsPage() {
                       placeholder="yourcashtag"
                       value={cashappTag}
                       onChange={(e) => setCashappTag(e.target.value.replace(/^\$/, ""))}
-                      className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#3581f3]/30"
+                      className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                     />
                   </div>
                 </div>
@@ -325,7 +374,7 @@ export default function SettingsPage() {
                     placeholder={businessName || "Your Business Name"}
                     value={checkPayableTo}
                     onChange={(e) => setCheckPayableTo(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#3581f3]/30"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
                   />
                 </div>
 
@@ -339,7 +388,7 @@ export default function SettingsPage() {
                   <button
                     onClick={savePaymentMethods}
                     disabled={savingPayments}
-                    className="flex-[2] py-2.5 rounded-xl bg-[#3581f3] text-white text-sm font-bold hover:bg-[#3581f3]/90 disabled:opacity-50 transition-colors"
+                    className="flex-[2] py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50 transition-colors"
                   >
                     {savingPayments ? "Saving…" : "Save Payment Methods"}
                   </button>
@@ -422,23 +471,87 @@ export default function SettingsPage() {
               </div>
               <span className="text-xs font-bold text-[#16a34a] bg-[#16a34a]/10 px-2.5 py-1 rounded-full">Active</span>
             </div>
-            {[
-              { icon: "request_quote", label: "Tax Settings", sub: "Default Rate: 8.00%" },
-              { icon: "percent", label: "Sales Commissions", sub: "Default Rate: 5.0%" },
-            ].map((item) => (
-              <div key={item.label} className="p-4 flex items-center justify-between">
+            {/* Tax Settings */}
+            <div className="flex flex-col">
+              <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="size-10 rounded-full bg-muted flex items-center justify-center text-foreground">
-                    <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                    <span className="material-symbols-outlined text-[20px]">request_quote</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-bold text-sm text-foreground">{item.label}</span>
-                    <span className="text-xs text-muted-foreground">{item.sub}</span>
+                    <span className="font-bold text-sm text-foreground">Tax Settings</span>
+                    <span className="text-xs text-muted-foreground">Default Rate: {taxRate}%</span>
                   </div>
                 </div>
-                <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
+                <button onClick={() => setEditingTax((v) => !v)} className="text-xs font-bold text-[#007AFF]">
+                  {editingTax ? "Cancel" : "Edit"}
+                </button>
               </div>
-            ))}
+              {editingTax && (
+                <div className="px-4 pb-4 flex gap-2 items-center">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
+                  </div>
+                  <button
+                    onClick={saveTax}
+                    disabled={savingTax}
+                    className="px-4 py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50"
+                  >
+                    {savingTax ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Sales Commissions */}
+            <div className="flex flex-col border-t border-border/50">
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center text-foreground">
+                    <span className="material-symbols-outlined text-[20px]">percent</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-foreground">Sales Commissions</span>
+                    <span className="text-xs text-muted-foreground">Default Rate: {commissionRate}%</span>
+                  </div>
+                </div>
+                <button onClick={() => setEditingCommission((v) => !v)} className="text-xs font-bold text-[#007AFF]">
+                  {editingCommission ? "Cancel" : "Edit"}
+                </button>
+              </div>
+              {editingCommission && (
+                <div className="px-4 pb-4 flex gap-2 items-center">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={commissionRate}
+                      onChange={(e) => setCommissionRate(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
+                  </div>
+                  <button
+                    onClick={saveCommission}
+                    disabled={savingCommission}
+                    className="px-4 py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50"
+                  >
+                    {savingCommission ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              )}
+            </div>
           </Card>
         </section>
 
@@ -446,20 +559,24 @@ export default function SettingsPage() {
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Automations</h3>
           <Card className="rounded-2xl border-border shadow-sm flex flex-col overflow-hidden">
-            {[
-              { label: "Automated Reminders", sub: "Send SMS 24hrs before job" },
-              { label: "Smart Scheduling", sub: "Optimize routes using Maps API" },
-            ].map((item, i) => (
-              <div key={item.label}>
+            {([
+              { label: "Automated Reminders", sub: "Send SMS 24hrs before job", key: "sms_reminders_enabled" as const, value: smsReminders },
+              { label: "Smart Scheduling", sub: "Optimize routes using Maps API", key: "smart_scheduling_enabled" as const, value: smartScheduling },
+            ]).map((item, i) => (
+              <div key={item.key}>
                 {i > 0 && <Separator className="bg-border/50" />}
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex flex-col gap-0.5">
                     <span className="font-bold text-sm text-foreground">{item.label}</span>
                     <span className="text-xs text-muted-foreground">{item.sub}</span>
                   </div>
-                  <div className="w-12 h-6 bg-muted rounded-full relative shadow-inner cursor-not-allowed opacity-50">
-                    <div className="size-5 bg-white rounded-full absolute left-0.5 top-0.5 shadow-sm" />
-                  </div>
+                  <button
+                    onClick={() => toggleAutomation(item.key, item.value)}
+                    disabled={savingAutomation === item.key}
+                    className={`w-12 h-6 rounded-full relative shadow-inner transition-colors duration-200 disabled:opacity-60 ${item.value ? "bg-[#007AFF]" : "bg-muted"}`}
+                  >
+                    <div className={`size-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform duration-200 ${item.value ? "translate-x-6" : "translate-x-0.5"}`} />
+                  </button>
                 </div>
               </div>
             ))}

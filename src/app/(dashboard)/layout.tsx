@@ -21,7 +21,19 @@ export default async function DashboardLayout({
     .eq("owner_id", user.id)
     .single();
 
-  if (!business) redirect("/onboarding");
+  let role: "owner" | "admin" | "member" | "sales" = "owner";
 
-  return <Shell>{children}</Shell>;
+  if (!business) {
+    const { data: tm } = await supabase
+      .from("team_members")
+      .select("business_id, role")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .single();
+
+    if (!tm) redirect("/onboarding");
+    role = tm.role as "admin" | "member" | "sales";
+  }
+
+  return <Shell role={role}>{children}</Shell>;
 }
