@@ -19,7 +19,9 @@ export default async function DashboardLayout({
     .from("businesses")
     .select("id")
     .eq("owner_id", user.id)
-    .single();
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
   let role: "owner" | "admin" | "member" | "sales" = "owner";
 

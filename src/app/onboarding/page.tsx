@@ -37,13 +37,14 @@ export default function OnboardingPage() {
       return;
     }
 
-    const { error } = await supabase.from("businesses").insert({
-      owner_id: user.id,
-      name: businessName.trim(),
-    });
+    const { data, error } = await supabase
+      .from("businesses")
+      .insert({ owner_id: user.id, name: businessName.trim() })
+      .select("id")
+      .single();
 
-    if (error) {
-      setError(error.message);
+    if (error || !data) {
+      setError(error?.message ?? "Failed to create business. Check Supabase RLS policies.");
       setLoading(false);
     } else {
       router.push("/");
