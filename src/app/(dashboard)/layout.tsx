@@ -23,18 +23,25 @@ export default async function DashboardLayout({
     .limit(1)
     .maybeSingle();
 
-  let role: "owner" | "admin" | "member" | "sales" = "owner";
+  const role: "owner" | "admin" | "member" | "sales" = "owner";
 
   if (!business) {
     const { data: tm } = await supabase
       .from("team_members")
-      .select("business_id, role")
+      .select("business_id, role, is_active, is_pending")
       .eq("user_id", user.id)
-      .eq("is_active", true)
       .single();
 
     if (!tm) redirect("/onboarding");
-    role = tm.role as "admin" | "member" | "sales";
+
+    // Pending employees are awaiting owner approval
+    if (!tm.is_active && tm.is_pending) redirect("/employee-pending");
+
+    // Deactivated/removed employees
+    if (!tm.is_active) redirect("/onboarding");
+
+    // Active employees go to the employee portal, not the owner dashboard
+    redirect("/employee");
   }
 
   return <Shell role={role}>{children}</Shell>;

@@ -47,7 +47,7 @@ async function fetchNotifications(): Promise<Notification[]> {
   const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
   const endOfToday   = new Date(now); endOfToday.setHours(23, 59, 59, 999);
 
-  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }] = await Promise.all([
+  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }, { data: pendingMembers }] = await Promise.all([
     supabase.from("jobs").select("id, total, clients(name), payments(id)")
       .eq("business_id", business.id).eq("status", "completed"),
     supabase.from("jobs").select("id, scheduled_at, job_line_items(description), clients(name)")
@@ -57,9 +57,25 @@ async function fetchNotifications(): Promise<Notification[]> {
       .order("scheduled_at"),
     supabase.from("jobs").select("id, job_line_items(description), clients(name)")
       .eq("business_id", business.id).eq("status", "in_progress"),
+    supabase.from("team_members").select("id, name")
+      .eq("business_id", business.id).eq("is_active", false).eq("is_pending", true),
   ]);
 
   const notes: Notification[] = [];
+
+  // Pending employee approvals
+  const pending = (pendingMembers ?? []) as { id: string; name: string }[];
+  if (pending.length > 0) {
+    notes.push({
+      id: "pending-employees",
+      icon: "badge",
+      iconColor: "#ea580c",
+      iconBg: "bg-[#ea580c]/10",
+      title: `${pending.length} employee${pending.length !== 1 ? "s" : ""} awaiting approval`,
+      subtitle: pending.length === 1 ? `${pending[0].name} wants to join your team` : "Review and approve new team members",
+      href: "/team",
+    });
+  }
 
   const unpaid = (completedJobs ?? []).filter(
     (j: { payments: { id: string }[] }) => !j.payments || j.payments.length === 0
@@ -176,19 +192,10 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
 
       {/* ── TOP APP BAR — frosted glass chrome ── */}
-      <header className="sticky top-0 z-30 border-b border-border/30"
-        style={{
-          background: "oklch(1 0 0 / 0.84)",
-          backdropFilter: "blur(24px) saturate(1.8)",
-          WebkitBackdropFilter: "blur(24px) saturate(1.8)",
-        }}
-      >
-        <div className="dark:bg-transparent"
-          style={{ background: "oklch(0.143 0 0 / 0)" }}
-        />
+      <header className="sticky top-0 z-30 chrome">
         {/* Dark mode override via CSS class */}
         <style>{`
-          .dark header.sticky { background: oklch(0.08 0 0 / 0.88) !important; }
+          .dark header.sticky { background: oklch(0.09 0 0 / 0.90) !important; }
         `}</style>
         <div className="flex items-center justify-between px-4 pt-3 pb-2.5 max-w-xl mx-auto">
           {/* Brand + Greeting */}
@@ -210,8 +217,8 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           <div className="flex items-center gap-1">
             <button
               onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
-              className={`flex size-8 items-center justify-center rounded-full transition-all duration-150 active:scale-90 ${
-                settingsOpen ? "bg-[#007AFF]/10 text-[#007AFF]" : "text-muted-foreground hover:bg-muted"
+              className={`flex size-8 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
+                settingsOpen ? "bg-[#007AFF]/12 text-[#007AFF]" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <span
@@ -224,8 +231,8 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
             <button
               onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
-              className={`relative flex size-8 items-center justify-center rounded-full transition-all duration-150 active:scale-90 ${
-                open ? "bg-[#007AFF]/10 text-[#007AFF]" : "text-muted-foreground hover:bg-muted"
+              className={`relative flex size-8 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
+                open ? "bg-[#007AFF]/12 text-[#007AFF]" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <span
@@ -236,7 +243,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               </span>
               {/* Unread badge */}
               {(!open || !loaded) && (
-                <span className="absolute top-1 right-1 size-2 rounded-full bg-[#ea580c] border-2 border-background" />
+                <span className="absolute top-1 right-1 size-[7px] rounded-full bg-[#ea580c]" style={{ boxShadow: "0 0 0 1.5px var(--color-background)" }} />
               )}
             </button>
           </div>
@@ -250,12 +257,11 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           <div className="absolute right-3 top-2 w-72 max-w-[calc(100vw-24px)]">
             <div
               ref={settingsRef}
-              className="rounded-2xl overflow-hidden border border-border/50 bg-card animate-in-down"
-              style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.06)" }}
+              className="rounded-2xl overflow-hidden glass-panel animate-in-down"
             >
               {/* Appearance */}
               <div className="px-3 pt-3 pb-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Appearance</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">Appearance</p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {(["light", "dark", "system"] as const).map((t) => (
                     <button
@@ -328,13 +334,12 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           <div className="absolute right-3 top-2 w-80 max-w-[calc(100vw-24px)]">
             <div
               ref={drawerRef}
-              className="rounded-2xl overflow-hidden border border-border/50 bg-card animate-in-down"
-              style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.06)" }}
+              className="rounded-2xl overflow-hidden glass-panel animate-in-down"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
                 <span className="font-bold text-sm text-foreground">Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] font-semibold bg-[#ea580c]/10 text-[#ea580c] px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full tabular-nums">
                     {unreadCount}
                   </span>
                 )}
@@ -409,14 +414,13 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           onClick={() => setMoreOpen(false)}
         >
           <div
-            className="absolute bottom-0 left-0 w-full bg-card rounded-t-[28px] border-t border-border/40"
-            style={{ boxShadow: "0 -4px 40px rgba(0,0,0,0.16)" }}
+            className="absolute bottom-0 left-0 w-full glass-sheet rounded-t-[28px]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-0.5">
               <div className="w-8 h-1 rounded-full bg-muted-foreground/25" />
             </div>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-5 mt-3 mb-3">More</p>
+            <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest px-5 mt-3 mb-3">More</p>
             <div className="grid grid-cols-4 gap-3 px-5 pb-7">
               {MORE_ITEMS.map(({ href, label, icon, color, bg }) => (
                 <button
@@ -441,16 +445,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── BOTTOM NAVIGATION ── */}
-      <nav
-        className="fixed bottom-0 left-0 w-full z-40 border-t border-border/30"
-        style={{
-          background: "oklch(1 0 0 / 0.84)",
-          backdropFilter: "blur(24px) saturate(1.8)",
-          WebkitBackdropFilter: "blur(24px) saturate(1.8)",
-        }}
-      >
+      <nav className="fixed bottom-0 left-0 w-full z-40 chrome">
         <style>{`
-          .dark nav.fixed { background: oklch(0.08 0 0 / 0.88) !important; }
+          .dark nav.fixed { background: oklch(0.09 0 0 / 0.90) !important; }
         `}</style>
         <div className="flex items-stretch max-w-xl mx-auto h-[52px] px-1">
           {visibleNav.map(({ href, label, icon, exact }) => {

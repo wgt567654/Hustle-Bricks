@@ -145,6 +145,24 @@ export default function LoginPage() {
           </Link>
         </p>
 
+        {/* Employee separator */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-3 text-muted-foreground font-semibold">Employee?</span>
+          </div>
+        </div>
+
+        <Link
+          href="/employee-join"
+          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold py-3.5 text-sm border-2 border-border text-foreground hover:bg-muted/50 active:scale-95 transition-all"
+        >
+          <span className="material-symbols-outlined text-[18px]">badge</span>
+          Join your team
+        </Link>
+
       </div>
     </div>
   );

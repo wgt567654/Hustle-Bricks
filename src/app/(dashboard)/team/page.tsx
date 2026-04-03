@@ -15,6 +15,7 @@ type TeamMember = {
   email: string | null;
   role: Role;
   is_active: boolean;
+  is_pending: boolean;
   certifications: string[];
 };
 
@@ -58,6 +59,9 @@ export default function TeamPage() {
   const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [workload, setWorkload] = useState<Record<string, number>>({});
+  const [pendingMembers, setPendingMembers] = useState<TeamMember[]>([]);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [editForm, setEditForm] = useState({ name: "", email: "", role: "member" as Role, certifications: [] as string[] });
   const [editSaving, setEditSaving] = useState(false);
@@ -95,13 +99,17 @@ export default function TeamPage() {
 
       const { data } = await supabase
         .from("team_members")
-        .select("id, name, email, role, is_active, certifications")
+        .select("id, name, email, role, is_active, is_pending, certifications")
         .eq("business_id", business.id)
-        .eq("is_active", true)
         .order("name");
 
-      const memberList = (data ?? []) as TeamMember[];
+      const allMembers = (data ?? []) as TeamMember[];
+      const activeMembers = allMembers.filter((m) => m.is_active);
+      const pendingList = allMembers.filter((m) => !m.is_active && m.is_pending);
+
+      const memberList = activeMembers;
       setMembers(memberList.map((m) => ({ ...m, certifications: m.certifications ?? [] })));
+      setPendingMembers(pendingList.map((m) => ({ ...m, certifications: m.certifications ?? [] })));
 
       // Fetch workload: active jobs per member
       if (memberList.length > 0) {
@@ -128,6 +136,30 @@ export default function TeamPage() {
 
   const filtered = roleFilter === "all" ? members : members.filter((m) => m.role === roleFilter);
 
+  async function handleApprove(id: string) {
+    setApprovingId(id);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("team_members")
+      .update({ is_active: true, is_pending: false })
+      .eq("id", id)
+      .select("id, name, email, role, is_active, is_pending, certifications")
+      .single();
+    if (data) {
+      setPendingMembers((prev) => prev.filter((m) => m.id !== id));
+      setMembers((prev) => [...prev, { ...data, certifications: data.certifications ?? [] }].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+    setApprovingId(null);
+  }
+
+  async function handleReject(id: string) {
+    setRejectingId(id);
+    const supabase = createClient();
+    await supabase.from("team_members").update({ is_pending: false }).eq("id", id);
+    setPendingMembers((prev) => prev.filter((m) => m.id !== id));
+    setRejectingId(null);
+  }
+
   async function handleAdd(e: { preventDefault(): void }) {
     e.preventDefault();
     if (!businessId) return;
@@ -144,7 +176,7 @@ export default function TeamPage() {
         role: form.role,
         certifications: form.certifications,
       })
-      .select("id, name, email, role, is_active, certifications")
+      .select("id, name, email, role, is_active, is_pending, certifications")
       .single();
 
     if (error) {
@@ -215,6 +247,52 @@ export default function TeamPage() {
           </button>
         ))}
       </div>
+
+      {/* Pending approvals */}
+      {pendingMembers.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Pending Approval</h2>
+            <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full">
+              {pendingMembers.length}
+            </span>
+          </div>
+          {pendingMembers.map((member) => (
+            <Card key={member.id} className="overflow-hidden rounded-2xl border-[#ea580c]/20 shadow-sm bg-[#ea580c]/5">
+              <div className="p-4 flex gap-4 items-center">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#ea580c]/15 text-[#ea580c] text-base font-extrabold shrink-0">
+                  {getInitials(member.name)}
+                </div>
+                <div className="flex flex-col flex-1 min-w-0 gap-0.5">
+                  <span className="font-bold text-foreground leading-tight">{member.name}</span>
+                  {member.email && <span className="text-xs text-muted-foreground">{member.email}</span>}
+                  <span className="text-xs text-[#ea580c] font-medium">Wants to join your team</span>
+                </div>
+              </div>
+              <Separator className="bg-[#ea580c]/15" />
+              <div className="flex bg-muted/10">
+                <button
+                  onClick={() => handleReject(member.id)}
+                  disabled={rejectingId === member.id}
+                  className="flex-1 py-2.5 text-sm font-semibold text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                  {rejectingId === member.id ? "…" : "Reject"}
+                </button>
+                <Separator orientation="vertical" className="bg-[#ea580c]/15 h-auto" />
+                <button
+                  onClick={() => handleApprove(member.id)}
+                  disabled={approvingId === member.id}
+                  className="flex-1 py-2.5 text-sm font-bold text-[#16a34a] hover:bg-[#16a34a]/10 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  {approvingId === member.id ? "Approving…" : "Approve"}
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Team list */}
       <div className="flex flex-col gap-4">

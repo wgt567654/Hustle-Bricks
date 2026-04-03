@@ -29,6 +29,11 @@ export default function SettingsPage() {
   const [editingContact, setEditingContact] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
 
+  // Employee access code
+  const [accessCode, setAccessCode] = useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+
   // Tax & commission
   const [taxRate, setTaxRate] = useState("8.00");
   const [commissionRate, setCommissionRate] = useState("5.00");
@@ -63,6 +68,7 @@ export default function SettingsPage() {
         setBusinessId(business.id);
         setBusinessName(business.name);
         setNameInput(business.name);
+        setAccessCode((business as unknown as { employee_access_code: string | null }).employee_access_code ?? null);
         setVenmoUsername(business.venmo_username ?? "");
         setCashappTag(business.cashapp_tag ?? "");
         setCheckPayableTo(business.check_payable_to ?? business.name ?? "");
@@ -77,6 +83,28 @@ export default function SettingsPage() {
     }
     load();
   }, []);
+
+  function generateCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  }
+
+  async function regenerateAccessCode() {
+    if (!businessId) return;
+    setGeneratingCode(true);
+    const newCode = generateCode();
+    const supabase = createClient();
+    await supabase.from("businesses").update({ employee_access_code: newCode } as Record<string, unknown>).eq("id", businessId);
+    setAccessCode(newCode);
+    setGeneratingCode(false);
+  }
+
+  async function copyAccessCode() {
+    if (!accessCode) return;
+    await navigator.clipboard.writeText(accessCode);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  }
 
   async function saveName() {
     if (!businessId || !nameInput.trim()) return;
@@ -195,6 +223,57 @@ export default function SettingsPage() {
                   </div>
                   <button onClick={() => setEditingName(true)} className="text-[#007AFF] text-sm font-bold shrink-0">Edit</button>
                 </div>
+              )}
+            </div>
+          </Card>
+        </section>
+
+        {/* Employee Access Code */}
+        <section className="flex flex-col gap-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Employee Access</h3>
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <div className="p-4 flex flex-col gap-4">
+              <div className="flex items-start gap-3">
+                <div className="size-10 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-[20px] text-[#007AFF]">badge</span>
+                </div>
+                <div className="flex flex-col flex-1 gap-0.5">
+                  <span className="font-bold text-sm text-foreground">Team Access Code</span>
+                  <span className="text-xs text-muted-foreground">
+                    Share this code with employees so they can join your team from the login screen.
+                  </span>
+                </div>
+              </div>
+
+              {accessCode ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between bg-muted/50 rounded-xl px-4 py-3">
+                    <span className="font-mono font-extrabold text-2xl tracking-[0.3em] text-foreground">
+                      {accessCode}
+                    </span>
+                    <button
+                      onClick={copyAccessCode}
+                      className={`text-xs font-bold transition-colors ${codeCopied ? "text-[#16a34a]" : "text-[#007AFF]"}`}
+                    >
+                      {codeCopied ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                  <button
+                    onClick={regenerateAccessCode}
+                    disabled={generatingCode}
+                    className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    {generatingCode ? "Generating…" : "↻ Generate new code"}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={regenerateAccessCode}
+                  disabled={generatingCode}
+                  className="w-full py-3 rounded-xl bg-[#007AFF] text-white font-bold text-sm hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {generatingCode ? "Generating…" : "Generate Access Code"}
+                </button>
               )}
             </div>
           </Card>
