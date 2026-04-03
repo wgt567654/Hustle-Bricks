@@ -99,13 +99,13 @@ export default function TeamPage() {
 
       const { data } = await supabase
         .from("team_members")
-        .select("id, name, email, role, is_active, is_pending, certifications")
+        .select("id, name, email, role, is_active, certifications")
         .eq("business_id", business.id)
         .order("name");
 
-      const allMembers = (data ?? []) as TeamMember[];
+      const allMembers = ((data ?? []) as TeamMember[]).map((m) => ({ ...m, is_pending: false }));
       const activeMembers = allMembers.filter((m) => m.is_active);
-      const pendingList = allMembers.filter((m) => !m.is_active && m.is_pending);
+      const pendingList: TeamMember[] = [];
 
       const memberList = activeMembers;
       setMembers(memberList.map((m) => ({ ...m, certifications: m.certifications ?? [] })));
@@ -176,14 +176,14 @@ export default function TeamPage() {
         role: form.role,
         certifications: form.certifications,
       })
-      .select("id, name, email, role, is_active, is_pending, certifications")
+      .select("id, name, email, role, is_active, certifications")
       .single();
 
     if (error) {
       setError(error.message);
       setSaving(false);
     } else {
-      setMembers((prev) => [...prev, { ...data, certifications: data.certifications ?? [] }].sort((a, b) => a.name.localeCompare(b.name)));
+      setMembers((prev) => [...prev, { ...data, is_pending: false, certifications: data.certifications ?? [] }].sort((a, b) => a.name.localeCompare(b.name)));
       setForm(EMPTY_FORM);
       setShowModal(false);
       setSaving(false);
