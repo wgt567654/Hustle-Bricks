@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function RecoveryRedirect() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -17,6 +17,12 @@ export default function LoginPage() {
       router.replace(`/auth/callback?token_hash=${token_hash}&type=${type}`);
     }
   }, [searchParams, router]);
+
+  return null;
+}
+
+export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +67,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
+      <Suspense><RecoveryRedirect /></Suspense>
       <div className="w-full max-w-sm flex flex-col gap-6">
 
         {/* Branding */}
