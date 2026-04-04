@@ -92,9 +92,11 @@ export default function TeamPage() {
         .from("businesses")
         .select("id")
         .eq("owner_id", user.id)
-        .single();
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-      if (!business) return;
+      if (!business) { setLoading(false); return; }
       setBusinessId(business.id);
 
       const { data } = await supabase
@@ -176,14 +178,23 @@ export default function TeamPage() {
         role: form.role,
         certifications: form.certifications,
       })
-      .select("id, name, email, role, is_active, certifications")
+      .select("id")
       .single();
 
-    if (error) {
-      setError(error.message);
+    if (error || !data) {
+      setError(error?.message ?? "Failed to add member.");
       setSaving(false);
     } else {
-      setMembers((prev) => [...prev, { ...data, is_pending: false, certifications: data.certifications ?? [] }].sort((a, b) => a.name.localeCompare(b.name)));
+      const newMember: TeamMember = {
+        id: data.id,
+        name: form.name.trim(),
+        email: form.email.trim() || null,
+        role: form.role,
+        is_active: true,
+        is_pending: false,
+        certifications: form.certifications,
+      };
+      setMembers((prev) => [...prev, newMember].sort((a, b) => a.name.localeCompare(b.name)));
       setForm(EMPTY_FORM);
       setShowModal(false);
       setSaving(false);

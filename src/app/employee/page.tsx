@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { buildGoogleMapsRouteUrls } from "@/lib/routeOptimizer";
 
 type Job = {
   id: string;
@@ -10,6 +11,7 @@ type Job = {
   scheduled_at: string | null;
   total: number;
   notes: string | null;
+  route_order: number | null;
   clients: { name: string; address: string | null } | null;
   job_line_items: { description: string }[];
 };
@@ -67,7 +69,7 @@ export default function EmployeeHomePage() {
       const [{ data: todayJobs }, { data: openEntry }] = await Promise.all([
         supabase
           .from("jobs")
-          .select("id, status, scheduled_at, total, notes, clients(name, address), job_line_items(description)")
+          .select("id, status, scheduled_at, total, notes, route_order, clients(name, address), job_line_items(description)")
           .eq("assigned_member_id", tm.id)
           .in("status", ["scheduled", "in_progress"])
           .gte("scheduled_at", startOfToday.toISOString())
@@ -83,7 +85,13 @@ export default function EmployeeHomePage() {
           .maybeSingle(),
       ]);
 
-      setJobs((todayJobs as unknown as Job[]) ?? []);
+      const rawJobs = (todayJobs as unknown as Job[]) ?? [];
+      // Sort: routed jobs (non-null route_order) by route_order, then unrouted by scheduled_at
+      const sortedJobs = [
+        ...rawJobs.filter((j) => j.route_order !== null).sort((a, b) => a.route_order! - b.route_order!),
+        ...rawJobs.filter((j) => j.route_order === null),
+      ];
+      setJobs(sortedJobs);
       setActiveEntry(openEntry as TimeEntry | null);
       setLoading(false);
     }
@@ -117,6 +125,12 @@ export default function EmployeeHomePage() {
   }
 
   const activeJob = activeEntry ? jobs.find((j) => j.id === activeEntry.job_id) : null;
+
+  // Build navigate button data
+  const routedJobs = jobs.filter((j) => j.route_order !== null && j.clients?.address);
+  const routeUrls = routedJobs.length >= 2
+    ? buildGoogleMapsRouteUrls(routedJobs.map((j) => j.clients!.address!))
+    : [];
 
   return (
     <div className="flex flex-col gap-5 px-4 py-5 max-w-xl mx-auto">
@@ -179,6 +193,38 @@ export default function EmployeeHomePage() {
         </div>
       )}
 
+      {/* Navigate Route button — shown when owner has planned a route with 2+ stops */}
+      {!loading && routeUrls.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {routeUrls.map((url, i) => (
+            <a
+              key={i}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-2xl border border-[#007AFF]/30 bg-[#007AFF]/8 px-4 py-3.5 hover:bg-[#007AFF]/12 active:scale-[0.99] transition-all"
+            >
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#007AFF]/15 text-[#007AFF]">
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  directions_car
+                </span>
+              </div>
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="font-bold text-[#007AFF] text-sm leading-snug">
+                  {routeUrls.length > 1 ? `Navigate Route — Part ${i + 1}` : "Navigate Today's Route"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {routeUrls.length > 1
+                    ? `Opens in Google Maps`
+                    : `${routedJobs.length} stops · Opens in Google Maps`}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-[#007AFF]/60 text-[18px]">open_in_new</span>
+            </a>
+          ))}
+        </div>
+      )}
+
       {/* Today's jobs */}
       <div className="flex flex-col gap-3">
         <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Today&apos;s Jobs</h2>
@@ -206,19 +252,26 @@ export default function EmployeeHomePage() {
                 onClick={() => router.push(`/employee/jobs/${job.id}`)}
                 className="w-full p-4 flex items-start gap-3 text-left hover:bg-muted/20 active:bg-muted/40 transition-colors"
               >
-                <div
-                  className={`flex size-10 shrink-0 items-center justify-center rounded-xl mt-0.5 ${
-                    job.status === "in_progress"
-                      ? "bg-[#ea580c]/10 text-[#ea580c]"
-                      : "bg-[#007AFF]/10 text-[#007AFF]"
-                  }`}
-                >
-                  <span
-                    className="material-symbols-outlined text-[18px]"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
+                <div className="relative shrink-0 mt-0.5">
+                  <div
+                    className={`flex size-10 items-center justify-center rounded-xl ${
+                      job.status === "in_progress"
+                        ? "bg-[#ea580c]/10 text-[#ea580c]"
+                        : "bg-[#007AFF]/10 text-[#007AFF]"
+                    }`}
                   >
-                    {job.status === "in_progress" ? "play_circle" : "work"}
-                  </span>
+                    <span
+                      className="material-symbols-outlined text-[18px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      {job.status === "in_progress" ? "play_circle" : "work"}
+                    </span>
+                  </div>
+                  {job.route_order !== null && (
+                    <div className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-[#007AFF] border-2 border-background flex items-center justify-center text-[9px] font-extrabold text-white leading-none">
+                      {job.route_order}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col flex-1 min-w-0">

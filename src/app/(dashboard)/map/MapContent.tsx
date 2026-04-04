@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { nearestNeighborTSP } from "@/lib/routeOptimizer";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -15,6 +16,8 @@ type MapJob = {
   status: JobStatus;
   total: number;
   scheduled_at: string | null;
+  assigned_member_id: string | null;
+  route_order: number | null;
   job_line_items: { description: string }[];
   clients: { name: string; address: string | null } | null;
 };
@@ -23,6 +26,11 @@ type Pin = {
   job: MapJob;
   lat: number;
   lng: number;
+};
+
+type TeamMember = {
+  id: string;
+  name: string;
 };
 
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -48,6 +56,15 @@ function makeMarker(color: string) {
   });
 }
 
+function makeNumberedMarker(n: number, color: string) {
+  return L.divIcon({
+    html: `<div style="width:26px;height:26px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;font-family:system-ui,sans-serif">${n}</div>`,
+    className: "",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
+
 async function geocode(address: string): Promise<[number, number] | null> {
   try {
     const res = await fetch(
@@ -66,6 +83,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function MapContent() {
   const router = useRouter();
+  const [allJobs, setAllJobs] = useState<MapJob[]>([]);
   const [pins, setPins] = useState<Pin[]>([]);
   const [loading, setLoading] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
@@ -74,6 +92,18 @@ export default function MapContent() {
   const [filterStatus, setFilterStatus] = useState<JobStatus | "all">("all");
   const [center, setCenter] = useState<[number, number]>([39.5, -98.35]);
   const [zoom, setZoom] = useState(4);
+
+  // Route planner state
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [routeEmployee, setRouteEmployee] = useState("");
+  const [routeDate, setRouteDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [routeStops, setRouteStops] = useState<Pin[]>([]);
+  const [routePlanning, setRoutePlanning] = useState(false);
+  const [routeSaving, setRouteSaving] = useState(false);
+  const [routeSaved, setRouteSaved] = useState(false);
+  const [noAddressCount, setNoAddressCount] = useState(0);
+  const [inProgressCount, setInProgressCount] = useState(0);
+  const [routeError, setRouteError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -88,16 +118,28 @@ export default function MapContent() {
         .single();
       if (!business) return;
 
-      const { data: jobs } = await supabase
-        .from("jobs")
-        .select("id, status, total, scheduled_at, job_line_items(description), clients(name, address)")
-        .eq("business_id", business.id)
-        .not("status", "eq", "cancelled")
-        .order("scheduled_at", { ascending: false });
+      const [{ data: jobs }, { data: members }] = await Promise.all([
+        supabase
+          .from("jobs")
+          .select("id, status, total, scheduled_at, assigned_member_id, route_order, job_line_items(description), clients(name, address)")
+          .eq("business_id", business.id)
+          .not("status", "eq", "cancelled")
+          .order("scheduled_at", { ascending: false }),
+        supabase
+          .from("team_members")
+          .select("id, name")
+          .eq("business_id", business.id)
+          .eq("is_active", true)
+          .eq("is_pending", false)
+          .order("name"),
+      ]);
 
       setLoading(false);
+      setTeamMembers((members as TeamMember[]) ?? []);
 
       const jobList = (jobs as unknown as MapJob[]) ?? [];
+      setAllJobs(jobList);
+
       const withAddress = jobList.filter((j) => j.clients?.address);
       setTotal(withAddress.length);
 
@@ -127,6 +169,92 @@ export default function MapContent() {
     load();
   }, []);
 
+  function handlePlanRoute() {
+    if (!routeEmployee || !routeDate) return;
+    setRoutePlanning(true);
+    setRouteSaved(false);
+    setRouteError("");
+
+    const dayStart = new Date(routeDate + "T00:00:00");
+    const dayEnd = new Date(routeDate + "T23:59:59");
+
+    // Jobs for this employee on this date
+    const employeeJobs = allJobs.filter(
+      (j) =>
+        j.assigned_member_id === routeEmployee &&
+        j.scheduled_at &&
+        new Date(j.scheduled_at) >= dayStart &&
+        new Date(j.scheduled_at) <= dayEnd
+    );
+
+    if (employeeJobs.length === 0) {
+      setRouteError("No jobs found for this employee on the selected date.");
+      setRoutePlanning(false);
+      setRouteStops([]);
+      return;
+    }
+
+    const withoutAddress = employeeJobs.filter((j) => !j.clients?.address);
+    setNoAddressCount(withoutAddress.length);
+
+    const inProg = employeeJobs.filter(
+      (j) => j.status === "in_progress" || j.status === "completed"
+    );
+    setInProgressCount(inProg.length);
+
+    // Match with already-geocoded pins
+    const employeePins = pins.filter((p) =>
+      p.job.assigned_member_id === routeEmployee &&
+      p.job.scheduled_at &&
+      new Date(p.job.scheduled_at) >= dayStart &&
+      new Date(p.job.scheduled_at) <= dayEnd
+    );
+
+    if (employeePins.length === 0) {
+      setRouteError("No jobs with addresses could be geocoded for this employee on the selected date. Make sure addresses are added to client profiles.");
+      setRoutePlanning(false);
+      setRouteStops([]);
+      return;
+    }
+
+    if (geocoding) {
+      setRouteError("Still geocoding addresses — please wait for the map to finish loading, then try again.");
+      setRoutePlanning(false);
+      return;
+    }
+
+    // Sort by scheduled_at (earliest first = starting point for TSP)
+    const sorted = [...employeePins].sort((a, b) =>
+      new Date(a.job.scheduled_at!).getTime() - new Date(b.job.scheduled_at!).getTime()
+    );
+
+    const optimized = nearestNeighborTSP(sorted);
+    setRouteStops(optimized);
+    setRoutePlanning(false);
+  }
+
+  async function handleSaveRoute() {
+    if (routeStops.length === 0) return;
+    setRouteSaving(true);
+    const supabase = createClient();
+    for (let i = 0; i < routeStops.length; i++) {
+      await supabase
+        .from("jobs")
+        .update({ route_order: i + 1 })
+        .eq("id", routeStops[i].job.id);
+    }
+    setRouteSaving(false);
+    setRouteSaved(true);
+  }
+
+  function moveStop(from: number, to: number) {
+    const next = [...routeStops];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    setRouteStops(next);
+    setRouteSaved(false);
+  }
+
   const filtered = filterStatus === "all" ? pins : pins.filter((p) => p.job.status === filterStatus);
   const counts = {
     scheduled: pins.filter((p) => p.job.status === "scheduled").length,
@@ -134,10 +262,12 @@ export default function MapContent() {
     completed: pins.filter((p) => p.job.status === "completed").length,
   };
 
+  const routeStopIds = new Set(routeStops.map((s) => s.job.id));
+
   return (
     <div className="flex flex-col h-screen max-h-screen overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-4 flex flex-col gap-3 shrink-0 bg-background border-b border-border">
+      <div className="px-4 pt-4 pb-3 flex flex-col gap-3 shrink-0 bg-background border-b border-border">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-extrabold tracking-tight text-foreground">Job Map</h1>
@@ -179,10 +309,56 @@ export default function MapContent() {
             </button>
           ))}
         </div>
+
+        {/* Route planner controls */}
+        {teamMembers.length > 0 && (
+          <div className="flex flex-col gap-2 pt-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Route Planner</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={routeEmployee}
+                onChange={(e) => { setRouteEmployee(e.target.value); setRouteStops([]); setRouteSaved(false); setRouteError(""); }}
+                className="flex-1 min-w-0 text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
+              >
+                <option value="">Select employee…</option>
+                {teamMembers.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={routeDate}
+                onChange={(e) => { setRouteDate(e.target.value); setRouteStops([]); setRouteSaved(false); setRouteError(""); }}
+                className="text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
+              />
+              <button
+                onClick={handlePlanRoute}
+                disabled={!routeEmployee || routePlanning || geocoding}
+                className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-40 shrink-0"
+              >
+                {routePlanning ? "Planning…" : "Plan Route"}
+              </button>
+            </div>
+
+            {routeError && (
+              <p className="text-xs text-destructive">{routeError}</p>
+            )}
+            {!routeError && noAddressCount > 0 && (
+              <p className="text-xs text-amber-600">
+                {noAddressCount} job{noAddressCount > 1 ? "s" : ""} excluded — no address on file
+              </p>
+            )}
+            {!routeError && inProgressCount > 0 && (
+              <p className="text-xs text-amber-600">
+                {inProgressCount} in-progress/completed job{inProgressCount > 1 ? "s" : ""} will not be updated when saving
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Map */}
-      <div className="flex-1 relative">
+      <div className="flex-1 min-h-0 relative">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-muted-foreground">Loading jobs…</p>
@@ -204,55 +380,140 @@ export default function MapContent() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {filtered.map((pin) => (
-              <Marker
-                key={pin.job.id}
-                position={[pin.lat, pin.lng]}
-                icon={makeMarker(STATUS_COLORS[pin.job.status])}
-              >
-                <Popup>
-                  <div style={{ minWidth: 180 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
-                      {pin.job.job_line_items[0]?.description ?? "Service Job"}
+
+            {/* Route polyline */}
+            {routeStops.length > 1 && (
+              <Polyline
+                positions={routeStops.map((s) => [s.lat, s.lng])}
+                pathOptions={{ color: "#007AFF", weight: 3, opacity: 0.75, dashArray: "8 5" }}
+              />
+            )}
+
+            {filtered.map((pin) => {
+              const routeIdx = routeStops.findIndex((s) => s.job.id === pin.job.id);
+              const icon =
+                routeIdx >= 0
+                  ? makeNumberedMarker(routeIdx + 1, STATUS_COLORS[pin.job.status])
+                  : makeMarker(STATUS_COLORS[pin.job.status]);
+              return (
+                <Marker
+                  key={pin.job.id}
+                  position={[pin.lat, pin.lng]}
+                  icon={icon}
+                  zIndexOffset={routeStopIds.has(pin.job.id) ? 1000 : 0}
+                >
+                  <Popup>
+                    <div style={{ minWidth: 180 }}>
+                      {routeIdx >= 0 && (
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#007AFF", marginBottom: 4 }}>
+                          Stop #{routeIdx + 1}
+                        </div>
+                      )}
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
+                        {pin.job.job_line_items[0]?.description ?? "Service Job"}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+                        {pin.job.clients?.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
+                        {pin.job.clients?.address}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: STATUS_COLORS[pin.job.status] }}>
+                          {STATUS_LABELS[pin.job.status]}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>
+                          ${pin.job.total.toFixed(2)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => router.push(`/jobs/${pin.job.id}`)}
+                        style={{
+                          marginTop: 8,
+                          width: "100%",
+                          padding: "6px 0",
+                          background: "#007AFF",
+                          color: "white",
+                          border: "none",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        View Job →
+                      </button>
                     </div>
-                    <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                      {pin.job.clients?.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
-                      {pin.job.clients?.address}
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: STATUS_COLORS[pin.job.status] }}>
-                        {STATUS_LABELS[pin.job.status]}
-                      </span>
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>
-                        ${pin.job.total.toFixed(2)}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => router.push(`/jobs/${pin.job.id}`)}
-                      style={{
-                        marginTop: 8,
-                        width: "100%",
-                        padding: "6px 0",
-                        background: "#007AFF",
-                        color: "white",
-                        border: "none",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      View Job →
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+                  </Popup>
+                </Marker>
+              );
+            })}
           </MapContainer>
         )}
       </div>
+
+      {/* Route stops list — shown after "Plan Route" */}
+      {routeStops.length > 0 && (
+        <div className="shrink-0 max-h-60 overflow-y-auto border-t border-border bg-background">
+          <div className="px-4 py-2.5 flex items-center justify-between sticky top-0 bg-background border-b border-border z-10">
+            <span className="text-sm font-bold text-foreground">
+              Optimized Route · {routeStops.length} stop{routeStops.length > 1 ? "s" : ""}
+            </span>
+            <button
+              onClick={handleSaveRoute}
+              disabled={routeSaving || routeSaved}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 ${
+                routeSaved
+                  ? "bg-[#16a34a]/10 text-[#16a34a]"
+                  : "bg-[#007AFF] text-white hover:bg-[#007AFF]/90 disabled:opacity-50"
+              }`}
+            >
+              {routeSaved ? "✓ Saved" : routeSaving ? "Saving…" : "Save Route"}
+            </button>
+          </div>
+
+          {routeStops.map((stop, i) => (
+            <div
+              key={stop.job.id}
+              className="flex items-center gap-3 px-4 py-2.5 border-b border-border/40 last:border-0"
+            >
+              <div
+                className="size-6 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white shrink-0"
+                style={{ background: STATUS_COLORS[stop.job.status] }}
+              >
+                {i + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {stop.job.job_line_items[0]?.description ?? "Service Job"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {stop.job.clients?.name}
+                  {stop.job.clients?.address && ` · ${stop.job.clients.address}`}
+                </p>
+              </div>
+              <div className="flex gap-0.5 shrink-0">
+                <button
+                  onClick={() => i > 0 && moveStop(i, i - 1)}
+                  disabled={i === 0}
+                  className="p-1 rounded-lg hover:bg-muted transition-colors disabled:opacity-20"
+                  aria-label="Move up"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-muted-foreground">arrow_upward</span>
+                </button>
+                <button
+                  onClick={() => i < routeStops.length - 1 && moveStop(i, i + 1)}
+                  disabled={i === routeStops.length - 1}
+                  className="p-1 rounded-lg hover:bg-muted transition-colors disabled:opacity-20"
+                  aria-label="Move down"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-muted-foreground">arrow_downward</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Legend */}
       <div className="shrink-0 px-4 py-3 bg-background border-t border-border flex items-center gap-4 flex-wrap">
