@@ -87,14 +87,11 @@ export default function TeamPortalPage({ params }: { params: Promise<{ id: strin
       return;
     }
 
-    // Claim the team_members row
-    const { error: updateError } = await supabase
-      .from("team_members")
-      .update({ user_id: userId })
-      .eq("id", member.id)
-      .is("user_id", null);
+    // Claim the team_members row via security-definer RPC
+    const { data: claimed, error: updateError } = await supabase
+      .rpc("claim_team_member", { p_member_id: member.id, p_user_id: userId });
 
-    if (updateError) {
+    if (updateError || !claimed) {
       setError("Account created but failed to link to your team record. Contact your manager.");
       setSubmitting(false);
       return;
