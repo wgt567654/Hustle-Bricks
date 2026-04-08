@@ -15,13 +15,18 @@ export async function POST(req: NextRequest) {
     .eq("id", jobId)
     .single();
 
-  const client = (job as { clients?: { name: string; email: string | null } } | null)?.clients;
+  type JobData = {
+    total: number;
+    clients?: { name: string; email: string | null }[];
+    businesses?: { name: string | null; contact_email: string | null }[];
+  };
+  const j = job as unknown as JobData;
+  const client = j.clients?.[0];
   if (!job || !client?.email) {
     return NextResponse.json({ error: "No client email on file" }, { status: 400 });
   }
 
-  const business = (job as { businesses?: { name: string | null; contact_email: string | null } }).businesses;
-  const businessName = business?.name ?? "HustleBricks";
+  const businessName = j.businesses?.[0]?.name ?? "HustleBricks";
   const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invoice/${jobId}`;
   const refNum = `#JB-${jobId.slice(0, 6).toUpperCase()}`;
 
@@ -34,7 +39,7 @@ export async function POST(req: NextRequest) {
         <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">${businessName}</h2>
         <p style="color:#666;margin-bottom:24px">Invoice ${refNum}</p>
         <p>Hi ${client.name},</p>
-        <p>Your invoice for <strong>$${Number((job as { total: number }).total).toFixed(2)}</strong> is ready to view and pay online.</p>
+        <p>Your invoice for <strong>$${j.total.toFixed(2)}</strong> is ready to view and pay online.</p>
         <a href="${invoiceUrl}" style="display:inline-block;margin-top:16px;padding:14px 28px;background:#007AFF;color:white;text-decoration:none;border-radius:10px;font-weight:700">
           View Invoice &amp; Pay
         </a>

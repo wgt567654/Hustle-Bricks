@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   }
 
   await syncJobToCalendar(
-    job as Parameters<typeof syncJobToCalendar>[0],
+    job as unknown as Parameters<typeof syncJobToCalendar>[0],
     businessId,
     business.name
   );

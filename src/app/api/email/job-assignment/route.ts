@@ -17,15 +17,23 @@ export async function POST(req: NextRequest) {
 
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-  const employee = (job as { team_members?: { name: string; email: string | null } }).team_members;
+  type JobData = {
+    scheduled_at: string | null;
+    team_members?: { name: string; email: string | null }[];
+    clients?: { name: string; address: string | null; phone: string | null }[];
+    businesses?: { name: string | null }[];
+    job_line_items: { description: string }[];
+  };
+  const j = job as unknown as JobData;
+  const employee = j.team_members?.[0];
   if (!employee?.email) {
     return NextResponse.json({ error: "No employee email on file" }, { status: 400 });
   }
 
-  const client = (job as { clients?: { name: string; address: string | null; phone: string | null } }).clients;
-  const businessName = (job as { businesses?: { name: string | null } }).businesses?.name ?? "HustleBricks";
-  const lineItems = (job as { job_line_items: { description: string }[] }).job_line_items;
-  const scheduledAt = (job as { scheduled_at: string | null }).scheduled_at;
+  const client = j.clients?.[0];
+  const businessName = j.businesses?.[0]?.name ?? "HustleBricks";
+  const lineItems = j.job_line_items;
+  const scheduledAt = j.scheduled_at;
 
   const scheduledStr = scheduledAt
     ? new Date(scheduledAt).toLocaleString("en-US", {
