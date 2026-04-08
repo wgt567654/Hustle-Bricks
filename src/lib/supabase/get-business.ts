@@ -9,12 +9,12 @@ export async function getBusinessId(supabase: SupabaseClient): Promise<string | 
   if (!user) return null;
 
   // Try owner first
-  const { data: biz } = await supabase
+  const { data: bizList } = await supabase
     .from("businesses")
     .select("id")
     .eq("owner_id", user.id)
-    .single();
-  if (biz) return biz.id;
+    .limit(1);
+  if (bizList && bizList.length > 0) return bizList[0].id;
 
   // Try team member
   const { data: tm } = await supabase

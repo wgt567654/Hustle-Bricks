@@ -56,7 +56,7 @@ export default function SettingsPage() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id, name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, tax_rate, commission_rate, sms_reminders_enabled, smart_scheduling_enabled")
+        .select("id, name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, tax_rate, commission_rate, sms_reminders_enabled, smart_scheduling_enabled, employee_access_code")
         .eq("owner_id", user.id)
         .single();
 

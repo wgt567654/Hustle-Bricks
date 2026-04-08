@@ -12,6 +12,22 @@ type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
 type RecurrenceFrequency = "weekly" | "biweekly" | "monthly" | "custom" | null;
 
+type Expense = {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  created_at: string;
+};
+
+const EXPENSE_CATEGORIES = [
+  { value: "materials", label: "Materials" },
+  { value: "labor", label: "Labor" },
+  { value: "fuel", label: "Fuel" },
+  { value: "subcontractor", label: "Subcontractor" },
+  { value: "other", label: "Other" },
+];
+
 type Job = {
   id: string;
   status: JobStatus;
@@ -118,6 +134,16 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
 
+  // Expenses
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({ description: "", amount: "", category: "materials" });
+  const [expenseSaving, setExpenseSaving] = useState(false);
+
+  // Email invoice
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
   // Recurring bottom sheet
   const [recurringSheetOpen, setRecurringSheetOpen] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<RecurrenceFrequency>(null);
@@ -143,18 +169,26 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
       setBusinessId(bizId);
 
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("id, status, total, scheduled_at, completed_at, notes, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
-        .eq("id", id)
-        .eq("business_id", bizId)
-        .single();
+      const [{ data, error }, { data: expData }] = await Promise.all([
+        supabase
+          .from("jobs")
+          .select("id, status, total, scheduled_at, completed_at, notes, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
+          .eq("id", id)
+          .eq("business_id", bizId)
+          .single(),
+        supabase
+          .from("expenses")
+          .select("id, description, amount, category, created_at")
+          .eq("job_id", id)
+          .order("created_at"),
+      ]);
 
       if (error || !data) {
         setNotFound(true);
       } else {
         setJob(data as unknown as Job);
         setPayAmount(String((data as unknown as Job).total.toFixed(2)));
+        setExpenses((expData as unknown as Expense[]) ?? []);
       }
       setLoading(false);
     }
@@ -171,6 +205,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     await supabase.from("jobs").update(updates).eq("id", job.id);
     setJob((j) => j ? { ...j, status, completed_at: status === "completed" ? new Date().toISOString() : j.completed_at } : j);
     setUpdating(false);
+
+    // Sync status change to Google Calendar in the background
+    fetch("/api/google-calendar/sync-job", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: job.id }),
+    }).catch(() => {});
 
     if (status === "completed") {
       // Auto-schedule next recurring job if applicable
@@ -255,6 +296,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           }
         : j
     );
+
+    // Sync schedule change to Google Calendar in the background
+    fetch("/api/google-calendar/sync-job", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: job.id }),
+    }).catch(() => {});
+
     setEditSaving(false);
     setEditModalOpen(false);
   }
@@ -308,6 +357,46 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     );
     setRecurringSaving(false);
     setRecurringSheetOpen(false);
+  }
+
+  async function addExpense() {
+    if (!job || !businessId || !expenseForm.description || !expenseForm.amount) return;
+    setExpenseSaving(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("expenses")
+      .insert({
+        job_id: job.id,
+        business_id: businessId,
+        description: expenseForm.description,
+        amount: parseFloat(expenseForm.amount),
+        category: expenseForm.category,
+      })
+      .select("id, description, amount, category, created_at")
+      .single();
+    if (data) setExpenses((prev) => [...prev, data as Expense]);
+    setExpenseForm({ description: "", amount: "", category: "materials" });
+    setShowAddExpense(false);
+    setExpenseSaving(false);
+  }
+
+  async function deleteExpense(expenseId: string) {
+    const supabase = createClient();
+    await supabase.from("expenses").delete().eq("id", expenseId);
+    setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+  }
+
+  async function sendInvoiceEmail() {
+    if (!job?.clients?.email) return;
+    setEmailSending(true);
+    await fetch("/api/email/send-invoice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: job.id }),
+    });
+    setEmailSending(false);
+    setEmailSent(true);
+    setTimeout(() => setEmailSent(false), 3000);
   }
 
   function sendInvoice() {
@@ -436,6 +525,16 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   <span className="material-symbols-outlined text-[16px]">{invoiceSent ? "check" : "sms"}</span>
                 </button>
               )}
+              {job.clients?.email && (
+                <button
+                  onClick={sendInvoiceEmail}
+                  disabled={emailSending}
+                  className={`flex size-8 items-center justify-center rounded-full transition-colors ${emailSent ? "bg-[#16a34a]/10 text-[#16a34a]" : "bg-[#ea580c]/10 text-[#ea580c] hover:bg-[#ea580c]/20"} disabled:opacity-50`}
+                  title={emailSent ? "Invoice sent!" : "Email invoice"}
+                >
+                  <span className="material-symbols-outlined text-[16px]">{emailSent ? "check" : emailSending ? "progress_activity" : "mail"}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -515,6 +614,130 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             </div>
           ))}
         </Card>
+      </section>
+
+      {/* ── EXPENSES & PROFIT ── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+            Expenses &amp; Profit
+          </h3>
+          <button
+            onClick={() => setShowAddExpense((v) => !v)}
+            className="text-xs font-bold text-[#007AFF] flex items-center gap-1 hover:opacity-80 transition-opacity"
+          >
+            <span className="material-symbols-outlined text-[14px]">{showAddExpense ? "remove" : "add"}</span>
+            Add
+          </button>
+        </div>
+
+        {/* Profit margin summary */}
+        {(() => {
+          const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+          const profit = job.total - totalExpenses;
+          const margin = job.total > 0 ? (profit / job.total) * 100 : 0;
+          return (
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="rounded-2xl border border-border bg-card p-3 flex flex-col gap-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Revenue</span>
+                <span className="text-base font-extrabold text-foreground">${job.total.toFixed(2)}</span>
+              </div>
+              <div className="rounded-2xl border border-border bg-card p-3 flex flex-col gap-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expenses</span>
+                <span className="text-base font-extrabold text-[#ea580c]">${totalExpenses.toFixed(2)}</span>
+              </div>
+              <div className={`rounded-2xl border p-3 flex flex-col gap-0.5 ${profit >= 0 ? "border-[#16a34a]/30 bg-[#16a34a]/5" : "border-[#dc2626]/30 bg-[#dc2626]/5"}`}>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Profit</span>
+                <span className={`text-base font-extrabold ${profit >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>
+                  ${profit.toFixed(2)}
+                </span>
+                <span className="text-[9px] font-bold text-muted-foreground">{margin.toFixed(0)}% margin</span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Add expense form */}
+        {showAddExpense && (
+          <div className="rounded-2xl border border-[#007AFF]/30 bg-[#007AFF]/5 p-4 mb-3 flex flex-col gap-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Description"
+                value={expenseForm.description}
+                onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
+                className="flex-1 text-sm rounded-xl border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+              />
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={expenseForm.amount}
+                  onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
+                  className="w-24 text-sm rounded-xl border border-border bg-background pl-6 pr-2 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {EXPENSE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setExpenseForm((f) => ({ ...f, category: cat.value }))}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${expenseForm.category === cat.value ? "bg-[#007AFF] text-white" : "bg-muted text-foreground border border-border hover:bg-muted/80"}`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={addExpense}
+              disabled={expenseSaving || !expenseForm.description || !expenseForm.amount}
+              className="w-full py-2.5 rounded-xl bg-[#007AFF] text-white font-bold text-sm disabled:opacity-40 hover:opacity-90 transition-opacity"
+            >
+              {expenseSaving ? "Saving…" : "Save Expense"}
+            </button>
+          </div>
+        )}
+
+        {/* Expense list */}
+        {expenses.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            {expenses.map((exp, i) => (
+              <div key={exp.id}>
+                {i > 0 && <Separator className="bg-border/50 mx-4" />}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="text-sm font-bold text-foreground truncate">{exp.description}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{exp.category}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-sm font-bold text-[#ea580c]">${Number(exp.amount).toFixed(2)}</span>
+                    <button
+                      onClick={() => deleteExpense(exp.id)}
+                      className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {expenses.length === 0 && !showAddExpense && (
+          <button
+            onClick={() => setShowAddExpense(true)}
+            className="w-full py-6 rounded-2xl border border-dashed border-border text-muted-foreground text-sm flex items-center justify-center gap-2 hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_circle</span>
+            Log an expense
+          </button>
+        )}
       </section>
 
       {/* ── RECURRING SECTION ── */}

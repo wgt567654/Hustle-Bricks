@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { PrintButton } from "./PrintButton";
+import { EmailInvoiceButton } from "./EmailInvoiceButton";
 import { StripePaymentForm } from "./StripePaymentForm";
 
 type LineItem = {
@@ -23,6 +24,7 @@ type InvoiceJob = {
   total: number;
   scheduled_at: string | null;
   notes: string | null;
+  signature_url: string | null;
   businesses: {
     name: string;
     venmo_username: string | null;
@@ -71,7 +73,7 @@ export default async function InvoicePage({
   const { data, error } = await supabase
     .from("jobs")
     .select(
-      "id, status, total, scheduled_at, notes, businesses(name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
+      "id, status, total, scheduled_at, notes, signature_url, businesses(name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
     )
     .eq("id", jobId)
     .single();
@@ -140,9 +142,10 @@ export default async function InvoicePage({
               {isPaid ? "PAID" : "UNPAID"}
             </span>
 
-            {/* Print button */}
-            <div className="print-hidden">
+            {/* Action buttons */}
+            <div className="print-hidden flex flex-col items-end gap-2">
               <PrintButton />
+              <EmailInvoiceButton jobId={job.id} clientEmail={job.clients?.email} />
             </div>
           </div>
         </div>
@@ -268,6 +271,19 @@ export default async function InvoicePage({
           <div className="mb-8 rounded-2xl bg-gray-50 border border-gray-200 p-5">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Notes</p>
             <p className="text-sm text-gray-700 leading-relaxed">{job.notes}</p>
+          </div>
+        )}
+
+        {/* Signature */}
+        {job.signature_url && (
+          <div className="mb-8 rounded-2xl bg-gray-50 border border-gray-200 p-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Customer Signature</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={job.signature_url}
+              alt="Customer signature"
+              className="max-h-24 w-auto object-contain"
+            />
           </div>
         )}
 

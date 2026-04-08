@@ -8,17 +8,18 @@ import { UserGreeting } from './UserGreeting';
 import { createClient } from '@/lib/supabase/client';
 
 const NAV = [
-  { href: "/",         label: "Home",     icon: "home",           exact: true  },
-  { href: "/calendar", label: "Schedule", icon: "calendar_month", exact: false },
-  { href: "/clients",  label: "Clients",  icon: "group",          exact: false },
-  { href: "/payments", label: "Earnings", icon: "attach_money",   exact: false },
+  { href: "/",                label: "Home",     icon: "home",           exact: true  },
+  { href: "/calendar",        label: "Schedule", icon: "calendar_month", exact: false },
+  { href: "/clients",         label: "Clients",  icon: "group",          exact: false },
+  { href: "/sales-dashboard", label: "Sales",    icon: "leaderboard",    exact: false },
 ];
 
 const MORE_ITEMS = [
-  { href: "/map",     label: "Job Map",  icon: "map",           color: "#007AFF", bg: "bg-[#007AFF]/10" },
-  { href: "/reports", label: "Reports",  icon: "bar_chart",     color: "#16a34a", bg: "bg-[#16a34a]/10" },
-  { href: "/plans",   label: "Plans",    icon: "autorenew",     color: "#8b5cf6", bg: "bg-[#8b5cf6]/10" },
-  { href: "/leads",   label: "Leads",    icon: "person_search", color: "#ea580c", bg: "bg-[#ea580c]/10" },
+  { href: "/map",      label: "Job Map",  icon: "map",           color: "#007AFF", bg: "bg-[#007AFF]/10" },
+  { href: "/reports",  label: "Reports",  icon: "bar_chart",     color: "#16a34a", bg: "bg-[#16a34a]/10" },
+  { href: "/payments", label: "Payments", icon: "attach_money",  color: "#16a34a", bg: "bg-[#16a34a]/10" },
+  { href: "/plans",    label: "Plans",    icon: "autorenew",     color: "#8b5cf6", bg: "bg-[#8b5cf6]/10" },
+  { href: "/leads",    label: "Leads",    icon: "person_search", color: "#ea580c", bg: "bg-[#ea580c]/10" },
 ];
 
 type Notification = {
@@ -186,7 +187,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
   const unreadCount = notifications.length;
   const isOwner     = role === "owner";
-  const visibleNav  = isOwner ? NAV : NAV.filter((n) => n.href !== "/payments");
+  const visibleNav  = isOwner ? NAV : NAV.filter((n) => n.href !== "/sales-dashboard");
 
   return (
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
@@ -421,7 +422,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               <div className="w-8 h-1 rounded-full bg-muted-foreground/25" />
             </div>
             <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest px-5 mt-3 mb-3">More</p>
-            <div className="grid grid-cols-4 gap-3 px-5 pb-7">
+            <div className="grid grid-cols-5 gap-3 px-5 pb-7">
               {MORE_ITEMS.map(({ href, label, icon, color, bg }) => (
                 <button
                   key={href}

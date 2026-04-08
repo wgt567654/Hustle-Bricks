@@ -90,6 +90,12 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
   const [tipSaving, setTipSaving]  = useState(false);
   const [tipSuccess, setTipSuccess] = useState(false);
 
+  // Signature
+  const [sigModalOpen, setSigModalOpen] = useState(false);
+  const [sigSaving, setSigSaving] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef = useRef(false);
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -220,6 +226,93 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     setTipAmount("");
     setPaySection(null);
     setTimeout(() => setTipSuccess(false), 3000);
+  }
+
+  function getCanvasCoords(canvas: HTMLCanvasElement, e: React.PointerEvent) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
+  function onSigPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+    isDrawingRef.current = true;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = getCanvasCoords(canvas, e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+
+  function onSigPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawingRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { x, y } = getCanvasCoords(canvas, e);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+  }
+
+  function onSigPointerUp() {
+    isDrawingRef.current = false;
+  }
+
+  function clearSignature() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  async function saveSignatureAndComplete() {
+    if (!job) return;
+    setSigSaving(true);
+    const canvas = canvasRef.current;
+    const supabase = createClient();
+
+    if (canvas) {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (blob) {
+        const path = `${job.id}/signature.png`;
+        const { error } = await supabase.storage
+          .from("signatures")
+          .upload(path, blob, { upsert: true, contentType: "image/png" });
+        if (!error) {
+          const { data: { publicUrl } } = supabase.storage.from("signatures").getPublicUrl(path);
+          await supabase.from("jobs").update({
+            status: "completed",
+            completed_at: new Date().toISOString(),
+            signature_url: publicUrl,
+          }).eq("id", job.id);
+          setJob((j) => j ? { ...j, status: "completed" } : j);
+          setSigModalOpen(false);
+          setSigSaving(false);
+          return;
+        }
+      }
+    }
+
+    // Fallback: complete without signature
+    await supabase.from("jobs").update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    }).eq("id", job.id);
+    setJob((j) => j ? { ...j, status: "completed" } : j);
+    setSigModalOpen(false);
+    setSigSaving(false);
   }
 
   const invoiceUrl = typeof window !== "undefined"
@@ -394,14 +487,14 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
 
       {job.status === "in_progress" && (
         <button
-          onClick={() => updateStatus("completed")}
+          onClick={() => setSigModalOpen(true)}
           disabled={updating}
           className="w-full py-4 rounded-2xl bg-[#16a34a] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#16a34a]/20 active:scale-[0.98] transition-all disabled:opacity-50"
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
             check_circle
           </span>
-          {updating ? "Updating…" : "Mark Complete"}
+          Mark Complete
         </button>
       )}
 
@@ -636,6 +729,75 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
           </div>
         )}
       </div>
+
+      {/* ── Signature Modal ── */}
+      {sigModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            onClick={() => !sigSaving && setSigModalOpen(false)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border flex flex-col overflow-hidden">
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+            </div>
+            <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#16a34a]/10">
+                  <span className="material-symbols-outlined text-[26px] text-[#16a34a]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    draw
+                  </span>
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-foreground leading-tight">Customer Signature</h2>
+                  <p className="text-sm text-muted-foreground">Ask the client to sign below</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-5 py-4 flex flex-col gap-3 shrink-0">
+              <div className="rounded-2xl border-2 border-dashed border-border bg-white overflow-hidden">
+                <canvas
+                  ref={canvasRef}
+                  width={600}
+                  height={200}
+                  className="w-full touch-none"
+                  style={{ cursor: "crosshair" }}
+                  onPointerDown={onSigPointerDown}
+                  onPointerMove={onSigPointerMove}
+                  onPointerUp={onSigPointerUp}
+                  onPointerLeave={onSigPointerUp}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={clearSignature}
+                  disabled={sigSaving}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold text-muted-foreground border border-border bg-muted/30 hover:bg-muted transition-colors disabled:opacity-40"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={saveSignatureAndComplete}
+                  disabled={sigSaving}
+                  className="flex-[2] py-3 rounded-xl text-sm font-bold bg-[#16a34a] text-white shadow-md shadow-[#16a34a]/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    check_circle
+                  </span>
+                  {sigSaving ? "Saving…" : "Save & Complete"}
+                </button>
+              </div>
+              <button
+                onClick={() => setSigModalOpen(false)}
+                disabled={sigSaving}
+                className="w-full py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   );

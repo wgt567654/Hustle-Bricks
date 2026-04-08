@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
@@ -28,7 +29,9 @@ function monthLabel(key: string) {
 }
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<ReportJob[]>([]);
+  const [totalExpenses, setTotalExpenses] = useState(0);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<"month" | "quarter" | "year">("month");
 
@@ -45,13 +48,21 @@ export default function ReportsPage() {
         .single();
       if (!business) return;
 
-      const { data } = await supabase
-        .from("jobs")
-        .select("id, status, total, created_at, scheduled_at, clients(name), payments(status)")
-        .eq("business_id", business.id)
-        .order("created_at", { ascending: false });
+      const [{ data }, { data: expData }] = await Promise.all([
+        supabase
+          .from("jobs")
+          .select("id, status, total, created_at, scheduled_at, clients(name), payments(status)")
+          .eq("business_id", business.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("expenses")
+          .select("amount")
+          .eq("business_id", business.id),
+      ]);
 
       setJobs((data as unknown as ReportJob[]) ?? []);
+      const expTotal = ((expData ?? []) as { amount: number }[]).reduce((s, e) => s + e.amount, 0);
+      setTotalExpenses(expTotal);
       setLoading(false);
     }
     load();
@@ -139,9 +150,18 @@ export default function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-6 px-4 py-6 max-w-xl mx-auto pb-32">
-      <div className="flex flex-col gap-1 mb-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Reports</h1>
-        <p className="text-sm text-muted-foreground">Revenue & performance analytics.</p>
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Reports</h1>
+          <p className="text-sm text-muted-foreground">Revenue & performance analytics.</p>
+        </div>
+        <button
+          onClick={() => router.push("/reports/payroll")}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#007AFF]/10 text-[#007AFF] text-xs font-bold hover:bg-[#007AFF]/20 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[15px]">badge</span>
+          Payroll
+        </button>
       </div>
 
       {/* Top stats */}
@@ -190,6 +210,25 @@ export default function ReportsPage() {
             </span>
             <span className="text-[10px] text-muted-foreground">uncollected from completed jobs</span>
           </Card>
+        )}
+
+        {totalExpenses > 0 && (
+          <>
+            <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Expenses</span>
+              <span className="text-xl font-extrabold text-[#ea580c] tracking-tight">
+                ${totalExpenses.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              </span>
+              <span className="text-[10px] text-muted-foreground">all logged costs</span>
+            </Card>
+            <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Net Profit</span>
+              <span className={`text-xl font-extrabold tracking-tight ${stats.totalRevenue - totalExpenses >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>
+                ${(stats.totalRevenue - totalExpenses).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              </span>
+              <span className="text-[10px] text-muted-foreground">revenue minus expenses</span>
+            </Card>
+          </>
         )}
       </div>
 

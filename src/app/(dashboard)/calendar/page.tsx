@@ -142,6 +142,14 @@ function formatSlotLabel(slot: string) {
 
 export default function CalendarPage() {
   const router = useRouter();
+  const [googleConnectedParam, setGoogleConnectedParam] = useState(false);
+  const [googleErrorParam, setGoogleErrorParam] = useState(false);
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    setGoogleConnectedParam(p.get("google_connected") === "1");
+    setGoogleErrorParam(p.get("google_error") === "1");
+  }, []);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
@@ -164,6 +172,13 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [savingAvail, setSavingAvail] = useState(false);
+
+  // Google Calendar state
+  const [gcalConnected, setGcalConnected] = useState(false);
+  const [gcalLoading, setGcalLoading] = useState(false);
+  const [gcalInviting, setGcalInviting] = useState(false);
+  const [gcalInviteResult, setGcalInviteResult] = useState<{ invited: number; skipped: number } | null>(null);
+  const [gcalDisconnecting, setGcalDisconnecting] = useState(false);
 
   // Schedule modal state
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -188,6 +203,12 @@ export default function CalendarPage() {
       const bizId = await getBusinessId(supabase);
       if (!bizId) return;
       setBusinessId(bizId);
+
+      // Fetch Google Calendar connection status
+      fetch("/api/google-calendar/status")
+        .then((r) => r.json())
+        .then((d) => { setGcalConnected(d.connected); setGcalLoading(false); })
+        .catch(() => setGcalLoading(false));
 
       const [{ data: jobsData }, { data: teamData }, availResult, { data: clientsData }, bookingResult, { data: blockedData }, { data: settingsData }] = await Promise.all([
         supabase
@@ -291,6 +312,26 @@ export default function CalendarPage() {
     a.download = "hustlebricks-schedule.ics";
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function inviteAllToGcal() {
+    setGcalInviting(true);
+    setGcalInviteResult(null);
+    try {
+      const res = await fetch("/api/google-calendar/invite", { method: "POST" });
+      const data = await res.json();
+      setGcalInviteResult(data);
+    } catch {
+      // Swallow — non-critical
+    }
+    setGcalInviting(false);
+  }
+
+  async function disconnectGcal() {
+    setGcalDisconnecting(true);
+    await fetch("/api/google-calendar/disconnect", { method: "DELETE" }).catch(() => {});
+    setGcalConnected(false);
+    setGcalDisconnecting(false);
   }
 
   async function toggleAvailability(memberId: string, dayOfWeek: number) {
@@ -399,6 +440,12 @@ export default function CalendarPage() {
       setJobs((prev) => [...prev, job as unknown as Job].sort((a, b) =>
         (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? "")
       ));
+      // Sync to Google Calendar in the background
+      fetch("/api/google-calendar/sync-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      }).catch(() => {});
       router.push(`/jobs/${job.id}`);
     }
     setProcessingBooking(null);
@@ -479,6 +526,22 @@ export default function CalendarPage() {
         ));
       }
       setScheduleSuccessJob({ id: job.id, assignedMembers });
+
+      // Fire job assignment email in the background (non-blocking)
+      if (primaryMemberId) {
+        fetch("/api/email/job-assignment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: job.id }),
+        }).catch(() => {});
+      }
+
+      // Sync to Google Calendar in the background (non-blocking)
+      fetch("/api/google-calendar/sync-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      }).catch(() => {});
     }
   }
 
@@ -831,20 +894,64 @@ export default function CalendarPage() {
               </div>
               <div className="flex flex-col gap-2 flex-1">
                 <div>
-                  <p className="font-bold text-sm text-foreground">Sync with Google Calendar</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Export your schedule as a .ics file and import it into Google Calendar.
-                  </p>
+                  <p className="font-bold text-sm text-foreground">Google Calendar</p>
+                  {gcalConnected ? (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Connected — new jobs sync automatically to your shared business calendar.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Connect once and all jobs will sync automatically. Invite employees to view the shared calendar.
+                    </p>
+                  )}
                 </div>
-                <button
-                  onClick={exportICS}
-                  className="w-full rounded-xl font-bold py-2.5 text-sm bg-[#007AFF] text-white hover:bg-[#007AFF]/90 active:scale-[0.98] transition-all"
-                >
-                  Download .ics File
-                </button>
-                <p className="text-[10px] text-muted-foreground/60 text-center">
-                  Google Calendar → Other Calendars (+) → Import
-                </p>
+
+                {googleConnectedParam && (
+                  <p className="text-xs font-bold text-[#16a34a]">Connected successfully!</p>
+                )}
+                {googleErrorParam && (
+                  <p className="text-xs font-bold text-red-500">Connection failed — please try again.</p>
+                )}
+
+                {gcalLoading ? null : gcalConnected ? (
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={inviteAllToGcal}
+                      disabled={gcalInviting}
+                      className="w-full rounded-xl font-bold py-2.5 text-sm bg-[#007AFF] text-white hover:bg-[#007AFF]/90 active:scale-[0.98] disabled:opacity-50 transition-all"
+                    >
+                      {gcalInviting ? "Sending invites…" : "Invite Team to Calendar"}
+                    </button>
+                    {gcalInviteResult && (
+                      <p className="text-[11px] text-center text-muted-foreground">
+                        Invited {gcalInviteResult.invited} member{gcalInviteResult.invited !== 1 ? "s" : ""}
+                        {gcalInviteResult.skipped > 0 ? `, ${gcalInviteResult.skipped} skipped (no email)` : ""}
+                      </p>
+                    )}
+                    <button
+                      onClick={disconnectGcal}
+                      disabled={gcalDisconnecting}
+                      className="w-full rounded-xl font-bold py-2 text-xs bg-transparent border border-border text-muted-foreground hover:bg-muted/50 disabled:opacity-50 transition-all"
+                    >
+                      {gcalDisconnecting ? "Disconnecting…" : "Disconnect"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href="/api/google-calendar/auth"
+                      className="w-full rounded-xl font-bold py-2.5 text-sm bg-[#007AFF] text-white hover:bg-[#007AFF]/90 active:scale-[0.98] transition-all text-center block"
+                    >
+                      Connect Google Calendar
+                    </a>
+                    <button
+                      onClick={exportICS}
+                      className="w-full rounded-xl font-bold py-2 text-xs bg-transparent border border-border text-muted-foreground hover:bg-muted/50 transition-all"
+                    >
+                      Download .ics instead
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

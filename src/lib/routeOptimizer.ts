@@ -13,26 +13,37 @@ function haversineKm(a: LatLng, b: LatLng): number {
 }
 
 /**
- * Nearest-neighbor TSP heuristic. Starts from index 0 (earliest job by
- * scheduled_at) and greedily picks the closest unvisited stop.
+ * Nearest-neighbor TSP heuristic. If a startPoint is provided it is used as
+ * the origin (not included in the returned stops). Otherwise starts from
+ * index 0 (earliest job by scheduled_at).
  * Runs in O(n²) — fast enough for n ≤ 25.
  */
-export function nearestNeighborTSP<T extends LatLng>(stops: T[]): T[] {
+export function nearestNeighborTSP<T extends LatLng>(stops: T[], startPoint?: LatLng): T[] {
   if (stops.length <= 1) return [...stops];
   const remaining = [...stops];
-  const result: T[] = [remaining.splice(0, 1)[0]];
+  let current: LatLng;
+  const result: T[] = [];
+
+  if (startPoint) {
+    current = startPoint;
+  } else {
+    current = remaining.splice(0, 1)[0];
+    result.push(current as T);
+  }
+
   while (remaining.length > 0) {
-    const last = result[result.length - 1];
     let bestIdx = 0;
     let bestDist = Infinity;
     for (let i = 0; i < remaining.length; i++) {
-      const d = haversineKm(last, remaining[i]);
+      const d = haversineKm(current, remaining[i]);
       if (d < bestDist) {
         bestDist = d;
         bestIdx = i;
       }
     }
-    result.push(remaining.splice(bestIdx, 1)[0]);
+    const next = remaining.splice(bestIdx, 1)[0];
+    result.push(next);
+    current = next;
   }
   return result;
 }

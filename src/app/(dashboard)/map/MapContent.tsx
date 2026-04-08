@@ -97,6 +97,8 @@ export default function MapContent() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [routeEmployee, setRouteEmployee] = useState("");
   const [routeDate, setRouteDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [routeStartAddress, setRouteStartAddress] = useState("");
+  const [routeStartCoords, setRouteStartCoords] = useState<[number, number] | null>(null);
   const [routeStops, setRouteStops] = useState<Pin[]>([]);
   const [routePlanning, setRoutePlanning] = useState(false);
   const [routeSaving, setRouteSaving] = useState(false);
@@ -111,11 +113,12 @@ export default function MapContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: business } = await supabase
+      const { data: bizList } = await supabase
         .from("businesses")
         .select("id")
         .eq("owner_id", user.id)
-        .single();
+        .limit(1);
+      const business = bizList?.[0];
       if (!business) return;
 
       const [{ data: jobs }, { data: members }] = await Promise.all([
@@ -169,7 +172,7 @@ export default function MapContent() {
     load();
   }, []);
 
-  function handlePlanRoute() {
+  async function handlePlanRoute() {
     if (!routeEmployee || !routeDate) return;
     setRoutePlanning(true);
     setRouteSaved(false);
@@ -223,12 +226,25 @@ export default function MapContent() {
       return;
     }
 
-    // Sort by scheduled_at (earliest first = starting point for TSP)
-    const sorted = [...employeePins].sort((a, b) =>
-      new Date(a.job.scheduled_at!).getTime() - new Date(b.job.scheduled_at!).getTime()
-    );
+    // Geocode start address if provided, use as anchor for TSP
+    let startPin: { lat: number; lng: number } | null = null;
+    if (routeStartAddress.trim()) {
+      const coords = await geocode(routeStartAddress.trim());
+      if (coords) {
+        startPin = { lat: coords[0], lng: coords[1] };
+        setRouteStartCoords(coords);
+        setCenter(coords);
+        setZoom(11);
+      } else {
+        setRouteError("Could not find the start address — check the spelling and try again.");
+        setRoutePlanning(false);
+        return;
+      }
+    } else {
+      setRouteStartCoords(null);
+    }
 
-    const optimized = nearestNeighborTSP(sorted);
+    const optimized = nearestNeighborTSP(employeePins, startPin ?? undefined);
     setRouteStops(optimized);
     setRoutePlanning(false);
   }
@@ -331,14 +347,21 @@ export default function MapContent() {
                 onChange={(e) => { setRouteDate(e.target.value); setRouteStops([]); setRouteSaved(false); setRouteError(""); }}
                 className="text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
               />
-              <button
-                onClick={handlePlanRoute}
-                disabled={!routeEmployee || routePlanning || geocoding}
-                className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-40 shrink-0"
-              >
-                {routePlanning ? "Planning…" : "Plan Route"}
-              </button>
             </div>
+            <input
+              type="text"
+              value={routeStartAddress}
+              onChange={(e) => { setRouteStartAddress(e.target.value); setRouteStops([]); setRouteStartCoords(null); setRouteSaved(false); setRouteError(""); }}
+              placeholder="Start address (optional) — e.g. shop or home"
+              className="w-full text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
+            />
+            <button
+              onClick={handlePlanRoute}
+              disabled={!routeEmployee || routePlanning || geocoding}
+              className="w-full px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-40"
+            >
+              {routePlanning ? "Planning…" : "Plan Route"}
+            </button>
 
             {routeError && (
               <p className="text-xs text-destructive">{routeError}</p>
@@ -382,11 +405,32 @@ export default function MapContent() {
             />
 
             {/* Route polyline */}
-            {routeStops.length > 1 && (
+            {routeStops.length > 0 && (
               <Polyline
-                positions={routeStops.map((s) => [s.lat, s.lng])}
+                positions={[
+                  ...(routeStartCoords ? [routeStartCoords] : []),
+                  ...routeStops.map((s) => [s.lat, s.lng] as [number, number]),
+                ]}
                 pathOptions={{ color: "#007AFF", weight: 3, opacity: 0.75, dashArray: "8 5" }}
               />
+            )}
+
+            {/* Start position marker */}
+            {routeStartCoords && (
+              <Marker
+                position={routeStartCoords}
+                icon={L.divIcon({
+                  html: `<div style="width:28px;height:28px;border-radius:50%;background:#16a34a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:13px;color:white;font-family:system-ui,sans-serif">S</div>`,
+                  className: "",
+                  iconSize: [28, 28],
+                  iconAnchor: [14, 14],
+                })}
+              >
+                <Popup>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>Start</div>
+                  <div style={{ fontSize: 12, color: "#666" }}>{routeStartAddress}</div>
+                </Popup>
+              </Marker>
             )}
 
             {filtered.map((pin) => {

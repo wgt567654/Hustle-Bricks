@@ -37,6 +37,8 @@ export default function EmployeeHomePage() {
   const [loading, setLoading] = useState(true);
   const [clockingIn, setClockingIn] = useState(false);
   const [clockingOut, setClockingOut] = useState(false);
+  const [odometerStart, setOdometerStart] = useState("");
+  const [odometerEnd, setOdometerEnd] = useState("");
 
   const now = new Date();
   const greeting =
@@ -99,16 +101,43 @@ export default function EmployeeHomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function getLocation(): Promise<{ lat: number; lng: number } | null> {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { timeout: 5000 }
+      );
+    });
+  }
+
   async function clockIn(jobId: string) {
     if (!employeeId || !businessId) return;
     setClockingIn(true);
-    const supabase = createClient();
+    const [supabase, coords] = await Promise.all([
+      Promise.resolve(createClient()),
+      getLocation(),
+    ]);
+    const payload: Record<string, unknown> = {
+      employee_id: employeeId,
+      job_id: jobId,
+      business_id: businessId,
+    };
+    if (coords) {
+      payload.check_in_lat = coords.lat;
+      payload.check_in_lng = coords.lng;
+    }
+    const startMiles = parseInt(odometerStart, 10);
+    if (!isNaN(startMiles)) payload.odometer_start = startMiles;
+
     const { data } = await supabase
       .from("time_entries")
-      .insert({ employee_id: employeeId, job_id: jobId, business_id: businessId })
+      .insert(payload)
       .select("id, job_id, clocked_in_at, clocked_out_at")
       .single();
     if (data) setActiveEntry(data as TimeEntry);
+    setOdometerStart("");
     setClockingIn(false);
   }
 
@@ -116,11 +145,12 @@ export default function EmployeeHomePage() {
     if (!activeEntry) return;
     setClockingOut(true);
     const supabase = createClient();
-    await supabase
-      .from("time_entries")
-      .update({ clocked_out_at: new Date().toISOString() })
-      .eq("id", activeEntry.id);
+    const update: Record<string, unknown> = { clocked_out_at: new Date().toISOString() };
+    const endMiles = parseInt(odometerEnd, 10);
+    if (!isNaN(endMiles)) update.odometer_end = endMiles;
+    await supabase.from("time_entries").update(update).eq("id", activeEntry.id);
     setActiveEntry(null);
+    setOdometerEnd("");
     setClockingOut(false);
   }
 
@@ -182,13 +212,23 @@ export default function EmployeeHomePage() {
           </div>
 
           {activeEntry && (
-            <button
-              onClick={clockOut}
-              disabled={clockingOut}
-              className="shrink-0 px-3.5 py-2 rounded-xl bg-[#16a34a] text-white font-bold text-xs hover:bg-[#16a34a]/90 active:scale-95 transition-all disabled:opacity-50"
-            >
-              {clockingOut ? "…" : "Clock Out"}
-            </button>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="End odometer"
+                value={odometerEnd}
+                onChange={(e) => setOdometerEnd(e.target.value)}
+                className="w-28 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#16a34a]"
+              />
+              <button
+                onClick={clockOut}
+                disabled={clockingOut}
+                className="w-28 py-2 rounded-xl bg-[#16a34a] text-white font-bold text-xs hover:bg-[#16a34a]/90 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {clockingOut ? "…" : "Clock Out"}
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -303,16 +343,24 @@ export default function EmployeeHomePage() {
 
               {/* Clock in strip — only when not already clocked into anything */}
               {!activeEntry && (
-                <div className="border-t border-border/40 bg-muted/20">
+                <div className="border-t border-border/40 bg-muted/20 flex items-center gap-2 px-3 py-2">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Start odometer"
+                    value={odometerStart}
+                    onChange={(e) => setOdometerStart(e.target.value)}
+                    className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#16a34a]"
+                  />
                   <button
                     onClick={() => clockIn(job.id)}
                     disabled={clockingIn}
-                    className="w-full py-2.5 text-sm font-semibold text-[#16a34a] flex items-center justify-center gap-1.5 hover:bg-muted/40 active:scale-[0.99] transition-all disabled:opacity-50"
+                    className="shrink-0 px-3.5 py-1.5 rounded-xl bg-[#16a34a] text-white font-bold text-xs flex items-center gap-1 hover:bg-[#16a34a]/90 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                       login
                     </span>
-                    {clockingIn ? "Clocking in…" : "Clock In"}
+                    {clockingIn ? "…" : "Clock In"}
                   </button>
                 </div>
               )}
