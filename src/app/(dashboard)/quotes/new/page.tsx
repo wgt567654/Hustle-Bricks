@@ -202,7 +202,7 @@ export default function QuoteBuilder() {
         <p className="text-sm text-muted-foreground">Add services to your catalog before creating a quote.</p>
         <button
           onClick={() => router.push("/services")}
-          className="mt-2 rounded-xl font-bold py-3 px-6 text-sm bg-[#007AFF] text-white shadow-md shadow-[#007AFF]/30 hover:bg-[#007AFF]/90 active:scale-95 transition-all"
+          className="mt-2 rounded-xl font-bold py-3 px-6 text-sm bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all"
         >
           Go to Services →
         </button>
@@ -227,10 +227,10 @@ export default function QuoteBuilder() {
         {selectedClient ? (
           <div
             onClick={() => setShowClientPicker(true)}
-            className="flex items-center justify-between p-4 rounded-2xl border border-[#007AFF]/40 bg-[#007AFF]/5 cursor-pointer"
+            className="flex items-center justify-between p-4 rounded-2xl border border-primary/40 bg-primary/5 cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-full bg-[#007AFF]/15 text-[#007AFF] font-extrabold text-sm">
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary/15 text-primary font-extrabold text-sm">
                 {selectedClient.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
               </div>
               <div>
@@ -267,17 +267,17 @@ export default function QuoteBuilder() {
                       onClick={() => addItem(service)}
                       className={`flex flex-col p-4 rounded-2xl border shadow-sm active:scale-95 transition-all cursor-pointer ${
                         inCart
-                          ? "border-[#007AFF] bg-[#007AFF]/5"
-                          : "border-border bg-card hover:border-[#007AFF]/50"
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-card hover:border-primary/50"
                       }`}
                     >
                       {inCart && (
-                        <div className="w-5 h-5 rounded-full bg-[#007AFF] text-white text-[10px] font-bold flex items-center justify-center mb-1.5 self-end">
+                        <div className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center mb-1.5 self-end">
                           {inCart.qty}
                         </div>
                       )}
                       <span className="font-bold text-sm leading-tight mb-1">{service.name}</span>
-                      <span className="text-sm font-extrabold text-[#007AFF] mt-auto">
+                      <span className="text-sm font-extrabold text-primary mt-auto">
                         ${service.price}{formatUnit(service.unit)}
                       </span>
                     </div>
@@ -340,7 +340,7 @@ export default function QuoteBuilder() {
               <button
                 onClick={() => setApplyTax(!applyTax)}
                 className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full transition-colors ${
-                  applyTax ? "bg-[#007AFF]/10 text-[#007AFF]" : "bg-muted text-muted-foreground"
+                  applyTax ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                 }`}
               >
                 {applyTax ? "ON" : "OFF"}
@@ -395,7 +395,7 @@ export default function QuoteBuilder() {
           <button
             onClick={() => handleSave("sent")}
             disabled={saving}
-            className="flex-1 rounded-xl font-bold py-3 px-4 bg-[#007AFF] text-white shadow-[#007AFF]/30 shadow-lg hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-50"
+            className="flex-1 rounded-xl font-bold py-3 px-4 bg-primary text-white shadow-primary/30 shadow-lg hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? "Saving…" : "Send Quote"}
           </button>
@@ -436,10 +436,10 @@ export default function QuoteBuilder() {
                   key={client.id}
                   onClick={() => { setSelectedClientId(client.id); setShowClientPicker(false); setClientSearch(""); }}
                   className={`flex items-center gap-3 p-3 rounded-xl text-left transition-colors hover:bg-muted ${
-                    selectedClientId === client.id ? "bg-[#007AFF]/10" : ""
+                    selectedClientId === client.id ? "bg-primary/10" : ""
                   }`}
                 >
-                  <div className="flex size-10 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF] font-extrabold text-sm shrink-0">
+                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-extrabold text-sm shrink-0">
                     {client.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
                   </div>
                   <div>
@@ -447,7 +447,7 @@ export default function QuoteBuilder() {
                     <p className="text-xs text-muted-foreground capitalize">{client.tag}</p>
                   </div>
                   {selectedClientId === client.id && (
-                    <span className="material-symbols-outlined text-[20px] text-[#007AFF] ml-auto">check_circle</span>
+                    <span className="material-symbols-outlined text-[20px] text-primary ml-auto">check_circle</span>
                   )}
                 </button>
               ))}

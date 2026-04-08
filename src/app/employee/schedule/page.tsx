@@ -150,14 +150,14 @@ export default function EmployeeSchedulePage() {
             <button
               key={job.id}
               onClick={() => router.push(`/employee/jobs/${job.id}`)}
-              className="w-full rounded-2xl border border-border bg-card shadow-sm p-4 flex items-start gap-3 text-left hover:border-[#007AFF]/30 active:scale-[0.99] transition-all"
+              className="w-full rounded-2xl border border-border bg-card shadow-sm p-4 flex items-start gap-3 text-left hover:border-primary/30 active:scale-[0.99] transition-all"
             >
               <div className="relative shrink-0 mt-0.5">
                 <div
                   className={`flex size-10 items-center justify-center rounded-xl ${
                     job.status === "in_progress"
-                      ? "bg-[#ea580c]/10 text-[#ea580c]"
-                      : "bg-[#007AFF]/10 text-[#007AFF]"
+                      ? "icon-orange "
+                      : "bg-primary/10 text-primary"
                   }`}
                 >
                   <span
@@ -168,7 +168,7 @@ export default function EmployeeSchedulePage() {
                   </span>
                 </div>
                 {job.route_order !== null && (
-                  <div className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-[#007AFF] border-2 border-background flex items-center justify-center text-[9px] font-extrabold text-white leading-none">
+                  <div className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-primary border-2 border-background flex items-center justify-center text-[9px] font-extrabold text-white leading-none">
                     {job.route_order}
                   </div>
                 )}
@@ -185,7 +185,7 @@ export default function EmployeeSchedulePage() {
                   <span className="text-xs text-muted-foreground/70 truncate">{job.clients.address}</span>
                 )}
                 {job.scheduled_at && (
-                  <span className="text-xs font-semibold text-[#007AFF] mt-0.5">
+                  <span className="text-xs font-semibold text-primary mt-0.5">
                     {formatTime(job.scheduled_at)}
                   </span>
                 )}
@@ -195,8 +195,8 @@ export default function EmployeeSchedulePage() {
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     job.status === "in_progress"
-                      ? "bg-[#ea580c]/10 text-[#ea580c]"
-                      : "bg-[#007AFF]/10 text-[#007AFF]"
+                      ? "icon-orange "
+                      : "bg-primary/10 text-primary"
                   }`}
                 >
                   {job.status === "in_progress" ? "In Progress" : "Scheduled"}

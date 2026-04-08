@@ -38,7 +38,7 @@ export default function UpdatePasswordPage() {
       <div className="w-full max-w-sm flex flex-col gap-6">
 
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="size-14 rounded-2xl bg-[#007AFF] text-white flex items-center justify-center shadow-lg shadow-[#007AFF]/25 mb-2">
+          <div className="size-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/25 mb-2">
             <span className="material-symbols-outlined text-[32px]">lock_reset</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Set new password</h1>

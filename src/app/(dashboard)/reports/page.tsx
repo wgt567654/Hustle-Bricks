@@ -157,7 +157,7 @@ export default function ReportsPage() {
         </div>
         <button
           onClick={() => router.push("/reports/payroll")}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#007AFF]/10 text-[#007AFF] text-xs font-bold hover:bg-[#007AFF]/20 transition-colors"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
         >
           <span className="material-symbols-outlined text-[15px]">badge</span>
           Payroll
@@ -172,13 +172,13 @@ export default function ReportsPage() {
             {stats.revenueChange !== 0 && (
               <Badge
                 variant="secondary"
-                className={`border-0 text-[10px] font-bold ${stats.revenueChange > 0 ? "bg-[#16a34a]/10 text-[#16a34a]" : "bg-red-100 text-red-600"}`}
+                className={`border-0 text-[10px] font-bold ${stats.revenueChange > 0 ? "icon-green " : "bg-red-100 text-red-600"}`}
               >
                 {stats.revenueChange > 0 ? "↑" : "↓"} {Math.abs(stats.revenueChange).toFixed(0)}% vs last month
               </Badge>
             )}
           </div>
-          <span className="text-3xl font-extrabold text-[#16a34a] tracking-tight">
+          <span className="text-3xl font-extrabold text-[var(--color-status-completed)] tracking-tight">
             ${stats.thisMonthRevenue.toLocaleString("en-US", { maximumFractionDigits: 0 })}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -203,9 +203,9 @@ export default function ReportsPage() {
         </Card>
 
         {stats.outstanding > 0 && (
-          <Card className="p-4 rounded-2xl border-[#ea580c]/30 bg-[#ea580c]/5 shadow-sm flex flex-col gap-1 col-span-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#ea580c]">Outstanding</span>
-            <span className="text-xl font-extrabold text-[#ea580c] tracking-tight">
+          <Card className="p-4 rounded-2xl border-[var(--color-status-in-progress)]/20 bg-status-in-progress/10 shadow-sm flex flex-col gap-1 col-span-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-status-in-progress)]">Outstanding</span>
+            <span className="text-xl font-extrabold text-[var(--color-status-in-progress)] tracking-tight">
               ${stats.outstanding.toLocaleString("en-US", { maximumFractionDigits: 0 })}
             </span>
             <span className="text-[10px] text-muted-foreground">uncollected from completed jobs</span>
@@ -216,14 +216,14 @@ export default function ReportsPage() {
           <>
             <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Expenses</span>
-              <span className="text-xl font-extrabold text-[#ea580c] tracking-tight">
+              <span className="text-xl font-extrabold text-[var(--color-status-in-progress)] tracking-tight">
                 ${totalExpenses.toLocaleString("en-US", { maximumFractionDigits: 0 })}
               </span>
               <span className="text-[10px] text-muted-foreground">all logged costs</span>
             </Card>
             <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Net Profit</span>
-              <span className={`text-xl font-extrabold tracking-tight ${stats.totalRevenue - totalExpenses >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>
+              <span className={`text-xl font-extrabold tracking-tight ${stats.totalRevenue - totalExpenses >= 0 ? "text-[var(--color-status-completed)]" : "text-destructive"}`}>
                 ${(stats.totalRevenue - totalExpenses).toLocaleString("en-US", { maximumFractionDigits: 0 })}
               </span>
               <span className="text-[10px] text-muted-foreground">revenue minus expenses</span>
@@ -318,7 +318,7 @@ export default function ReportsPage() {
                     <span className="font-bold text-sm text-foreground truncate">{client.name}</span>
                     <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-[#007AFF]"
+                        className="h-full rounded-full bg-primary"
                         style={{ width: `${(client.revenue / maxClientRevenue) * 100}%` }}
                       />
                     </div>

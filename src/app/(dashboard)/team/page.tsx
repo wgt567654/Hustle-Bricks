@@ -248,7 +248,7 @@ export default function TeamPage() {
             <Badge
               className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                 roleFilter === tab.value
-                  ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+                  ? "bg-primary text-white hover:bg-primary/90"
                   : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
               }`}
               variant={roleFilter === tab.value ? "default" : "outline"}
@@ -264,23 +264,23 @@ export default function TeamPage() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Pending Approval</h2>
-            <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold bg-[var(--color-status-in-progress)] text-white px-2 py-0.5 rounded-full">
               {pendingMembers.length}
             </span>
           </div>
           {pendingMembers.map((member) => (
-            <Card key={member.id} className="overflow-hidden rounded-2xl border-[#ea580c]/20 shadow-sm bg-[#ea580c]/5">
+            <Card key={member.id} className="overflow-hidden rounded-2xl border-[var(--color-status-in-progress)]/20 shadow-sm bg-status-in-progress/10">
               <div className="p-4 flex gap-4 items-center">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#ea580c]/15 text-[#ea580c] text-base font-extrabold shrink-0">
+                <div className="flex size-12 items-center justify-center rounded-2xl icon-orange  text-base font-extrabold shrink-0">
                   {getInitials(member.name)}
                 </div>
                 <div className="flex flex-col flex-1 min-w-0 gap-0.5">
                   <span className="font-bold text-foreground leading-tight">{member.name}</span>
                   {member.email && <span className="text-xs text-muted-foreground">{member.email}</span>}
-                  <span className="text-xs text-[#ea580c] font-medium">Wants to join your team</span>
+                  <span className="text-xs text-[var(--color-status-in-progress)] font-medium">Wants to join your team</span>
                 </div>
               </div>
-              <Separator className="bg-[#ea580c]/15" />
+              <Separator className="bg-status-in-progress/10" />
               <div className="flex bg-muted/10">
                 <button
                   onClick={() => handleReject(member.id)}
@@ -290,11 +290,11 @@ export default function TeamPage() {
                   <span className="material-symbols-outlined text-[16px]">close</span>
                   {rejectingId === member.id ? "…" : "Reject"}
                 </button>
-                <Separator orientation="vertical" className="bg-[#ea580c]/15 h-auto" />
+                <Separator orientation="vertical" className="bg-status-in-progress/10 h-auto" />
                 <button
                   onClick={() => handleApprove(member.id)}
                   disabled={approvingId === member.id}
-                  className="flex-1 py-2.5 text-sm font-bold text-[#16a34a] hover:bg-[#16a34a]/10 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="flex-1 py-2.5 text-sm font-bold text-[var(--color-status-completed)] hover:opacity-90 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                   {approvingId === member.id ? "Approving…" : "Approve"}
@@ -320,14 +320,14 @@ export default function TeamPage() {
         {filtered.map((member) => {
           const jobCount = workload[member.id] ?? 0;
           return (
-            <Card key={member.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-[#007AFF]/30 transition-colors">
+            <Card key={member.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-primary/30 transition-colors">
               <div className="p-4 flex gap-4 items-start">
                 {/* Avatar with active dot */}
                 <div className="relative shrink-0">
-                  <div className="flex size-14 items-center justify-center rounded-2xl bg-[#007AFF]/10 text-[#007AFF] text-lg font-extrabold border border-[#007AFF]/20">
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary text-lg font-extrabold border border-primary/20">
                     {getInitials(member.name)}
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-card bg-[#16a34a]" />
+                  <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-card bg-[var(--color-status-completed)]" />
                 </div>
 
                 <div className="flex flex-1 flex-col gap-1.5">
@@ -336,7 +336,7 @@ export default function TeamPage() {
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => openEdit(member)}
-                        className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-colors"
+                        className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                       >
                         <span className="material-symbols-outlined text-[16px]">edit</span>
                       </button>
@@ -355,16 +355,16 @@ export default function TeamPage() {
                       variant="secondary"
                       className={`text-[10px] font-bold uppercase tracking-wide border-0 ${
                         member.role === "admin"
-                          ? "bg-[#ea580c]/10 text-[#ea580c]"
+                          ? "icon-orange "
                           : member.role === "sales"
-                          ? "bg-[#16a34a]/10 text-[#16a34a]"
-                          : "bg-[#007AFF]/10 text-[#007AFF]"
+                          ? "icon-green "
+                          : "bg-primary/10 text-primary"
                       }`}
                     >
                       {ROLE_LABELS[member.role]}
                     </Badge>
                     {jobCount > 0 && (
-                      <Badge variant="secondary" className="text-[10px] font-bold border-0 bg-[#ea580c]/10 text-[#ea580c]">
+                      <Badge variant="secondary" className="text-[10px] font-bold border-0 icon-orange ">
                         <span className="material-symbols-outlined text-[10px] mr-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>work</span>
                         {jobCount} active {jobCount === 1 ? "job" : "jobs"}
                       </Badge>
@@ -381,7 +381,7 @@ export default function TeamPage() {
                       {member.certifications.map((cert) => (
                         <span
                           key={cert}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#7c3aed]/10 text-[#7c3aed] border border-[#7c3aed]/20"
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full icon-violet border border-highlight-violet/20"
                         >
                           {cert}
                         </span>
@@ -401,7 +401,7 @@ export default function TeamPage() {
                   onClick={() => copyPortalLink(member.id)}
                   className={`flex-1 py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 hover:bg-muted/50 ${
                     copiedId === member.id
-                      ? "text-[#16a34a]"
+                      ? "text-[var(--color-status-completed)]"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -419,7 +419,7 @@ export default function TeamPage() {
       {/* FAB */}
       <button
         onClick={() => { setShowModal(true); setError(null); setForm(EMPTY_FORM); }}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-[#007AFF]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-primary/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
       >
         <span className="material-symbols-outlined text-[28px]">person_add</span>
       </button>
@@ -479,7 +479,7 @@ export default function TeamPage() {
                         onClick={() => setForm((f) => ({ ...f, role: r }))}
                         className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all active:scale-95 ${
                           form.role === r
-                            ? "border-[#007AFF] bg-[#007AFF]/10 text-[#007AFF]"
+                            ? "border-primary bg-primary/10 text-primary"
                             : "border-border bg-muted/40 text-foreground hover:bg-muted"
                         }`}
                       >
@@ -499,7 +499,7 @@ export default function TeamPage() {
                         onClick={() => setForm((f) => ({ ...f, certifications: toggleCert(cert, f.certifications) }))}
                         className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all active:scale-95 ${
                           form.certifications.includes(cert)
-                            ? "border-[#7c3aed] bg-[#7c3aed]/10 text-[#7c3aed]"
+                            ? "border-highlight-violet icon-violet"
                             : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
                         }`}
                       >
@@ -568,7 +568,7 @@ export default function TeamPage() {
                       onClick={() => setEditForm((f) => ({ ...f, role: r }))}
                       className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all active:scale-95 ${
                         editForm.role === r
-                          ? "border-[#007AFF] bg-[#007AFF]/10 text-[#007AFF]"
+                          ? "border-primary bg-primary/10 text-primary"
                           : "border-border bg-muted/40 text-foreground hover:bg-muted"
                       }`}
                     >
@@ -588,7 +588,7 @@ export default function TeamPage() {
                       onClick={() => setEditForm((f) => ({ ...f, certifications: toggleCert(cert, f.certifications) }))}
                       className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all active:scale-95 ${
                         editForm.certifications.includes(cert)
-                          ? "border-[#7c3aed] bg-[#7c3aed]/10 text-[#7c3aed]"
+                          ? "border-highlight-violet icon-violet"
                           : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
                       }`}
                     >
@@ -601,7 +601,7 @@ export default function TeamPage() {
               <button
                 onClick={handleSaveEdit}
                 disabled={editSaving || !editForm.name.trim()}
-                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#007AFF] text-white shadow-md hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-primary text-white shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
               >
                 {editSaving ? "Saving…" : "Save Changes"}
               </button>

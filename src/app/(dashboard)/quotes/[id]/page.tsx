@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { STATUS_HEX, STATUS_CLASS } from "@/lib/status-colors";
 
 type QuoteStatus = "draft" | "sent" | "accepted" | "declined";
 
@@ -33,17 +34,17 @@ type Quote = {
 };
 
 const STATUS_BADGE: Record<QuoteStatus, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-muted text-muted-foreground border-0" },
-  sent: { label: "Quote Sent", className: "bg-[#007AFF]/10 text-[#007AFF] border-0" },
-  accepted: { label: "Won", className: "bg-[#16a34a]/10 text-[#16a34a] border-0" },
-  declined: { label: "Lost", className: "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-0" },
+  draft:    { label: "Draft",       className: `${STATUS_CLASS.draft} border-0` },
+  sent:     { label: "Quote Sent",  className: `${STATUS_CLASS.sent} border-0` },
+  accepted: { label: "Won",         className: `${STATUS_CLASS.accepted} border-0` },
+  declined: { label: "Lost",        className: `${STATUS_CLASS.declined} border-0` },
 };
 
 const STATUS_COLOR: Record<QuoteStatus, string> = {
-  draft: "#6b7280",
-  sent: "#007AFF",
-  accepted: "#16a34a",
-  declined: "#ef4444",
+  draft:    STATUS_HEX.draft,
+  sent:     STATUS_HEX.sent,
+  accepted: STATUS_HEX.accepted,
+  declined: STATUS_HEX.declined,
 };
 
 export default function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -181,7 +182,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <p className="font-bold text-foreground">Quote not found</p>
-        <button onClick={() => router.push("/sales")} className="text-sm text-[#007AFF] font-bold">← Back to Sales</button>
+        <button onClick={() => router.push("/sales")} className="text-sm text-primary font-bold">← Back to Sales</button>
       </div>
     );
   }
@@ -234,7 +235,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               {quote.clients?.phone && (
                 <a
                   href={`tel:${quote.clients.phone}`}
-                  className="flex size-8 items-center justify-center rounded-full bg-[#16a34a]/10 text-[#16a34a] hover:bg-[#16a34a]/20 transition-colors"
+                  className="flex size-8 items-center justify-center rounded-full icon-green hover:opacity-80 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">call</span>
                 </a>
@@ -242,7 +243,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               {quote.clients?.email && (
                 <a
                   href={`mailto:${quote.clients.email}`}
-                  className="flex size-8 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20 transition-colors"
+                  className="flex size-8 items-center justify-center rounded-full icon-primary hover:opacity-80 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">mail</span>
                 </a>
@@ -271,9 +272,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Notes */}
         {quote.notes && (
-          <div className="bg-[#ea580c]/5 p-4 border-t border-[#ea580c]/10 flex gap-3">
-            <span className="material-symbols-outlined text-[#ea580c] text-[20px] shrink-0 mt-0.5">sticky_note_2</span>
-            <p className="text-sm text-[#ea580c] font-medium leading-relaxed">{quote.notes}</p>
+          <div className="bg-[var(--color-status-in-progress)]/5 p-4 border-t border-[var(--color-status-in-progress)]/10 flex gap-3">
+            <span className="material-symbols-outlined text-[var(--color-status-in-progress)] text-[20px] shrink-0 mt-0.5">sticky_note_2</span>
+            <p className="text-sm text-[var(--color-status-in-progress)] font-medium leading-relaxed">{quote.notes}</p>
           </div>
         )}
       </Card>
@@ -294,7 +295,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <span
-                    className="material-symbols-outlined text-[18px] text-[#007AFF]"
+                    className="material-symbols-outlined text-[18px] text-primary"
                     style={{ fontVariationSettings: "'FILL' 1" }}
                   >
                     check_circle
@@ -339,7 +340,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <button
               onClick={sendQuote}
               disabled={acting}
-              className="w-full rounded-xl font-bold py-4 text-sm bg-[#007AFF] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full rounded-xl font-bold py-4 text-sm bg-primary text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
               {acting ? "Sending…" : "Send Quote"}
@@ -362,7 +363,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <button
               onClick={markWonAndCreateJob}
               disabled={acting}
-              className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[#16a34a] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[var(--color-status-completed)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>task_alt</span>
               {acting ? "Creating job…" : "Mark Won → Create Job"}
@@ -377,7 +378,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           <div className="max-w-xl mx-auto">
             <button
               onClick={() => router.push(`/jobs/${linkedJobId}`)}
-              className="w-full rounded-xl font-bold py-4 text-sm bg-[#007AFF] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full rounded-xl font-bold py-4 text-sm bg-primary text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>home_repair_service</span>
               View Job
@@ -393,7 +394,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <button
               onClick={reopen}
               disabled={acting}
-              className="w-full rounded-xl font-bold py-4 text-sm border border-[#007AFF]/30 bg-[#007AFF]/5 text-[#007AFF] hover:bg-[#007AFF]/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full rounded-xl font-bold py-4 text-sm border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]">refresh</span>
               {acting ? "Reopening…" : "Reopen Quote"}

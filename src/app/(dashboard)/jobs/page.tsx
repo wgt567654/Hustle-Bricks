@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
+import { STATUS_HEX, STATUS_CLASS } from "@/lib/status-colors";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -27,12 +28,6 @@ const STATUS_FILTERS: { label: string; value: JobStatus | "all" }[] = [
   { label: "Completed", value: "completed" },
 ];
 
-const STATUS_COLORS: Record<JobStatus, string> = {
-  scheduled: "#007AFF",
-  in_progress: "#ea580c",
-  completed: "#16a34a",
-  cancelled: "#6b7280",
-};
 
 function formatScheduled(dateStr: string | null) {
   if (!dateStr) return "Unscheduled";
@@ -97,7 +92,7 @@ export default function JobsPage() {
               <Badge
                 className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                   activeFilter === tab.value
-                    ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+                    ? "bg-primary text-white hover:bg-primary/90"
                     : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
                 }`}
                 variant={activeFilter === tab.value ? "default" : "outline"}
@@ -122,7 +117,7 @@ export default function JobsPage() {
         )}
 
         {filtered.map((job) => {
-          const color = STATUS_COLORS[job.status];
+          const color = STATUS_HEX[job.status];
           const title = job.job_line_items[0]?.description ?? "Job";
           const extraItems = job.job_line_items.length - 1;
 
@@ -162,10 +157,10 @@ export default function JobsPage() {
                 </div>
 
                 <div className="flex items-center justify-end">
-                  {job.status === "in_progress" && <Badge variant="secondary" className="bg-[#ea580c]/10 text-[#ea580c] border-0">In Progress</Badge>}
-                  {job.status === "scheduled" && <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0">Scheduled</Badge>}
-                  {job.status === "completed" && <Badge variant="secondary" className="bg-[#16a34a]/10 text-[#16a34a] border-0">Completed ✓</Badge>}
-                  {job.status === "cancelled" && <Badge variant="secondary" className="bg-muted text-muted-foreground border-0">Cancelled</Badge>}
+                  {job.status === "in_progress" && <Badge variant="secondary" className={`${STATUS_CLASS.in_progress} border-0`}>In Progress</Badge>}
+                  {job.status === "scheduled" && <Badge variant="secondary" className={`${STATUS_CLASS.scheduled} border-0`}>Scheduled</Badge>}
+                  {job.status === "completed" && <Badge variant="secondary" className={`${STATUS_CLASS.completed} border-0`}>Completed ✓</Badge>}
+                  {job.status === "cancelled" && <Badge variant="secondary" className={`${STATUS_CLASS.cancelled} border-0`}>Cancelled</Badge>}
                 </div>
               </div>
             </Card>

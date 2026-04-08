@@ -51,7 +51,7 @@ export default function EmployeePendingPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="flex flex-col items-center gap-5 text-center max-w-xs">
-        <div className="flex size-20 items-center justify-center rounded-full bg-[#ea580c]/10 text-[#ea580c]">
+        <div className="flex size-20 items-center justify-center rounded-full icon-orange ">
           <span
             className="material-symbols-outlined text-[40px]"
             style={{ fontVariationSettings: "'FILL' 1" }}
@@ -75,7 +75,7 @@ export default function EmployeePendingPage() {
         <div className="flex flex-col gap-3 w-full mt-2">
           <button
             onClick={() => router.refresh()}
-            className="w-full py-3 rounded-xl bg-[#007AFF] text-white font-bold text-sm hover:bg-[#007AFF]/90 active:scale-95 transition-all"
+            className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 active:scale-95 transition-all"
           >
             Check again
           </button>

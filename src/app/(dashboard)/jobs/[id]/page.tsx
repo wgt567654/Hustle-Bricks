@@ -98,8 +98,8 @@ function addDays(dateStr: string, days: number): string {
 
 const STATUS_BADGE: Record<JobStatus, { label: string; className: string }> = {
   scheduled: { label: "Scheduled", className: "bg-muted text-muted-foreground border-0" },
-  in_progress: { label: "In Progress", className: "bg-[#ea580c]/10 text-[#ea580c] border-0" },
-  completed: { label: "Completed", className: "bg-[#16a34a]/10 text-[#16a34a] border-0" },
+  in_progress: { label: "In Progress", className: "icon-orange  border-0" },
+  completed: { label: "Completed", className: "icon-green  border-0" },
   cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground border-0" },
 };
 
@@ -449,7 +449,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <p className="font-bold text-foreground">Job not found</p>
-        <button onClick={() => router.push("/jobs")} className="text-sm text-[#007AFF] font-bold">← Back to Jobs</button>
+        <button onClick={() => router.push("/jobs")} className="text-sm text-primary font-bold">← Back to Jobs</button>
       </div>
     );
   }
@@ -511,7 +511,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               {job.clients?.phone && (
                 <a
                   href={`tel:${job.clients.phone}`}
-                  className="flex size-8 items-center justify-center rounded-full bg-[#16a34a]/10 text-[#16a34a] hover:bg-[#16a34a]/20 transition-colors"
+                  className="flex size-8 items-center justify-center rounded-full icon-green  hover:opacity-90 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">call</span>
                 </a>
@@ -519,7 +519,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               {job.clients?.phone && (
                 <button
                   onClick={sendInvoice}
-                  className={`flex size-8 items-center justify-center rounded-full transition-colors ${invoiceSent ? "bg-[#16a34a]/10 text-[#16a34a]" : "bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20"}`}
+                  className={`flex size-8 items-center justify-center rounded-full transition-colors ${invoiceSent ? "icon-green " : "bg-primary/10 text-primary hover:bg-primary/20"}`}
                   title={invoiceSent ? "Invoice opened!" : "Send invoice via SMS"}
                 >
                   <span className="material-symbols-outlined text-[16px]">{invoiceSent ? "check" : "sms"}</span>
@@ -529,7 +529,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 <button
                   onClick={sendInvoiceEmail}
                   disabled={emailSending}
-                  className={`flex size-8 items-center justify-center rounded-full transition-colors ${emailSent ? "bg-[#16a34a]/10 text-[#16a34a]" : "bg-[#ea580c]/10 text-[#ea580c] hover:bg-[#ea580c]/20"} disabled:opacity-50`}
+                  className={`flex size-8 items-center justify-center rounded-full transition-colors ${emailSent ? "icon-green " : "icon-orange  hover:opacity-90"} disabled:opacity-50`}
                   title={emailSent ? "Invoice sent!" : "Email invoice"}
                 >
                   <span className="material-symbols-outlined text-[16px]">{emailSent ? "check" : emailSending ? "progress_activity" : "mail"}</span>
@@ -556,7 +556,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 href={`https://maps.apple.com/?q=${encodeURIComponent(job.clients.address)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex size-8 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20 transition-colors"
+                className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
               >
                 <span className="material-symbols-outlined text-[16px]">navigation</span>
               </a>
@@ -580,9 +580,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
         {/* Notes */}
         {job.notes && (
-          <div className="bg-[#ea580c]/5 p-4 border-t border-[#ea580c]/10 flex gap-3">
-            <span className="material-symbols-outlined text-[#ea580c] text-[20px] shrink-0 mt-0.5">sticky_note_2</span>
-            <p className="text-sm text-[#ea580c] font-medium leading-relaxed">{job.notes}</p>
+          <div className="bg-status-in-progress/10 p-4 border-t border-[var(--color-status-in-progress)]/20 flex gap-3">
+            <span className="material-symbols-outlined text-[var(--color-status-in-progress)] text-[20px] shrink-0 mt-0.5">sticky_note_2</span>
+            <p className="text-sm text-[var(--color-status-in-progress)] font-medium leading-relaxed">{job.notes}</p>
           </div>
         )}
       </Card>
@@ -599,7 +599,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               {i > 0 && <Separator className="bg-border/50 mx-4" />}
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-[18px] text-[#16a34a]">check_circle</span>
+                  <span className="material-symbols-outlined text-[18px] text-[var(--color-status-completed)]">check_circle</span>
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-foreground">{item.description}</span>
                     {item.quantity > 1 && (
@@ -625,7 +625,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </h3>
           <button
             onClick={() => setShowAddExpense((v) => !v)}
-            className="text-xs font-bold text-[#007AFF] flex items-center gap-1 hover:opacity-80 transition-opacity"
+            className="text-xs font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-opacity"
           >
             <span className="material-symbols-outlined text-[14px]">{showAddExpense ? "remove" : "add"}</span>
             Add
@@ -645,11 +645,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               </div>
               <div className="rounded-2xl border border-border bg-card p-3 flex flex-col gap-0.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expenses</span>
-                <span className="text-base font-extrabold text-[#ea580c]">${totalExpenses.toFixed(2)}</span>
+                <span className="text-base font-extrabold text-[var(--color-status-in-progress)]">${totalExpenses.toFixed(2)}</span>
               </div>
-              <div className={`rounded-2xl border p-3 flex flex-col gap-0.5 ${profit >= 0 ? "border-[#16a34a]/30 bg-[#16a34a]/5" : "border-[#dc2626]/30 bg-[#dc2626]/5"}`}>
+              <div className={`rounded-2xl border p-3 flex flex-col gap-0.5 ${profit >= 0 ? "border-[var(--color-status-completed)]/20 bg-status-completed/10" : "border-destructive/30 bg-destructive/5"}`}>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Profit</span>
-                <span className={`text-base font-extrabold ${profit >= 0 ? "text-[#16a34a]" : "text-[#dc2626]"}`}>
+                <span className={`text-base font-extrabold ${profit >= 0 ? "text-[var(--color-status-completed)]" : "text-destructive"}`}>
                   ${profit.toFixed(2)}
                 </span>
                 <span className="text-[9px] font-bold text-muted-foreground">{margin.toFixed(0)}% margin</span>
@@ -660,14 +660,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
         {/* Add expense form */}
         {showAddExpense && (
-          <div className="rounded-2xl border border-[#007AFF]/30 bg-[#007AFF]/5 p-4 mb-3 flex flex-col gap-3">
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-3 flex flex-col gap-3">
             <div className="flex gap-2">
               <input
                 type="text"
                 placeholder="Description"
                 value={expenseForm.description}
                 onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
-                className="flex-1 text-sm rounded-xl border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+                className="flex-1 text-sm rounded-xl border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <div className="relative">
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
@@ -678,7 +678,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   placeholder="0.00"
                   value={expenseForm.amount}
                   onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
-                  className="w-24 text-sm rounded-xl border border-border bg-background pl-6 pr-2 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+                  className="w-24 text-sm rounded-xl border border-border bg-background pl-6 pr-2 py-2.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>
@@ -687,7 +687,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 <button
                   key={cat.value}
                   onClick={() => setExpenseForm((f) => ({ ...f, category: cat.value }))}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${expenseForm.category === cat.value ? "bg-[#007AFF] text-white" : "bg-muted text-foreground border border-border hover:bg-muted/80"}`}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${expenseForm.category === cat.value ? "bg-primary text-white" : "bg-muted text-foreground border border-border hover:bg-muted/80"}`}
                 >
                   {cat.label}
                 </button>
@@ -696,7 +696,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             <button
               onClick={addExpense}
               disabled={expenseSaving || !expenseForm.description || !expenseForm.amount}
-              className="w-full py-2.5 rounded-xl bg-[#007AFF] text-white font-bold text-sm disabled:opacity-40 hover:opacity-90 transition-opacity"
+              className="w-full py-2.5 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {expenseSaving ? "Saving…" : "Save Expense"}
             </button>
@@ -715,10 +715,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                     <span className="text-xs text-muted-foreground capitalize">{exp.category}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-sm font-bold text-[#ea580c]">${Number(exp.amount).toFixed(2)}</span>
+                    <span className="text-sm font-bold text-[var(--color-status-in-progress)]">${Number(exp.amount).toFixed(2)}</span>
                     <button
                       onClick={() => deleteExpense(exp.id)}
-                      className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors"
+                      className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       <span className="material-symbols-outlined text-[16px]">delete</span>
                     </button>
@@ -732,7 +732,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         {expenses.length === 0 && !showAddExpense && (
           <button
             onClick={() => setShowAddExpense(true)}
-            className="w-full py-6 rounded-2xl border border-dashed border-border text-muted-foreground text-sm flex items-center justify-center gap-2 hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
+            className="w-full py-6 rounded-2xl border border-dashed border-border text-muted-foreground text-sm flex items-center justify-center gap-2 hover:border-primary/40 hover:text-primary transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">add_circle</span>
             Log an expense
@@ -754,13 +754,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
             <div className="p-4 flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#007AFF]/10 text-[#007AFF]">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>autorenew</span>
                 </div>
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-foreground">Recurring job</span>
-                    <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-[10px] uppercase font-bold tracking-wider">
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-[10px] uppercase font-bold tracking-wider">
                       {FREQUENCY_LABELS[job.recurrence_frequency] ?? job.recurrence_frequency}
                     </Badge>
                   </div>
@@ -796,7 +796,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   setCustomDays("7");
                   setRecurringSheetOpen(true);
                 }}
-                className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-[#007AFF] text-white hover:bg-[#007AFF]/90 active:scale-95 transition-all"
+                className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-95 transition-all"
               >
                 Make Recurring
               </button>
@@ -823,7 +823,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 key={slot}
                 onClick={() => inputRef.current?.click()}
                 disabled={isUploading}
-                className="relative flex flex-col rounded-2xl overflow-hidden border border-dashed border-border bg-card/50 items-center justify-center min-h-[140px] transition-colors hover:border-[#007AFF]/50 hover:bg-muted/30 disabled:opacity-60 active:scale-[0.98]"
+                className="relative flex flex-col rounded-2xl overflow-hidden border border-dashed border-border bg-card/50 items-center justify-center min-h-[140px] transition-colors hover:border-primary/50 hover:bg-muted/30 disabled:opacity-60 active:scale-[0.98]"
               >
                 {photoUrl ? (
                   <>
@@ -855,7 +855,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           <div className="max-w-xl mx-auto flex gap-3">
             <button
               onClick={() => setPayModalOpen(true)}
-              className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[#16a34a] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[var(--color-status-completed)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]">attach_money</span>
               Collect Payment
@@ -878,7 +878,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <button
                 onClick={() => updateStatus("in_progress")}
                 disabled={updating}
-                className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[#ea580c] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[var(--color-status-in-progress)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">play_circle</span>
                 {updating ? "Starting…" : "Start Job"}
@@ -896,7 +896,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 <button
                   onClick={() => updateStatus("completed")}
                   disabled={updating}
-                  className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[#16a34a] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[var(--color-status-completed)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-[20px]">task_alt</span>
                   {updating ? "Completing…" : "Complete Job"}
@@ -923,8 +923,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             {/* Header */}
             <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#007AFF]/10">
-                  <span className="material-symbols-outlined text-[28px] text-[#007AFF]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+                  <span className="material-symbols-outlined text-[28px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
                     edit_calendar
                   </span>
                 </div>
@@ -945,7 +945,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   type="datetime-local"
                   value={editScheduledAt}
                   onChange={(e) => setEditScheduledAt(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
               </div>
 
@@ -957,7 +957,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   placeholder="Add job notes…"
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 resize-none"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
                 />
               </div>
 
@@ -969,7 +969,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <button
                 onClick={saveJobEdits}
                 disabled={editSaving}
-                className="w-full py-3.5 rounded-2xl bg-[#007AFF] text-white font-extrabold text-sm hover:bg-[#007AFF]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#007AFF]/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>save</span>
                 {editSaving ? "Saving…" : "Save Changes"}
@@ -1001,8 +1001,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             {/* Header */}
             <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#007AFF]/10">
-                  <span className="material-symbols-outlined text-[28px] text-[#007AFF]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+                  <span className="material-symbols-outlined text-[28px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
                     autorenew
                   </span>
                 </div>
@@ -1026,7 +1026,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       onClick={() => setSelectedFrequency(opt.value)}
                       className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-sm font-bold transition-all active:scale-95 ${
                         selectedFrequency === opt.value
-                          ? "bg-[#007AFF] text-white shadow-md shadow-[#007AFF]/20"
+                          ? "bg-primary text-white shadow-md shadow-primary/20"
                           : "bg-muted/50 text-foreground border border-border hover:bg-muted"
                       }`}
                     >
@@ -1049,7 +1049,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       max="365"
                       value={customDays}
                       onChange={(e) => setCustomDays(e.target.value)}
-                      className="w-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                      className="w-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-ring/30"
                     />
                     <span className="text-sm font-medium text-muted-foreground">days</span>
                   </div>
@@ -1064,7 +1064,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <button
                 onClick={saveRecurrence}
                 disabled={recurringSaving || !selectedFrequency}
-                className="w-full py-3.5 rounded-2xl bg-[#007AFF] text-white font-extrabold text-sm hover:bg-[#007AFF]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#007AFF]/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                 {recurringSaving ? "Saving…" : "Confirm"}
@@ -1092,11 +1092,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
             {/* Auto-scheduled toast */}
             {autoScheduledDate && (
-              <div className="mx-5 mt-2 px-4 py-3 rounded-2xl bg-[#007AFF]/10 border border-[#007AFF]/20 flex items-center gap-3 shrink-0">
-                <span className="material-symbols-outlined text-[20px] text-[#007AFF] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <div className="mx-5 mt-2 px-4 py-3 rounded-2xl bg-primary/10 border border-primary/20 flex items-center gap-3 shrink-0">
+                <span className="material-symbols-outlined text-[20px] text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
                   autorenew
                 </span>
-                <p className="text-sm font-bold text-[#007AFF]">
+                <p className="text-sm font-bold text-primary">
                   Next job auto-scheduled for {formatDateShort(autoScheduledDate)}
                 </p>
               </div>
@@ -1105,8 +1105,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             {/* Success header */}
             <div className="px-5 pt-3 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#16a34a]/10">
-                  <span className="material-symbols-outlined text-[28px] text-[#16a34a]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-status-completed/10">
+                  <span className="material-symbols-outlined text-[28px] text-[var(--color-status-completed)]" style={{ fontVariationSettings: "'FILL' 1" }}>
                     task_alt
                   </span>
                 </div>
@@ -1133,7 +1133,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                     onChange={(e) => setPayAmount(e.target.value)}
                     step="0.01"
                     min="0"
-                    className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground font-bold focus:outline-none focus:ring-2 focus:ring-[#16a34a]/30"
+                    className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground font-bold focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
               </div>
@@ -1148,7 +1148,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       onClick={() => setPayMethod(m.value)}
                       className={`flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-bold transition-all active:scale-95 ${
                         payMethod === m.value
-                          ? "bg-[#16a34a] text-white shadow-sm"
+                          ? "bg-[var(--color-status-completed)] text-white shadow-sm"
                           : "bg-muted/50 text-foreground border border-border hover:bg-muted"
                       }`}
                     >
@@ -1169,7 +1169,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   placeholder="e.g. Paid in full, check #1234…"
                   value={payNotes}
                   onChange={(e) => setPayNotes(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/30"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
               </div>
 
@@ -1181,7 +1181,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <button
                 onClick={collectPayment}
                 disabled={paySaving}
-                className="w-full py-3.5 rounded-2xl bg-[#16a34a] text-white font-extrabold text-sm hover:bg-[#16a34a]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#16a34a]/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-[var(--color-status-completed)] text-white font-extrabold text-sm hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-md flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">attach_money</span>
                 {paySaving ? "Recording…" : `Record $${parseFloat(payAmount || "0").toFixed(2)} Payment`}

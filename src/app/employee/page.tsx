@@ -176,13 +176,13 @@ export default function EmployeeHomePage() {
         <div
           className={`rounded-2xl p-4 flex items-center gap-4 border ${
             activeEntry
-              ? "bg-[#16a34a]/8 border-[#16a34a]/25"
+              ? "bg-status-completed/10 border-[var(--color-status-completed)]/20"
               : "bg-muted/40 border-border"
           }`}
         >
           <div
             className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${
-              activeEntry ? "bg-[#16a34a]/15 text-[#16a34a]" : "bg-muted text-muted-foreground"
+              activeEntry ? "icon-green " : "bg-muted text-muted-foreground"
             }`}
           >
             <span
@@ -196,7 +196,7 @@ export default function EmployeeHomePage() {
           <div className="flex flex-col flex-1 min-w-0">
             {activeEntry ? (
               <>
-                <span className="font-bold text-[#16a34a] text-sm">Clocked in</span>
+                <span className="font-bold text-[var(--color-status-completed)] text-sm">Clocked in</span>
                 <span className="text-xs text-muted-foreground truncate">
                   {activeJob
                     ? (activeJob.job_line_items[0]?.description ?? "Job") + " · " + (activeJob.clients?.name ?? "")
@@ -219,12 +219,12 @@ export default function EmployeeHomePage() {
                 placeholder="End odometer"
                 value={odometerEnd}
                 onChange={(e) => setOdometerEnd(e.target.value)}
-                className="w-28 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#16a34a]"
+                className="w-28 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <button
                 onClick={clockOut}
                 disabled={clockingOut}
-                className="w-28 py-2 rounded-xl bg-[#16a34a] text-white font-bold text-xs hover:bg-[#16a34a]/90 active:scale-95 transition-all disabled:opacity-50"
+                className="w-28 py-2 rounded-xl bg-[var(--color-status-completed)] text-white font-bold text-xs hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
               >
                 {clockingOut ? "…" : "Clock Out"}
               </button>
@@ -242,15 +242,15 @@ export default function EmployeeHomePage() {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 rounded-2xl border border-[#007AFF]/30 bg-[#007AFF]/8 px-4 py-3.5 hover:bg-[#007AFF]/12 active:scale-[0.99] transition-all"
+              className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/8 px-4 py-3.5 hover:bg-primary/12 active:scale-[0.99] transition-all"
             >
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#007AFF]/15 text-[#007AFF]">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   directions_car
                 </span>
               </div>
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="font-bold text-[#007AFF] text-sm leading-snug">
+                <span className="font-bold text-primary text-sm leading-snug">
                   {routeUrls.length > 1 ? `Navigate Route — Part ${i + 1}` : "Navigate Today's Route"}
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -259,7 +259,7 @@ export default function EmployeeHomePage() {
                     : `${routedJobs.length} stops · Opens in Google Maps`}
                 </span>
               </div>
-              <span className="material-symbols-outlined text-[#007AFF]/60 text-[18px]">open_in_new</span>
+              <span className="material-symbols-outlined text-primary/60 text-[18px]">open_in_new</span>
             </a>
           ))}
         </div>
@@ -296,8 +296,8 @@ export default function EmployeeHomePage() {
                   <div
                     className={`flex size-10 items-center justify-center rounded-xl ${
                       job.status === "in_progress"
-                        ? "bg-[#ea580c]/10 text-[#ea580c]"
-                        : "bg-[#007AFF]/10 text-[#007AFF]"
+                        ? "icon-orange "
+                        : "bg-primary/10 text-primary"
                     }`}
                   >
                     <span
@@ -308,7 +308,7 @@ export default function EmployeeHomePage() {
                     </span>
                   </div>
                   {job.route_order !== null && (
-                    <div className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-[#007AFF] border-2 border-background flex items-center justify-center text-[9px] font-extrabold text-white leading-none">
+                    <div className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-primary border-2 border-background flex items-center justify-center text-[9px] font-extrabold text-white leading-none">
                       {job.route_order}
                     </div>
                   )}
@@ -323,7 +323,7 @@ export default function EmployeeHomePage() {
                     <span className="text-xs text-muted-foreground truncate mt-0.5">{job.clients.address}</span>
                   )}
                   {job.scheduled_at && (
-                    <span className="text-xs font-medium text-[#007AFF] mt-1">{formatTime(job.scheduled_at)}</span>
+                    <span className="text-xs font-medium text-primary mt-1">{formatTime(job.scheduled_at)}</span>
                   )}
                 </div>
 
@@ -331,8 +331,8 @@ export default function EmployeeHomePage() {
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       job.status === "in_progress"
-                        ? "bg-[#ea580c]/10 text-[#ea580c]"
-                        : "bg-[#007AFF]/10 text-[#007AFF]"
+                        ? "icon-orange "
+                        : "bg-primary/10 text-primary"
                     }`}
                   >
                     {job.status === "in_progress" ? "In Progress" : "Scheduled"}
@@ -350,12 +350,12 @@ export default function EmployeeHomePage() {
                     placeholder="Start odometer"
                     value={odometerStart}
                     onChange={(e) => setOdometerStart(e.target.value)}
-                    className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-[#16a34a]"
+                    className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                   <button
                     onClick={() => clockIn(job.id)}
                     disabled={clockingIn}
-                    className="shrink-0 px-3.5 py-1.5 rounded-xl bg-[#16a34a] text-white font-bold text-xs flex items-center gap-1 hover:bg-[#16a34a]/90 active:scale-95 transition-all disabled:opacity-50"
+                    className="shrink-0 px-3.5 py-1.5 rounded-xl bg-[var(--color-status-completed)] text-white font-bold text-xs flex items-center gap-1 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
                   >
                     <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                       login
@@ -367,9 +367,9 @@ export default function EmployeeHomePage() {
 
               {/* Clocked into this job indicator */}
               {isClockedIntoThis && (
-                <div className="border-t border-[#16a34a]/20 bg-[#16a34a]/5 px-4 py-2 flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[#16a34a] animate-pulse" />
-                  <span className="text-xs font-bold text-[#16a34a]">Clocked in since {formatTime(activeEntry.clocked_in_at)}</span>
+                <div className="border-t border-[var(--color-status-completed)]/20 bg-status-completed/10 px-4 py-2 flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-[var(--color-status-completed)] animate-pulse" />
+                  <span className="text-xs font-bold text-[var(--color-status-completed)]">Clocked in since {formatTime(activeEntry.clocked_in_at)}</span>
                 </div>
               )}
             </div>

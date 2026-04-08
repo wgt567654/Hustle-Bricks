@@ -47,7 +47,7 @@ export function SalesRepsTable({ reps }: Props) {
         <div className="flex items-center gap-2">
           <span
             className="material-symbols-outlined text-[20px]"
-            style={{ color: "#8b5cf6", fontVariationSettings: "'FILL' 1" }}
+            style={{ color: "var(--color-highlight-violet)", fontVariationSettings: "'FILL' 1" }}
           >
             leaderboard
           </span>

@@ -200,8 +200,8 @@ export function BookingForm({
           onClick={() => setOpen((o) => !o)}
           className="w-full flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
         >
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#007AFF]/10">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#007AFF]">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-primary">
               <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
             </svg>
           </div>
@@ -277,9 +277,9 @@ export function BookingForm({
                       isBlocked
                         ? "bg-red-50 text-red-300 cursor-not-allowed line-through"
                         : isSelected
-                        ? "bg-[#007AFF] text-white shadow-sm"
+                        ? "bg-primary text-white shadow-sm"
                         : isToday
-                        ? "bg-[#007AFF]/10 text-[#007AFF]"
+                        ? "bg-primary/10 text-primary"
                         : isPast || !isCurrentMonth
                         ? "text-gray-300 cursor-not-allowed"
                         : "text-gray-800 hover:bg-gray-100"
@@ -303,7 +303,7 @@ export function BookingForm({
                     onClick={() => setSelectedTime(slot === selectedTime ? null : slot)}
                     className={`py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${
                       selectedTime === slot
-                        ? "bg-[#007AFF] text-white shadow-sm"
+                        ? "bg-primary text-white shadow-sm"
                         : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
                     }`}
                   >
@@ -325,7 +325,7 @@ export function BookingForm({
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Anything we should know? (e.g. gate code, pets, specific areas)"
                 rows={3}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 resize-none"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
               />
             </div>
           )}
@@ -333,8 +333,8 @@ export function BookingForm({
           {/* Summary + submit */}
           {selectedDate && selectedTime && (
             <div className="flex flex-col gap-3">
-              <div className="bg-[#007AFF]/5 rounded-2xl p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#007AFF] mb-1">Your Request</p>
+              <div className="bg-primary/5 rounded-2xl p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Your Request</p>
                 <p className="font-extrabold text-gray-900">
                   {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
                     weekday: "long", month: "long", day: "numeric",
@@ -350,7 +350,7 @@ export function BookingForm({
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full py-4 rounded-2xl bg-[#007AFF] text-white font-extrabold text-sm hover:bg-[#007AFF]/90 disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-[#007AFF]/20"
+                className="w-full py-4 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
               >
                 {submitting ? "Sending request…" : "Request This Time"}
               </button>

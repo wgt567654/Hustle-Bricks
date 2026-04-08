@@ -124,14 +124,14 @@ export default function TeamPortalPage({ params }: { params: Promise<{ id: strin
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="flex flex-col items-center gap-4 text-center max-w-xs">
-          <div className="flex size-16 items-center justify-center rounded-full bg-[#16a34a]/10 text-[#16a34a]">
+          <div className="flex size-16 items-center justify-center rounded-full icon-green ">
             <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
           </div>
           <h1 className="text-xl font-extrabold text-foreground">Already set up</h1>
           <p className="text-sm text-muted-foreground">This account has already been claimed. Log in with your email and password.</p>
           <button
             onClick={() => router.push("/login")}
-            className="w-full mt-2 py-3 rounded-xl bg-[#007AFF] text-white font-bold text-sm hover:bg-[#007AFF]/90 transition-colors"
+            className="w-full mt-2 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors"
           >
             Go to Login
           </button>
@@ -144,14 +144,14 @@ export default function TeamPortalPage({ params }: { params: Promise<{ id: strin
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="flex flex-col items-center gap-4 text-center max-w-xs">
-          <div className="flex size-16 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF]">
+          <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
             <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>mail</span>
           </div>
           <h1 className="text-xl font-extrabold text-foreground">Check your email</h1>
           <p className="text-sm text-muted-foreground">We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then log in.</p>
           <button
             onClick={() => router.push("/login")}
-            className="w-full mt-2 py-3 rounded-xl bg-[#007AFF] text-white font-bold text-sm hover:bg-[#007AFF]/90 transition-colors"
+            className="w-full mt-2 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors"
           >
             Go to Login
           </button>
@@ -165,7 +165,7 @@ export default function TeamPortalPage({ params }: { params: Promise<{ id: strin
       <div className="w-full max-w-sm flex flex-col gap-6">
         {/* Header */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-[#007AFF]/10 border border-[#007AFF]/20 text-[#007AFF]">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
             <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
           </div>
           <div>
@@ -230,14 +230,14 @@ export default function TeamPortalPage({ params }: { params: Promise<{ id: strin
           <button
             type="submit"
             disabled={submitting || !email || !password || !confirmPassword}
-            className="w-full mt-2 py-3.5 rounded-xl bg-[#007AFF] text-white font-bold text-sm shadow-md shadow-[#007AFF]/30 hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mt-2 py-3.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Creating account…" : "Create Account & Join"}
           </button>
 
           <p className="text-center text-xs text-muted-foreground">
             Already have an account?{" "}
-            <button type="button" onClick={() => router.push("/login")} className="font-bold text-[#007AFF] hover:underline">
+            <button type="button" onClick={() => router.push("/login")} className="font-bold text-primary hover:underline">
               Log in
             </button>
           </p>

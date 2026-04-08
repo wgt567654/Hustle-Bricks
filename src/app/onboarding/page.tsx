@@ -58,7 +58,7 @@ export default function OnboardingPage() {
 
         {/* Branding */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="size-14 rounded-2xl bg-[#007AFF] text-white flex items-center justify-center shadow-lg shadow-[#007AFF]/25 mb-2">
+          <div className="size-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/25 mb-2">
             <span className="material-symbols-outlined text-[32px]">storefront</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Name your business</h1>
@@ -100,7 +100,7 @@ export default function OnboardingPage() {
                     onClick={() => setBusinessType(type.value)}
                     className={`rounded-xl border px-3 py-2.5 text-sm font-medium text-left transition-all active:scale-95 ${
                       businessType === type.value
-                        ? "border-[#007AFF] bg-[#007AFF]/10 text-[#007AFF]"
+                        ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-muted/40 text-foreground hover:bg-muted"
                     }`}
                   >
@@ -113,7 +113,7 @@ export default function OnboardingPage() {
             <button
               type="submit"
               disabled={loading || !businessName.trim()}
-              className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#007AFF] text-white shadow-md shadow-[#007AFF]/30 hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Setting up…" : "Let's go →"}
             </button>

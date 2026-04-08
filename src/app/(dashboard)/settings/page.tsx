@@ -195,7 +195,7 @@ export default function SettingsPage() {
             <div className="p-4 flex flex-col gap-4">
               {editingName ? (
                 <div className="flex items-center gap-3">
-                  <div className="size-16 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF] border-2 border-[#007AFF]/20 shrink-0">
+                  <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/20 shrink-0">
                     <span className="material-symbols-outlined text-[32px]">store</span>
                   </div>
                   <input
@@ -205,7 +205,7 @@ export default function SettingsPage() {
                     onKeyDown={(e) => e.key === "Enter" && saveName()}
                     className="flex-1 h-11 rounded-xl border border-border bg-transparent px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   />
-                  <button onClick={saveName} disabled={saving} className="text-sm font-bold text-[#16a34a] shrink-0 disabled:opacity-50">
+                  <button onClick={saveName} disabled={saving} className="text-sm font-bold text-[var(--color-status-completed)] shrink-0 disabled:opacity-50">
                     {saving ? "…" : "Save"}
                   </button>
                   <button onClick={() => { setEditingName(false); setNameInput(businessName); }} className="text-sm font-bold text-muted-foreground shrink-0">
@@ -214,14 +214,14 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-4">
-                  <div className="size-16 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF] border-2 border-[#007AFF]/20 shrink-0">
+                  <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/20 shrink-0">
                     <span className="material-symbols-outlined text-[32px]">store</span>
                   </div>
                   <div className="flex flex-col flex-1">
                     <h4 className="font-bold text-foreground">{loading ? "Loading…" : businessName}</h4>
                     <span className="text-sm text-muted-foreground">{userEmail}</span>
                   </div>
-                  <button onClick={() => setEditingName(true)} className="text-[#007AFF] text-sm font-bold shrink-0">Edit</button>
+                  <button onClick={() => setEditingName(true)} className="text-primary text-sm font-bold shrink-0">Edit</button>
                 </div>
               )}
             </div>
@@ -234,8 +234,8 @@ export default function SettingsPage() {
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
             <div className="p-4 flex flex-col gap-4">
               <div className="flex items-start gap-3">
-                <div className="size-10 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="material-symbols-outlined text-[20px] text-[#007AFF]">badge</span>
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-[20px] text-primary">badge</span>
                 </div>
                 <div className="flex flex-col flex-1 gap-0.5">
                   <span className="font-bold text-sm text-foreground">Team Access Code</span>
@@ -253,7 +253,7 @@ export default function SettingsPage() {
                     </span>
                     <button
                       onClick={copyAccessCode}
-                      className={`text-xs font-bold transition-colors ${codeCopied ? "text-[#16a34a]" : "text-[#007AFF]"}`}
+                      className={`text-xs font-bold transition-colors ${codeCopied ? "text-[var(--color-status-completed)]" : "text-primary"}`}
                     >
                       {codeCopied ? "Copied!" : "Copy"}
                     </button>
@@ -270,7 +270,7 @@ export default function SettingsPage() {
                 <button
                   onClick={regenerateAccessCode}
                   disabled={generatingCode}
-                  className="w-full py-3 rounded-xl bg-[#007AFF] text-white font-bold text-sm hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
                 >
                   {generatingCode ? "Generating…" : "Generate Access Code"}
                 </button>
@@ -284,7 +284,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Contact Info</h3>
             {!editingContact && (
-              <button onClick={() => setEditingContact(true)} className="text-xs font-bold text-[#007AFF]">
+              <button onClick={() => setEditingContact(true)} className="text-xs font-bold text-primary">
                 {hasContactInfo ? "Edit" : "Set up"}
               </button>
             )}
@@ -307,7 +307,7 @@ export default function SettingsPage() {
                     placeholder="you@yourbusiness.com"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
@@ -321,7 +321,7 @@ export default function SettingsPage() {
                     placeholder="(555) 000-0000"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
@@ -335,7 +335,7 @@ export default function SettingsPage() {
                   <button
                     onClick={saveContactInfo}
                     disabled={savingContact}
-                    className="flex-[2] py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50 transition-colors"
+                    className="flex-[2] py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
                     {savingContact ? "Saving…" : "Save Contact Info"}
                   </button>
@@ -393,7 +393,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Payment Methods</h3>
             {!editingPayments && (
-              <button onClick={() => setEditingPayments(true)} className="text-xs font-bold text-[#007AFF]">
+              <button onClick={() => setEditingPayments(true)} className="text-xs font-bold text-primary">
                 {hasPaymentMethods ? "Edit" : "Set up"}
               </button>
             )}
@@ -419,7 +419,7 @@ export default function SettingsPage() {
                       placeholder="yourvenmo"
                       value={venmoUsername}
                       onChange={(e) => setVenmoUsername(e.target.value.replace(/^@/, ""))}
-                      className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                      className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                     />
                   </div>
                 </div>
@@ -437,7 +437,7 @@ export default function SettingsPage() {
                       placeholder="yourcashtag"
                       value={cashappTag}
                       onChange={(e) => setCashappTag(e.target.value.replace(/^\$/, ""))}
-                      className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                      className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                     />
                   </div>
                 </div>
@@ -453,7 +453,7 @@ export default function SettingsPage() {
                     placeholder={businessName || "Your Business Name"}
                     value={checkPayableTo}
                     onChange={(e) => setCheckPayableTo(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
@@ -467,7 +467,7 @@ export default function SettingsPage() {
                   <button
                     onClick={savePaymentMethods}
                     disabled={savingPayments}
-                    className="flex-[2] py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50 transition-colors"
+                    className="flex-[2] py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
                     {savingPayments ? "Saving…" : "Save Payment Methods"}
                   </button>
@@ -548,7 +548,7 @@ export default function SettingsPage() {
                   <span className="text-xs text-muted-foreground">Card payments enabled on invoices</span>
                 </div>
               </div>
-              <span className="text-xs font-bold text-[#16a34a] bg-[#16a34a]/10 px-2.5 py-1 rounded-full">Active</span>
+              <span className="text-xs font-bold text-[var(--color-status-completed)] bg-status-completed/10 px-2.5 py-1 rounded-full">Active</span>
             </div>
             {/* Tax Settings */}
             <div className="flex flex-col">
@@ -562,7 +562,7 @@ export default function SettingsPage() {
                     <span className="text-xs text-muted-foreground">Default Rate: {taxRate}%</span>
                   </div>
                 </div>
-                <button onClick={() => setEditingTax((v) => !v)} className="text-xs font-bold text-[#007AFF]">
+                <button onClick={() => setEditingTax((v) => !v)} className="text-xs font-bold text-primary">
                   {editingTax ? "Cancel" : "Edit"}
                 </button>
               </div>
@@ -576,14 +576,14 @@ export default function SettingsPage() {
                       step="0.01"
                       value={taxRate}
                       onChange={(e) => setTaxRate(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
                   </div>
                   <button
                     onClick={saveTax}
                     disabled={savingTax}
-                    className="px-4 py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50"
+                    className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
                   >
                     {savingTax ? "Saving…" : "Save"}
                   </button>
@@ -603,7 +603,7 @@ export default function SettingsPage() {
                     <span className="text-xs text-muted-foreground">Default Rate: {commissionRate}%</span>
                   </div>
                 </div>
-                <button onClick={() => setEditingCommission((v) => !v)} className="text-xs font-bold text-[#007AFF]">
+                <button onClick={() => setEditingCommission((v) => !v)} className="text-xs font-bold text-primary">
                   {editingCommission ? "Cancel" : "Edit"}
                 </button>
               </div>
@@ -617,14 +617,14 @@ export default function SettingsPage() {
                       step="0.01"
                       value={commissionRate}
                       onChange={(e) => setCommissionRate(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
                   </div>
                   <button
                     onClick={saveCommission}
                     disabled={savingCommission}
-                    className="px-4 py-2.5 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50"
+                    className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
                   >
                     {savingCommission ? "Saving…" : "Save"}
                   </button>
@@ -652,7 +652,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => toggleAutomation(item.key, item.value)}
                     disabled={savingAutomation === item.key}
-                    className={`w-12 h-6 rounded-full relative shadow-inner transition-colors duration-200 disabled:opacity-60 ${item.value ? "bg-[#007AFF]" : "bg-muted"}`}
+                    className={`w-12 h-6 rounded-full relative shadow-inner transition-colors duration-200 disabled:opacity-60 ${item.value ? "bg-primary" : "bg-muted"}`}
                   >
                     <div className={`size-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform duration-200 ${item.value ? "translate-x-6" : "translate-x-0.5"}`} />
                   </button>

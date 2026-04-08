@@ -72,7 +72,7 @@ export default function LoginPage() {
 
         {/* Branding */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="size-14 rounded-2xl bg-[#007AFF] text-white flex items-center justify-center shadow-lg shadow-[#007AFF]/25 mb-2">
+          <div className="size-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/25 mb-2">
             <span className="material-symbols-outlined text-[32px]">water_drop</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Welcome back</h1>
@@ -103,7 +103,7 @@ export default function LoginPage() {
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Password</label>
-                <Link href="#" className="text-xs font-bold text-[#007AFF] hover:underline hover:text-[#007AFF]/80 transition-colors">Forgot password?</Link>
+                <Link href="#" className="text-xs font-bold text-primary hover:underline hover:text-primary/80 transition-colors">Forgot password?</Link>
               </div>
               <input
                 id="password"

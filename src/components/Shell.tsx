@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { UserGreeting } from './UserGreeting';
 import { createClient } from '@/lib/supabase/client';
+import { STATUS_HEX } from '@/lib/status-colors';
 
 const NAV = [
   { href: "/",                label: "Home",     icon: "home",           exact: true  },
@@ -15,11 +16,11 @@ const NAV = [
 ];
 
 const MORE_ITEMS = [
-  { href: "/map",      label: "Job Map",  icon: "map",           color: "#007AFF", bg: "bg-[#007AFF]/10" },
-  { href: "/reports",  label: "Reports",  icon: "bar_chart",     color: "#16a34a", bg: "bg-[#16a34a]/10" },
-  { href: "/payments", label: "Payments", icon: "attach_money",  color: "#16a34a", bg: "bg-[#16a34a]/10" },
-  { href: "/plans",    label: "Plans",    icon: "autorenew",     color: "#8b5cf6", bg: "bg-[#8b5cf6]/10" },
-  { href: "/leads",    label: "Leads",    icon: "person_search", color: "#ea580c", bg: "bg-[#ea580c]/10" },
+  { href: "/map",      label: "Job Map",  icon: "map",           colorClass: "icon-primary" },
+  { href: "/reports",  label: "Reports",  icon: "bar_chart",     colorClass: "icon-green"   },
+  { href: "/payments", label: "Payments", icon: "attach_money",  colorClass: "icon-green"   },
+  { href: "/plans",    label: "Plans",    icon: "autorenew",     colorClass: "icon-violet"  },
+  { href: "/leads",    label: "Leads",    icon: "person_search", colorClass: "icon-orange"  },
 ];
 
 type Notification = {
@@ -70,8 +71,8 @@ async function fetchNotifications(): Promise<Notification[]> {
     notes.push({
       id: "pending-employees",
       icon: "badge",
-      iconColor: "#ea580c",
-      iconBg: "bg-[#ea580c]/10",
+      iconColor: STATUS_HEX.in_progress,
+      iconBg: "icon-orange",
       title: `${pending.length} employee${pending.length !== 1 ? "s" : ""} awaiting approval`,
       subtitle: pending.length === 1 ? `${pending[0].name} wants to join your team` : "Review and approve new team members",
       href: "/team",
@@ -85,8 +86,8 @@ async function fetchNotifications(): Promise<Notification[]> {
     notes.push({
       id: "unpaid",
       icon: "payments",
-      iconColor: "#ea580c",
-      iconBg: "bg-[#ea580c]/10",
+      iconColor: STATUS_HEX.in_progress,
+      iconBg: "icon-orange",
       title: `${unpaid.length} unpaid job${unpaid.length !== 1 ? "s" : ""}`,
       subtitle: `Collect $${(unpaid as { total: number }[]).reduce((s, j) => s + j.total, 0).toFixed(2)} outstanding`,
       href: "/payments",
@@ -97,8 +98,8 @@ async function fetchNotifications(): Promise<Notification[]> {
     notes.push({
       id: `inprogress-${job.id}`,
       icon: "play_circle",
-      iconColor: "#ea580c",
-      iconBg: "bg-[#ea580c]/10",
+      iconColor: STATUS_HEX.in_progress,
+      iconBg: "icon-orange",
       title: `In progress: ${job.job_line_items[0]?.description ?? "Job"}`,
       subtitle: job.clients?.name ?? "Unknown client",
       href: `/jobs/${job.id}`,
@@ -112,8 +113,8 @@ async function fetchNotifications(): Promise<Notification[]> {
     notes.push({
       id: `today-${job.id}`,
       icon: "event",
-      iconColor: "#007AFF",
-      iconBg: "bg-[#007AFF]/10",
+      iconColor: STATUS_HEX.scheduled,
+      iconBg: "icon-primary",
       title: `Today: ${job.job_line_items[0]?.description ?? "Job"}`,
       subtitle: `${time}${job.clients?.name ? ` · ${job.clients.name}` : ""}`,
       href: `/jobs/${job.id}`,
@@ -194,15 +195,11 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── TOP APP BAR — frosted glass chrome ── */}
       <header className="sticky top-0 z-30 chrome">
-        {/* Dark mode override via CSS class */}
-        <style>{`
-          .dark header.sticky { background: oklch(0.09 0 0 / 0.90) !important; }
-        `}</style>
         <div className="flex items-center justify-between px-4 pt-3 pb-2.5 max-w-xl mx-auto">
           {/* Brand + Greeting */}
           <div className="flex items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#007AFF]"
-              style={{ boxShadow: "0 2px 8px rgba(53,129,243,0.35)" }}
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary"
+              style={{ boxShadow: "0 2px 8px color-mix(in srgb, var(--color-primary) 35%, transparent)" }}
             >
               <span
                 className="material-symbols-outlined text-[18px] text-white"
@@ -219,7 +216,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
             <button
               onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
               className={`flex size-8 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
-                settingsOpen ? "bg-[#007AFF]/12 text-[#007AFF]" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                settingsOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <span
@@ -233,7 +230,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
             <button
               onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
               className={`relative flex size-8 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
-                open ? "bg-[#007AFF]/12 text-[#007AFF]" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                open ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <span
@@ -244,7 +241,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               </span>
               {/* Unread badge */}
               {(!open || !loaded) && (
-                <span className="absolute top-1 right-1 size-[7px] rounded-full bg-[#ea580c]" style={{ boxShadow: "0 0 0 1.5px var(--color-background)" }} />
+                <span className="absolute top-1 right-1 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" style={{ boxShadow: "0 0 0 1.5px var(--color-background)" }} />
               )}
             </button>
           </div>
@@ -270,7 +267,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                       onClick={() => setTheme(t)}
                       className={`flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
                         theme === t
-                          ? "bg-[#007AFF] text-white"
+                          ? "bg-primary text-primary-foreground"
                           : "bg-muted/60 text-muted-foreground hover:bg-muted"
                       }`}
                     >
@@ -340,7 +337,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
                 <span className="font-bold text-sm text-foreground">Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] font-bold bg-[#ea580c] text-white px-2 py-0.5 rounded-full tabular-nums">
+                  <span className="text-[10px] font-bold bg-[var(--color-status-in-progress)] text-white px-2 py-0.5 rounded-full tabular-nums">
                     {unreadCount}
                   </span>
                 )}
@@ -372,10 +369,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                     onClick={() => { setOpen(false); router.push(note.href); }}
                     className="flex items-start gap-3 px-4 py-3.5 hover:bg-muted/30 transition-colors text-left w-full active:scale-[0.99]"
                   >
-                    <div
-                      className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${note.iconBg}`}
-                      style={{ color: note.iconColor }}
-                    >
+                    <div className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${note.iconBg}`}>
                       <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                         {note.icon}
                       </span>
@@ -393,7 +387,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                 <div className="px-4 py-2.5 border-t border-border/40">
                   <button
                     onClick={() => { setOpen(false); router.push("/payments"); }}
-                    className="w-full text-center text-xs font-semibold text-[#007AFF] hover:underline py-0.5"
+                    className="w-full text-center text-xs font-semibold text-primary hover:underline py-0.5"
                   >
                     View all activity →
                   </button>
@@ -423,15 +417,15 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
             </div>
             <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest px-5 mt-3 mb-3">More</p>
             <div className="grid grid-cols-5 gap-3 px-5 pb-7">
-              {MORE_ITEMS.map(({ href, label, icon, color, bg }) => (
+              {MORE_ITEMS.map(({ href, label, icon, colorClass }) => (
                 <button
                   key={href}
                   onClick={() => router.push(href)}
                   className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
                 >
                   <div
-                    className={`flex size-14 items-center justify-center rounded-2xl ${bg}`}
-                    style={{ color, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+                    className={`flex size-14 items-center justify-center rounded-2xl ${colorClass}`}
+                    style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
                   >
                     <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                       {icon}
@@ -447,9 +441,6 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── BOTTOM NAVIGATION ── */}
       <nav className="fixed bottom-0 left-0 w-full z-40 chrome">
-        <style>{`
-          .dark nav.fixed { background: oklch(0.09 0 0 / 0.90) !important; }
-        `}</style>
         <div className="flex items-stretch max-w-xl mx-auto h-[52px] px-1">
           {visibleNav.map(({ href, label, icon, exact }) => {
             const active = isActive(href, exact);
@@ -458,7 +449,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                 key={href}
                 href={href}
                 className={`relative flex flex-col items-center justify-center flex-1 gap-0.5 py-1.5 transition-all duration-150 active:scale-90 ${
-                  active ? "text-[#007AFF]" : "text-muted-foreground hover:text-foreground/80"
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
                 }`}
               >
                 <span
@@ -475,7 +466,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           <button
             onClick={() => setMoreOpen((v) => !v)}
             className={`relative flex flex-col items-center justify-center flex-1 gap-0.5 py-1.5 transition-all duration-150 active:scale-90 ${
-              moreOpen ? "text-[#007AFF]" : "text-muted-foreground hover:text-foreground/80"
+              moreOpen ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
             }`}
           >
             <span

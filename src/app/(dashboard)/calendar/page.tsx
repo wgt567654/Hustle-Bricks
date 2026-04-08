@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
+import { STATUS_HEX } from "@/lib/status-colors";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -48,12 +49,7 @@ type BookingRequest = {
   clients: { name: string; phone: string | null } | null;
 };
 
-const STATUS_COLORS: Record<JobStatus, string> = {
-  scheduled: "#007AFF",
-  in_progress: "#ea580c",
-  completed: "#16a34a",
-  cancelled: "#6b7280",
-};
+const STATUS_COLORS = STATUS_HEX;
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -598,7 +594,7 @@ export default function CalendarPage() {
               onClick={() => setTab(t.key)}
               className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
                 tab === t.key
-                  ? "bg-[#007AFF] text-white"
+                  ? "bg-primary text-white"
                   : "bg-card border border-border text-muted-foreground hover:bg-muted/50"
               }`}
             >
@@ -680,7 +676,7 @@ export default function CalendarPage() {
                         <button
                           onClick={() => confirmBooking(req)}
                           disabled={!!processingBooking}
-                          className="flex-1 py-2.5 rounded-xl bg-[#16a34a] text-white font-bold text-sm hover:bg-[#16a34a]/90 disabled:opacity-50 active:scale-[0.98] transition-all"
+                          className="flex-1 py-2.5 rounded-xl bg-[var(--color-status-completed)] text-white font-bold text-sm hover:opacity-90 disabled:opacity-50 active:scale-[0.98] transition-all"
                         >
                           {isProcessing ? "Confirming…" : "Confirm"}
                         </button>
@@ -728,18 +724,18 @@ export default function CalendarPage() {
                     isBlocked
                       ? "bg-red-50/60"
                       : isSelected
-                      ? "bg-[#007AFF]/5"
+                      ? "bg-primary/5"
                       : "bg-background hover:bg-muted/30"
                   } ${!isCurrentMonth ? "opacity-35" : ""}`}
                 >
                   <span
                     className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mb-1 ${
                       isToday
-                        ? "bg-[#007AFF] text-white"
+                        ? "bg-primary text-white"
                         : isBlocked
                         ? "bg-red-100 text-red-500 line-through"
                         : isSelected
-                        ? "bg-[#007AFF]/10 text-[#007AFF]"
+                        ? "bg-primary/10 text-primary"
                         : "text-foreground"
                     }`}
                   >
@@ -781,7 +777,7 @@ export default function CalendarPage() {
                   {unavailDates.has(selectedDay) ? (
                     <Badge variant="secondary" className="bg-red-100 text-red-600 border-0 text-xs">Unavailable</Badge>
                   ) : selectedDayJobs.length > 0 ? (
-                    <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-xs">
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-xs">
                       {selectedDayJobs.length} job{selectedDayJobs.length !== 1 ? "s" : ""}
                     </Badge>
                   ) : null}
@@ -804,7 +800,7 @@ export default function CalendarPage() {
                   {!unavailDates.has(selectedDay) && (
                     <button
                       onClick={() => openScheduleModal(selectedDay)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#007AFF] text-white text-xs font-bold hover:bg-[#007AFF]/90 transition-colors shadow-sm"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors shadow-sm"
                     >
                       <span className="material-symbols-outlined text-[14px]">add</span>
                       Schedule
@@ -819,7 +815,7 @@ export default function CalendarPage() {
                   <p className="text-sm font-medium text-muted-foreground">No jobs scheduled</p>
                   <button
                     onClick={() => openScheduleModal(selectedDay)}
-                    className="mt-1 flex items-center gap-1 text-sm font-bold text-[#007AFF] hover:underline"
+                    className="mt-1 flex items-center gap-1 text-sm font-bold text-primary hover:underline"
                   >
                     <span className="material-symbols-outlined text-[16px]">add_circle</span>
                     Schedule a job for this day
@@ -859,7 +855,7 @@ export default function CalendarPage() {
                               href={gcalUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex size-8 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20 transition-colors"
+                              className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                               title="Add to Google Calendar"
                             >
                               <span className="material-symbols-outlined text-[16px]">event_add</span>
@@ -885,11 +881,11 @@ export default function CalendarPage() {
           </div>
 
           {/* Google Calendar sync card */}
-          <div className="mx-4 mt-6 p-4 rounded-2xl bg-[#007AFF]/5 border border-[#007AFF]/15">
+          <div className="mx-4 mt-6 p-4 rounded-2xl bg-primary/5 border border-primary/15">
             <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#007AFF]/10 text-[#007AFF]">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  event_sync
+                  calendar_month
                 </span>
               </div>
               <div className="flex flex-col gap-2 flex-1">
@@ -907,7 +903,7 @@ export default function CalendarPage() {
                 </div>
 
                 {googleConnectedParam && (
-                  <p className="text-xs font-bold text-[#16a34a]">Connected successfully!</p>
+                  <p className="text-xs font-bold text-[var(--color-status-completed)]">Connected successfully!</p>
                 )}
                 {googleErrorParam && (
                   <p className="text-xs font-bold text-red-500">Connection failed — please try again.</p>
@@ -918,7 +914,7 @@ export default function CalendarPage() {
                     <button
                       onClick={inviteAllToGcal}
                       disabled={gcalInviting}
-                      className="w-full rounded-xl font-bold py-2.5 text-sm bg-[#007AFF] text-white hover:bg-[#007AFF]/90 active:scale-[0.98] disabled:opacity-50 transition-all"
+                      className="w-full rounded-xl font-bold py-2.5 text-sm bg-primary text-white hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 transition-all"
                     >
                       {gcalInviting ? "Sending invites…" : "Invite Team to Calendar"}
                     </button>
@@ -940,7 +936,7 @@ export default function CalendarPage() {
                   <div className="flex flex-col gap-2">
                     <a
                       href="/api/google-calendar/auth"
-                      className="w-full rounded-xl font-bold py-2.5 text-sm bg-[#007AFF] text-white hover:bg-[#007AFF]/90 active:scale-[0.98] transition-all text-center block"
+                      className="w-full rounded-xl font-bold py-2.5 text-sm bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all text-center block"
                     >
                       Connect Google Calendar
                     </a>
@@ -957,9 +953,9 @@ export default function CalendarPage() {
           </div>
 
           {/* Client Booking CTA */}
-          <div className="mx-4 mt-4 p-4 rounded-2xl bg-[#16a34a]/5 border border-[#16a34a]/15">
+          <div className="mx-4 mt-4 p-4 rounded-2xl bg-status-completed/10 border border-[var(--color-status-completed)]/20">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#16a34a]/10 text-[#16a34a]">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl icon-green ">
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   link
                 </span>
@@ -970,7 +966,7 @@ export default function CalendarPage() {
                   Clients can schedule from their portal link. Go to a client and tap &ldquo;Portal&rdquo; to share.
                 </p>
               </div>
-              <Badge variant="secondary" className="bg-[#16a34a]/10 text-[#16a34a] border-0 shrink-0 text-[10px]">
+              <Badge variant="secondary" className="icon-green  border-0 shrink-0 text-[10px]">
                 Live
               </Badge>
             </div>
@@ -1031,7 +1027,7 @@ export default function CalendarPage() {
                       onClick={() => toggleUnavailDay(i)}
                       disabled={savingSettings}
                       className={`relative shrink-0 w-11 h-6 rounded-full transition-colors focus:outline-none overflow-hidden ${
-                        isUnavail ? "bg-border" : "bg-[#007AFF]"
+                        isUnavail ? "bg-border" : "bg-primary"
                       }`}
                       title={isUnavail ? "Mark as available" : "Mark as unavailable"}
                     >
@@ -1051,7 +1047,7 @@ export default function CalendarPage() {
                         <select
                           value={hours.from}
                           onChange={(e) => updateDayHours(i, e.target.value, hours.until)}
-                          className="flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-xs text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30"
+                          className="flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-xs text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-ring/30"
                         >
                           {HOURS.map((h) => (
                             <option key={h.value} value={h.value}>{h.label}</option>
@@ -1061,7 +1057,7 @@ export default function CalendarPage() {
                         <select
                           value={hours.until}
                           onChange={(e) => updateDayHours(i, hours.from, e.target.value)}
-                          className="flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-xs text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30"
+                          className="flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-xs text-foreground font-medium focus:outline-none focus:ring-1 focus:ring-ring/30"
                         >
                           {HOURS.map((h) => (
                             <option key={h.value} value={h.value}>{h.label}</option>
@@ -1122,7 +1118,7 @@ export default function CalendarPage() {
                         isUnavail
                           ? "bg-red-500 text-white shadow-sm"
                           : key === todayStr
-                          ? "bg-[#007AFF]/10 text-[#007AFF]"
+                          ? "bg-primary/10 text-primary"
                           : !isThisMonth
                           ? "text-muted-foreground/30 cursor-default"
                           : "text-foreground hover:bg-muted"
@@ -1167,9 +1163,9 @@ export default function CalendarPage() {
         <div className="px-4 pb-40 flex flex-col gap-4">
           {/* Setup notice if table missing */}
           {availTableMissing && (
-            <div className="p-4 rounded-2xl bg-[#ea580c]/5 border border-[#ea580c]/20">
+            <div className="p-4 rounded-2xl bg-status-in-progress/10 border border-[var(--color-status-in-progress)]/20">
               <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined text-[#ea580c] text-[20px] shrink-0 mt-0.5">info</span>
+                <span className="material-symbols-outlined text-[var(--color-status-in-progress)] text-[20px] shrink-0 mt-0.5">info</span>
                 <div>
                   <p className="font-bold text-sm text-foreground">Database setup needed</p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1205,7 +1201,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
               <p className="text-sm font-medium text-muted-foreground">No team members yet</p>
               <button
                 onClick={() => router.push("/team")}
-                className="mt-1 text-sm font-bold text-[#007AFF] hover:underline"
+                className="mt-1 text-sm font-bold text-primary hover:underline"
               >
                 Add team members →
               </button>
@@ -1223,7 +1219,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
             return (
               <Card key={member.id} className="rounded-2xl border-border shadow-sm overflow-hidden">
                 <div className="p-4 flex items-center gap-3 border-b border-border/50">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#007AFF]/10 text-[#007AFF] font-extrabold text-sm">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-extrabold text-sm">
                     {member.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
                   </div>
                   <div className="flex flex-col flex-1">
@@ -1248,7 +1244,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                           disabled={savingAvail || availTableMissing}
                           className={`flex flex-col items-center justify-center rounded-xl py-2.5 gap-1 text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
                             isAvail
-                              ? "bg-[#16a34a] text-white shadow-sm"
+                              ? "bg-[var(--color-status-completed)] text-white shadow-sm"
                               : "bg-muted/40 text-muted-foreground border border-border hover:bg-muted"
                           }`}
                         >
@@ -1369,7 +1365,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                   {scheduleTimeSlots.length > 0 && !availTableMissing && availability.filter(
                     (a) => a.day_of_week === new Date(scheduleDate + "T12:00:00").getDay()
                   ).length > 0 && (
-                    <span className="ml-1.5 text-[#16a34a] normal-case font-normal">· based on team availability</span>
+                    <span className="ml-1.5 text-[var(--color-status-completed)] normal-case font-normal">· based on team availability</span>
                   )}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -1386,9 +1382,9 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                         onClick={() => setScheduleTime(slot === scheduleTime ? null : slot)}
                         className={`relative py-3 rounded-xl text-sm font-bold transition-all active:scale-95 flex flex-col items-center gap-0.5 ${
                           scheduleTime === slot
-                            ? "bg-[#007AFF] text-white shadow-sm"
+                            ? "bg-primary text-white shadow-sm"
                             : isBooked
-                            ? "bg-[#ea580c]/10 text-[#ea580c] border border-[#ea580c]/20 hover:bg-[#ea580c]/20"
+                            ? "icon-orange  border border-[var(--color-status-in-progress)]/20 hover:opacity-90"
                             : "bg-muted/50 text-foreground border border-border hover:bg-muted"
                         }`}
                       >
@@ -1406,7 +1402,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                 <select
                   value={scheduleClientId}
                   onChange={(e) => setScheduleClientId(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-ring/30"
                 >
                   <option value="">No client selected</option>
                   {clients.map((c) => (
@@ -1421,7 +1417,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Assign Crew</label>
                     {scheduleAssignedIds.length > 0 && (
-                      <span className="text-xs font-bold text-[#007AFF]">{scheduleAssignedIds.length} selected</span>
+                      <span className="text-xs font-bold text-primary">{scheduleAssignedIds.length} selected</span>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -1438,12 +1434,12 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                           }
                           className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border text-left transition-all active:scale-[0.99] ${
                             selected
-                              ? "border-[#007AFF] bg-[#007AFF]/8"
+                              ? "border-primary bg-primary/8"
                               : "border-border bg-muted/30 hover:bg-muted/50"
                           }`}
                         >
                           <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-extrabold ${
-                            selected ? "bg-[#007AFF] text-white" : "bg-muted text-muted-foreground"
+                            selected ? "bg-primary text-white" : "bg-muted text-muted-foreground"
                           }`}>
                             {m.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
                           </div>
@@ -1452,7 +1448,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                             <span className="text-xs text-muted-foreground capitalize">{m.role}</span>
                           </div>
                           {selected && (
-                            <span className="material-symbols-outlined text-[18px] text-[#007AFF] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+                            <span className="material-symbols-outlined text-[18px] text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
                               check_circle
                             </span>
                           )}
@@ -1471,7 +1467,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                   placeholder="e.g. Lawn mowing, Window cleaning…"
                   value={scheduleDescription}
                   onChange={(e) => setScheduleDescription(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
               </div>
 
@@ -1485,7 +1481,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                   onChange={(e) => setScheduleTotal(e.target.value)}
                   min="0"
                   step="0.01"
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
               </div>
 
@@ -1496,8 +1492,8 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
             {/* Footer CTA — or success screen */}
             {scheduleSuccessJob ? (
               <div className="px-5 py-6 border-t border-border/50 shrink-0 bg-background flex flex-col items-center gap-4 text-center">
-                <div className="flex size-14 items-center justify-center rounded-full bg-[#16a34a]/10">
-                  <span className="material-symbols-outlined text-[32px] text-[#16a34a]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <div className="flex size-14 items-center justify-center rounded-full bg-status-completed/10">
+                  <span className="material-symbols-outlined text-[32px] text-[var(--color-status-completed)]" style={{ fontVariationSettings: "'FILL' 1" }}>
                     check_circle
                   </span>
                 </div>
@@ -1514,7 +1510,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                     <a
                       key={m.id}
                       href={`mailto:${m.email}?subject=You've been assigned a job&body=Hi ${m.name},%0A%0AYou've been assigned a new job. Log into your HustleBricks portal to see the details.`}
-                      className="flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-[#007AFF]/10 text-[#007AFF] font-bold text-sm hover:bg-[#007AFF]/20 transition-colors"
+                      className="flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
                     >
                       <span className="material-symbols-outlined text-[16px]">mail</span>
                       Notify {m.name.split(" ")[0]}
@@ -1526,7 +1522,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                       setScheduleSuccessJob(null);
                       router.push(`/jobs/${scheduleSuccessJob.id}`);
                     }}
-                    className="w-full py-3 rounded-2xl bg-[#007AFF] text-white font-bold text-sm hover:bg-[#007AFF]/90 transition-colors"
+                    className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors"
                   >
                     View Job
                   </button>
@@ -1537,7 +1533,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                 <button
                   onClick={saveScheduledJob}
                   disabled={!scheduleTime || scheduleSaving}
-                  className="w-full py-3.5 rounded-2xl bg-[#007AFF] text-white font-extrabold text-sm hover:bg-[#007AFF]/90 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-lg shadow-[#007AFF]/20"
+                  className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
                 >
                   {scheduleSaving ? "Scheduling…" : scheduleTime ? `Schedule at ${formatSlotLabel(scheduleTime)}` : "Pick a time above"}
                 </button>

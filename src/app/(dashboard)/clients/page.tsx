@@ -143,7 +143,7 @@ export default function ClientsPage() {
         </div>
         <input
           type="text"
-          className="block w-full rounded-2xl border-0 py-3.5 pl-11 pr-4 text-foreground bg-card shadow-sm ring-1 ring-inset ring-border placeholder:text-muted-foreground focus:ring-2 focus:ring-inset focus:ring-[#007AFF] text-sm transition-all focus:outline-none"
+          className="block w-full rounded-2xl border-0 py-3.5 pl-11 pr-4 text-foreground bg-card shadow-sm ring-1 ring-inset ring-border placeholder:text-muted-foreground focus:ring-2 focus:ring-inset focus:ring-ring text-sm transition-all focus:outline-none"
           placeholder="Search by name, email, or phone…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -157,7 +157,7 @@ export default function ClientsPage() {
             <Badge
               className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                 activeFilter === tab.value
-                  ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+                  ? "bg-primary text-white hover:bg-primary/90"
                   : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
               }`}
               variant={activeFilter === tab.value ? "default" : "outline"}
@@ -195,10 +195,10 @@ export default function ClientsPage() {
                 {/* Avatar */}
                 <div className={`flex size-11 shrink-0 items-center justify-center rounded-full font-extrabold text-sm ${
                   client.tag === "vip"
-                    ? "bg-[#ea580c]/10 text-[#ea580c] border border-[#ea580c]/20"
+                    ? "icon-orange  border border-[var(--color-status-in-progress)]/20"
                     : client.tag === "commercial"
                     ? "bg-foreground/10 text-foreground border border-foreground/10"
-                    : "bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/10"
+                    : "bg-primary/10 text-primary border border-primary/10"
                 }`}>
                   {getInitials(client.name)}
                 </div>
@@ -206,7 +206,7 @@ export default function ClientsPage() {
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-lg text-foreground leading-tight">{client.name}</h3>
                     {client.tag === "vip" && (
-                      <span className="material-symbols-outlined text-[#ea580c] text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      <span className="material-symbols-outlined text-[var(--color-status-in-progress)] text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                     )}
                   </div>
                   <span className="text-sm font-medium text-muted-foreground">{TAG_LABELS[client.tag]}</span>
@@ -253,7 +253,7 @@ export default function ClientsPage() {
       {/* Floating add button */}
       <button
         onClick={() => { setShowModal(true); setError(null); setForm(EMPTY_FORM); }}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white press"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white press"
         style={{ boxShadow: "0 4px 20px rgba(0,122,255,0.4), 0 1px 4px rgba(0,122,255,0.3)" }}
       >
         <span className="material-symbols-outlined text-[28px]">person_add</span>
@@ -303,7 +303,7 @@ export default function ClientsPage() {
                       onClick={() => setForm((f) => ({ ...f, tag: t }))}
                       className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-all active:scale-95 ${
                         form.tag === t
-                          ? "border-[#007AFF] bg-[#007AFF]/10 text-[#007AFF]"
+                          ? "border-primary bg-primary/10 text-primary"
                           : "border-border bg-muted/40 text-foreground hover:bg-muted"
                       }`}
                     >
@@ -361,7 +361,7 @@ export default function ClientsPage() {
               <button
                 type="submit"
                 disabled={saving || !form.name.trim()}
-                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#007AFF] text-white shadow-md shadow-[#007AFF]/30 hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving…" : "Add Client"}
               </button>

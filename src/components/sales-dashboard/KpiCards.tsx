@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { CHART_COLORS } from "@/lib/chart-colors";
 
 export type KpiData = {
   totalRevenue: number;
@@ -35,7 +36,7 @@ export function KpiCards({ data, loading }: Props) {
           <div className="flex items-center gap-2">
             <span
               className="material-symbols-outlined text-[20px]"
-              style={{ color: "#16a34a", fontVariationSettings: "'FILL' 1" }}
+              style={{ color: "var(--color-status-completed)", fontVariationSettings: "'FILL' 1" }}
             >
               payments
             </span>
@@ -46,7 +47,7 @@ export function KpiCards({ data, loading }: Props) {
             className="text-xs font-bold px-2 py-0.5 rounded-full"
             style={{
               background: growthPositive ? "rgba(22,163,74,0.12)" : "rgba(239,68,68,0.12)",
-              color: growthPositive ? "#16a34a" : "#ef4444",
+              color: growthPositive ? CHART_COLORS.green : CHART_COLORS.red,
             }}
           >
             {pct(revenueGrowthPct)} vs last month
@@ -59,7 +60,7 @@ export function KpiCards({ data, loading }: Props) {
       {/* Deals Closed */}
       <KpiSmallCard
         icon="handshake"
-        iconColor="#007AFF"
+        iconColor={CHART_COLORS.blue}
         label="Deals Closed"
         value={dealsClosed.toString()}
         sub="Accepted quotes"
@@ -68,7 +69,7 @@ export function KpiCards({ data, loading }: Props) {
       {/* Conversion Rate */}
       <KpiSmallCard
         icon="conversion_path"
-        iconColor={conversionGood ? "#16a34a" : "#ea580c"}
+        iconColor={conversionGood ? CHART_COLORS.green : CHART_COLORS.orange}
         label="Conversion Rate"
         value={isFinite(conversionRate) ? `${conversionRate.toFixed(0)}%` : "—"}
         sub="Quotes won vs lost"
@@ -77,7 +78,7 @@ export function KpiCards({ data, loading }: Props) {
       {/* Avg Deal Size */}
       <KpiSmallCard
         icon="trending_up"
-        iconColor="#8b5cf6"
+        iconColor={CHART_COLORS.violet}
         label="Avg Deal Size"
         value={dealsClosed > 0 ? fmt(avgDealSize) : "—"}
         sub="Revenue ÷ deals closed"
@@ -86,7 +87,7 @@ export function KpiCards({ data, loading }: Props) {
       {/* Pipeline Value placeholder KPI */}
       <KpiSmallCard
         icon="account_balance_wallet"
-        iconColor="#ea580c"
+        iconColor={CHART_COLORS.orange}
         label="Open Pipeline"
         value="—"
         sub="From active quotes"

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { STATUS_HEX } from "@/lib/status-colors";
 
 type Tag = "residential" | "commercial" | "vip";
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
@@ -40,17 +41,12 @@ const TAG_LABELS: Record<Tag, string> = {
 };
 
 const TAG_COLORS: Record<Tag, { bg: string; text: string; border: string }> = {
-  residential: { bg: "bg-[#007AFF]/10", text: "text-[#007AFF]", border: "border-[#007AFF]/20" },
+  residential: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/20" },
   commercial: { bg: "bg-foreground/10", text: "text-foreground", border: "border-foreground/10" },
-  vip: { bg: "bg-[#ea580c]/10", text: "text-[#ea580c]", border: "border-[#ea580c]/20" },
+  vip: { bg: "icon-orange", text: "", border: "border-[var(--color-status-in-progress)]/20" },
 };
 
-const STATUS_COLORS: Record<JobStatus, string> = {
-  scheduled: "#007AFF",
-  in_progress: "#ea580c",
-  completed: "#16a34a",
-  cancelled: "#6b7280",
-};
+const STATUS_COLORS = STATUS_HEX;
 
 const STATUS_LABELS: Record<JobStatus, string> = {
   scheduled: "Scheduled",
@@ -201,7 +197,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <p className="font-bold text-foreground">Client not found</p>
-        <button onClick={() => router.push("/clients")} className="text-sm text-[#007AFF] font-bold">← Back to Clients</button>
+        <button onClick={() => router.push("/clients")} className="text-sm text-primary font-bold">← Back to Clients</button>
       </div>
     );
   }
@@ -258,13 +254,13 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                   {TAG_LABELS[client.tag]}
                 </Badge>
                 {hasPlan && (
-                  <Badge variant="secondary" className="border-0 text-[10px] font-bold uppercase tracking-wide bg-[#7c3aed]/10 text-[#7c3aed]">
+                  <Badge variant="secondary" className="border-0 text-[10px] font-bold uppercase tracking-wide icon-violet">
                     <span className="material-symbols-outlined text-[10px] mr-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>autorenew</span>
                     {PLAN_LABELS[client.recurring_plan]}
                   </Badge>
                 )}
                 {client.tag === "vip" && (
-                  <span className="material-symbols-outlined text-[#ea580c] text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                  <span className="material-symbols-outlined text-[var(--color-status-in-progress)] text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">Client since {formatDate(client.created_at)}</p>
@@ -276,7 +272,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             {client.phone && (
               <a
                 href={`tel:${client.phone}`}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#16a34a]/10 text-[#16a34a] font-bold text-sm hover:bg-[#16a34a]/20 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl icon-green  font-bold text-sm hover:opacity-90 transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">call</span>
                 Call
@@ -285,7 +281,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             {client.email && (
               <a
                 href={`mailto:${client.email}`}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#007AFF]/10 text-[#007AFF] font-bold text-sm hover:bg-[#007AFF]/20 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">mail</span>
                 Email
@@ -295,7 +291,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               onClick={copyPortalLink}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${
                 portalCopied
-                  ? "bg-[#16a34a]/10 text-[#16a34a]"
+                  ? "icon-green "
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
@@ -306,7 +302,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             </button>
             <button
               onClick={() => router.push(`/quotes/new?client=${client.id}`)}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#007AFF] text-white font-bold text-sm hover:bg-[#007AFF]/90 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">request_quote</span>
               Quote
@@ -339,7 +335,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                         href={`https://maps.apple.com/?q=${encodeURIComponent(client.address)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#007AFF]/10 text-[#007AFF] hover:bg-[#007AFF]/20 transition-colors"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                       >
                         <span className="material-symbols-outlined text-[14px]">navigation</span>
                       </a>
@@ -356,14 +352,14 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Revenue</span>
-          <span className="text-xl font-extrabold text-[#16a34a] tracking-tight">
+          <span className="text-xl font-extrabold text-[var(--color-status-completed)] tracking-tight">
             ${lifetimeRevenue.toLocaleString("en-US", { maximumFractionDigits: 0 })}
           </span>
           <span className="text-[10px] text-muted-foreground">lifetime</span>
         </Card>
         <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Outstanding</span>
-          <span className={`text-xl font-extrabold tracking-tight ${outstanding > 0 ? "text-[#ea580c]" : "text-[#16a34a]"}`}>
+          <span className={`text-xl font-extrabold tracking-tight ${outstanding > 0 ? "text-[var(--color-status-in-progress)]" : "text-[var(--color-status-completed)]"}`}>
             {outstanding > 0 ? `$${outstanding.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "✓"}
           </span>
           <span className="text-[10px] text-muted-foreground">unpaid</span>
@@ -379,7 +375,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
         <div className="p-4 flex items-center justify-between border-b border-border/50">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px] text-[#ea580c]" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>
+            <span className="material-symbols-outlined text-[18px] text-[var(--color-status-in-progress)]" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>
             <p className="text-sm font-bold text-foreground">Property Notes</p>
           </div>
           {!editingNotes && (
@@ -400,7 +396,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 onChange={(e) => setNotesValue(e.target.value)}
                 rows={4}
                 placeholder="Gate code, dog in yard, parking notes, glass type preferences…"
-                className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 resize-none"
+                className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
               />
               <div className="flex gap-2">
                 <button
@@ -412,7 +408,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 <button
                   onClick={saveNotes}
                   disabled={savingNotes}
-                  className="flex-1 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 disabled:opacity-50 transition-colors"
+                  className="flex-1 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {savingNotes ? "Saving…" : "Save"}
                 </button>
@@ -428,7 +424,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           ) : (
             <button
               onClick={startEditingNotes}
-              className="w-full flex flex-col items-center gap-1.5 py-5 text-center rounded-xl border-2 border-dashed border-border/60 hover:border-[#007AFF]/40 hover:bg-muted/30 transition-colors"
+              className="w-full flex flex-col items-center gap-1.5 py-5 text-center rounded-xl border-2 border-dashed border-border/60 hover:border-primary/40 hover:bg-muted/30 transition-colors"
             >
               <span className="material-symbols-outlined text-[28px] text-muted-foreground/40">add_notes</span>
               <p className="text-xs font-medium text-muted-foreground">Add property notes</p>
@@ -443,7 +439,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Upcoming</h3>
-            <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-xs font-bold">{upcomingJobs.length}</Badge>
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-xs font-bold">{upcomingJobs.length}</Badge>
           </div>
           {upcomingJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => router.push(`/jobs/${job.id}`)} />)}
         </section>
@@ -464,7 +460,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             <p className="text-sm text-muted-foreground">No jobs yet</p>
             <button
               onClick={() => router.push(`/quotes/new?client=${client.id}`)}
-              className="mt-1 text-sm font-bold text-[#007AFF] hover:underline"
+              className="mt-1 text-sm font-bold text-primary hover:underline"
             >
               Create a quote →
             </button>
@@ -481,7 +477,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       {/* New quote FAB */}
       <button
         onClick={() => router.push(`/quotes/new?client=${client.id}`)}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-[#007AFF]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-primary/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
       >
         <span className="material-symbols-outlined text-[28px]">request_quote</span>
       </button>
@@ -508,7 +504,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
               </div>
 
@@ -520,7 +516,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                       key={t}
                       onClick={() => setForm((f) => ({ ...f, tag: t }))}
                       className={`flex-1 rounded-xl border py-2.5 text-sm font-bold transition-all active:scale-95 ${
-                        form.tag === t ? "border-[#007AFF] bg-[#007AFF]/10 text-[#007AFF]" : "border-border bg-muted/40 text-foreground"
+                        form.tag === t ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/40 text-foreground"
                       }`}
                     >
                       {TAG_LABELS[t]}
@@ -538,7 +534,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                       onClick={() => setForm((f) => ({ ...f, recurring_plan: p }))}
                       className={`rounded-xl border py-2.5 text-xs font-bold transition-all active:scale-95 ${
                         form.recurring_plan === p
-                          ? "border-[#7c3aed] bg-[#7c3aed]/10 text-[#7c3aed]"
+                          ? "border-highlight-violet icon-violet"
                           : "border-border bg-muted/40 text-foreground"
                       }`}
                     >
@@ -552,25 +548,25 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phone</label>
                   <input type="tel" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30" />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</label>
                   <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30" />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Address</label>
                 <input type="text" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30" />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes</label>
                 <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={3}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 resize-none" />
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none" />
               </div>
               <div className="h-2" />
             </div>
@@ -579,7 +575,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               <button
                 onClick={saveEdit}
                 disabled={saving || !form.name.trim()}
-                className="w-full py-3.5 rounded-2xl bg-[#007AFF] text-white font-extrabold text-sm hover:bg-[#007AFF]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#007AFF]/20"
+                className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
               >
                 {saving ? "Saving…" : "Save Changes"}
               </button>
@@ -600,7 +596,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
   return (
     <Card
       onClick={onClick}
-      className="overflow-hidden rounded-2xl border-border shadow-sm cursor-pointer hover:shadow-md hover:border-[#007AFF]/20 transition-all"
+      className="overflow-hidden rounded-2xl border-border shadow-sm cursor-pointer hover:shadow-md hover:border-primary/20 transition-all"
     >
       <div className="h-1 w-full" style={{ backgroundColor: color }} />
       <div className="p-4 flex items-center gap-3">
@@ -624,7 +620,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className="font-extrabold text-sm text-foreground">${job.total.toFixed(2)}</span>
           {job.status === "completed" && (
-            <Badge variant="secondary" className={`border-0 text-[9px] font-bold px-1.5 py-0 ${isPaid ? "bg-[#16a34a]/10 text-[#16a34a]" : "bg-[#ea580c]/10 text-[#ea580c]"}`}>
+            <Badge variant="secondary" className={`border-0 text-[9px] font-bold px-1.5 py-0 ${isPaid ? "icon-green " : "icon-orange "}`}>
               {isPaid ? "Paid" : "Unpaid"}
             </Badge>
           )}

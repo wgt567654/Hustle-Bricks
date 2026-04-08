@@ -33,10 +33,10 @@ const FREQ_LABELS: Record<Frequency, string> = {
 };
 
 const FREQ_COLORS: Record<Frequency, string> = {
-  weekly: "bg-[#007AFF]/10 text-[#007AFF]",
-  biweekly: "bg-[#7c3aed]/10 text-[#7c3aed]",
-  monthly: "bg-[#16a34a]/10 text-[#16a34a]",
-  quarterly: "bg-[#ea580c]/10 text-[#ea580c]",
+  weekly: "bg-primary/10 text-primary",
+  biweekly: "icon-violet",
+  monthly: "icon-green ",
+  quarterly: "icon-orange ",
   annually: "bg-foreground/10 text-foreground",
 };
 
@@ -245,7 +245,7 @@ export default function PlansPage() {
         <div className="grid grid-cols-2 gap-3">
           <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Est. Monthly</span>
-            <span className="text-xl font-extrabold text-[#7c3aed] tracking-tight">
+            <span className="text-xl font-extrabold text-highlight-violet tracking-tight">
               ${monthlyRecurring.toLocaleString("en-US", { maximumFractionDigits: 0 })}
             </span>
             <span className="text-[10px] text-muted-foreground">recurring revenue</span>
@@ -270,7 +270,7 @@ export default function PlansPage() {
             onClick={() => setStatusFilter(tab.value)}
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
               statusFilter === tab.value
-                ? "bg-[#007AFF] text-white"
+                ? "bg-primary text-white"
                 : "bg-card border border-border text-muted-foreground hover:bg-muted/50"
             }`}
           >
@@ -294,7 +294,7 @@ export default function PlansPage() {
         {filtered.map((plan) => {
           const overdue = isOverdue(plan.next_service_date);
           return (
-            <Card key={plan.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-[#007AFF]/30 transition-colors">
+            <Card key={plan.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-primary/30 transition-colors">
               <div className="p-4 flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col flex-1 min-w-0">
@@ -305,7 +305,7 @@ export default function PlansPage() {
                     <span className="font-extrabold text-base text-foreground">${plan.price.toFixed(2)}</span>
                     <button
                       onClick={() => openEdit(plan)}
-                      className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-[#007AFF] hover:bg-[#007AFF]/10 transition-colors opacity-0 group-hover:opacity-100"
+                      className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
                     >
                       <span className="material-symbols-outlined text-[14px]">edit</span>
                     </button>
@@ -321,7 +321,7 @@ export default function PlansPage() {
                     <Badge variant="secondary" className="border-0 text-[10px] font-bold bg-muted text-muted-foreground">Paused</Badge>
                   )}
                   {plan.next_service_date && (
-                    <span className={`text-xs font-medium ${overdue ? "text-[#ea580c]" : "text-muted-foreground"}`}>
+                    <span className={`text-xs font-medium ${overdue ? "text-[var(--color-status-in-progress)]" : "text-muted-foreground"}`}>
                       {overdue ? "⚠ Overdue · " : "Next: "}
                       {formatDate(plan.next_service_date)}
                     </span>
@@ -340,7 +340,7 @@ export default function PlansPage() {
                     <button
                       onClick={() => generateJob(plan)}
                       disabled={generatingId === plan.id}
-                      className="flex-1 py-2.5 text-sm font-semibold text-[#007AFF] hover:text-white hover:bg-[#007AFF] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      className="flex-1 py-2.5 text-sm font-semibold text-primary hover:text-white hover:bg-primary transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
                     >
                       <span className="material-symbols-outlined text-[18px]">add_task</span>
                       {generatingId === plan.id ? "Generating…" : "Generate Job"}
@@ -358,7 +358,7 @@ export default function PlansPage() {
                   <>
                     <button
                       onClick={() => updateStatus(plan.id, "active")}
-                      className="flex-1 py-2.5 text-sm font-semibold text-[#16a34a] hover:bg-[#16a34a]/10 transition-colors flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2.5 text-sm font-semibold text-[var(--color-status-completed)] hover:opacity-90 transition-colors flex items-center justify-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-[18px]">play_arrow</span>
                       Resume
@@ -382,7 +382,7 @@ export default function PlansPage() {
       {/* FAB */}
       <button
         onClick={openAdd}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-[#007AFF]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-primary/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
       >
         <span className="material-symbols-outlined text-[28px]">add</span>
       </button>
@@ -474,7 +474,7 @@ export default function PlansPage() {
               <button
                 onClick={handleSave}
                 disabled={saving || !form.client_id || !form.name.trim()}
-                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-[#007AFF] text-white shadow-md hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-primary text-white shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
               >
                 {saving ? "Saving…" : editPlan ? "Save Changes" : "Create Plan"}
               </button>

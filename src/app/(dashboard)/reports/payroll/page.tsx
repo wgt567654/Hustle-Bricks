@@ -191,7 +191,7 @@ export default function PayrollPage() {
             onClick={() => setRange(r)}
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
               range === r
-                ? "bg-[#007AFF] text-white shadow-sm"
+                ? "bg-primary text-white shadow-sm"
                 : "bg-muted text-foreground border border-border hover:bg-muted/80"
             }`}
           >
@@ -208,7 +208,7 @@ export default function PayrollPage() {
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
             />
           </div>
           <div className="flex-1 flex flex-col gap-1">
@@ -217,7 +217,7 @@ export default function PayrollPage() {
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
             />
           </div>
         </div>

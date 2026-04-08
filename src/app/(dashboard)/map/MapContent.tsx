@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { nearestNeighborTSP } from "@/lib/routeOptimizer";
+import { STATUS_HEX } from "@/lib/status-colors";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -33,12 +34,7 @@ type TeamMember = {
   name: string;
 };
 
-const STATUS_COLORS: Record<JobStatus, string> = {
-  scheduled: "#007AFF",
-  in_progress: "#ea580c",
-  completed: "#16a34a",
-  cancelled: "#6b7280",
-};
+const STATUS_COLORS = STATUS_HEX;
 
 const STATUS_LABELS: Record<JobStatus, string> = {
   scheduled: "Scheduled",
@@ -295,7 +291,7 @@ export default function MapContent() {
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-[#007AFF] transition-all"
+                  className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${total > 0 ? (progress / total) * 100 : 0}%` }}
                 />
               </div>
@@ -315,7 +311,7 @@ export default function MapContent() {
               <Badge
                 className={`px-3 py-1 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                   filterStatus === f.value
-                    ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+                    ? "bg-primary text-white hover:bg-primary/90"
                     : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
                 }`}
                 variant={filterStatus === f.value ? "default" : "outline"}
@@ -334,7 +330,7 @@ export default function MapContent() {
               <select
                 value={routeEmployee}
                 onChange={(e) => { setRouteEmployee(e.target.value); setRouteStops([]); setRouteSaved(false); setRouteError(""); }}
-                className="flex-1 min-w-0 text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
+                className="flex-1 min-w-0 text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
               >
                 <option value="">Select employee…</option>
                 {teamMembers.map((m) => (
@@ -345,7 +341,7 @@ export default function MapContent() {
                 type="date"
                 value={routeDate}
                 onChange={(e) => { setRouteDate(e.target.value); setRouteStops([]); setRouteSaved(false); setRouteError(""); }}
-                className="text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
+                className="text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
               />
             </div>
             <input
@@ -353,12 +349,12 @@ export default function MapContent() {
               value={routeStartAddress}
               onChange={(e) => { setRouteStartAddress(e.target.value); setRouteStops([]); setRouteStartCoords(null); setRouteSaved(false); setRouteError(""); }}
               placeholder="Start address (optional) — e.g. shop or home"
-              className="w-full text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/40"
+              className="w-full text-sm rounded-xl border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
             <button
               onClick={handlePlanRoute}
               disabled={!routeEmployee || routePlanning || geocoding}
-              className="w-full px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-40"
+              className="w-full px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-40"
             >
               {routePlanning ? "Planning…" : "Plan Route"}
             </button>
@@ -420,7 +416,7 @@ export default function MapContent() {
               <Marker
                 position={routeStartCoords}
                 icon={L.divIcon({
-                  html: `<div style="width:28px;height:28px;border-radius:50%;background:#16a34a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:13px;color:white;font-family:system-ui,sans-serif">S</div>`,
+                  html: `<div style="width:28px;height:28px;border-radius:50%;background:${STATUS_HEX.completed};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:13px;color:white;font-family:system-ui,sans-serif">S</div>`,
                   className: "",
                   iconSize: [28, 28],
                   iconAnchor: [14, 14],
@@ -449,7 +445,7 @@ export default function MapContent() {
                   <Popup>
                     <div style={{ minWidth: 180 }}>
                       {routeIdx >= 0 && (
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#007AFF", marginBottom: 4 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: STATUS_HEX.scheduled, marginBottom: 4 }}>
                           Stop #{routeIdx + 1}
                         </div>
                       )}
@@ -476,7 +472,7 @@ export default function MapContent() {
                           marginTop: 8,
                           width: "100%",
                           padding: "6px 0",
-                          background: "#007AFF",
+                          background: STATUS_HEX.scheduled,
                           color: "white",
                           border: "none",
                           borderRadius: 8,
@@ -508,8 +504,8 @@ export default function MapContent() {
               disabled={routeSaving || routeSaved}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 ${
                 routeSaved
-                  ? "bg-[#16a34a]/10 text-[#16a34a]"
-                  : "bg-[#007AFF] text-white hover:bg-[#007AFF]/90 disabled:opacity-50"
+                  ? "icon-green"
+                  : "bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
               }`}
             >
               {routeSaved ? "✓ Saved" : routeSaving ? "Saving…" : "Save Route"}

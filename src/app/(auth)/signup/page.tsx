@@ -59,7 +59,7 @@ export default function SignupPage() {
 
         {/* Branding */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="size-14 rounded-2xl bg-[#16a34a] text-white flex items-center justify-center shadow-lg shadow-[#16a34a]/25 mb-2">
+          <div className="size-14 rounded-2xl bg-[var(--color-status-completed)] text-white flex items-center justify-center shadow-lg shadow-md mb-2">
             <span className="material-symbols-outlined text-[32px]">add_business</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Create an account</h1>

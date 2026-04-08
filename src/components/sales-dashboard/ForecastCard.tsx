@@ -20,7 +20,7 @@ export function ForecastCard({ pipelineValue, closeRate, forecastedRevenue }: Pr
       <div className="p-4 flex items-center gap-2 border-b">
         <span
           className="material-symbols-outlined text-[20px]"
-          style={{ color: "#ea580c", fontVariationSettings: "'FILL' 1" }}
+          style={{ color: "var(--color-status-in-progress)", fontVariationSettings: "'FILL' 1" }}
         >
           insights
         </span>
@@ -34,7 +34,7 @@ export function ForecastCard({ pipelineValue, closeRate, forecastedRevenue }: Pr
         {/* Pipeline Value */}
         <div className="p-4 flex flex-col gap-0.5">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Pipeline</p>
-          <p className="text-xl font-extrabold" style={{ color: "#007AFF" }}>
+          <p className="text-xl font-extrabold" style={{ color: "var(--color-primary)" }}>
             {hasData ? fmt(pipelineValue) : "—"}
           </p>
           <p className="text-[11px] text-muted-foreground">Active quotes</p>
@@ -43,7 +43,7 @@ export function ForecastCard({ pipelineValue, closeRate, forecastedRevenue }: Pr
         {/* Close Rate */}
         <div className="p-4 flex flex-col gap-0.5">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Close Rate</p>
-          <p className="text-xl font-extrabold" style={{ color: "#ea580c" }}>
+          <p className="text-xl font-extrabold" style={{ color: "var(--color-status-in-progress)" }}>
             {isFinite(closeRate) && closeRate > 0 ? `${closeRate.toFixed(0)}%` : "—"}
           </p>
           <p className="text-[11px] text-muted-foreground">Historical win rate</p>
@@ -52,7 +52,7 @@ export function ForecastCard({ pipelineValue, closeRate, forecastedRevenue }: Pr
         {/* Forecasted Revenue */}
         <div className="p-4 flex flex-col gap-0.5">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Forecast</p>
-          <p className="text-xl font-extrabold" style={{ color: "#16a34a" }}>
+          <p className="text-xl font-extrabold" style={{ color: "var(--color-status-completed)" }}>
             {forecastedRevenue > 0 ? fmt(forecastedRevenue) : "—"}
           </p>
           <p className="text-[11px] text-muted-foreground">Expected revenue</p>

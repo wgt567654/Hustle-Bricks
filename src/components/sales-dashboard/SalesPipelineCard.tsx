@@ -26,7 +26,7 @@ export function SalesPipelineCard({ stages }: Props) {
         <div className="flex items-center gap-2">
           <span
             className="material-symbols-outlined text-[20px]"
-            style={{ color: "#007AFF", fontVariationSettings: "'FILL' 1" }}
+            style={{ color: "var(--color-primary)", fontVariationSettings: "'FILL' 1" }}
           >
             funnel
           </span>

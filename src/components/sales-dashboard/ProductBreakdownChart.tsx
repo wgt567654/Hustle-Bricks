@@ -33,7 +33,7 @@ export function ProductBreakdownChart({ data }: Props) {
         <div className="flex items-center gap-2">
           <span
             className="material-symbols-outlined text-[20px]"
-            style={{ color: "#ea580c", fontVariationSettings: "'FILL' 1" }}
+            style={{ color: "var(--color-status-in-progress)", fontVariationSettings: "'FILL' 1" }}
           >
             category
           </span>

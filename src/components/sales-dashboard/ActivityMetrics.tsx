@@ -29,7 +29,7 @@ export function ActivityMetrics() {
         <div className="flex items-center gap-2">
           <span
             className="material-symbols-outlined text-[20px]"
-            style={{ color: "#16a34a", fontVariationSettings: "'FILL' 1" }}
+            style={{ color: "var(--color-status-completed)", fontVariationSettings: "'FILL' 1" }}
           >
             timeline
           </span>

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
+import { STATUS_HEX, STATUS_CLASS } from "@/lib/status-colors";
 
 type JobStatus = "scheduled" | "in_progress" | "completed";
 
@@ -16,12 +17,6 @@ type TodayJob = {
   scheduled_at: string | null;
   clients: { name: string; address: string | null } | null;
   job_line_items: { description: string }[];
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  scheduled: "#007AFF",
-  in_progress: "#ea580c",
-  completed: "#16a34a",
 };
 
 function formatTime(dateStr: string | null) {
@@ -43,10 +38,10 @@ function getTodayLabel() {
 }
 
 const QUICK_ACTIONS = [
-  { label: "New Quote", icon: "request_quote", href: "/quotes/new", color: "#007AFF", bg: "bg-[#007AFF]/10" },
-  { label: "Jobs", icon: "home_repair_service", href: "/jobs", color: "#ea580c", bg: "bg-[#ea580c]/10" },
-  { label: "Clients", icon: "groups", href: "/clients", color: "#16a34a", bg: "bg-[#16a34a]/10" },
-  { label: "Pipeline", icon: "trending_up", href: "/sales", color: "#8b5cf6", bg: "bg-[#8b5cf6]/10" },
+  { label: "New Quote", icon: "request_quote", href: "/quotes/new", colorClass: "icon-primary"  },
+  { label: "Jobs",      icon: "home_repair_service", href: "/jobs", colorClass: "icon-orange"   },
+  { label: "Clients",   icon: "groups",        href: "/clients",    colorClass: "icon-green"    },
+  { label: "Pipeline",  icon: "trending_up",   href: "/sales",      colorClass: "icon-violet"   },
 ];
 
 export default function Home() {
@@ -151,7 +146,10 @@ export default function Home() {
       </div>
 
       {/* Hero earnings card */}
-      <div className="relative overflow-hidden rounded-3xl bg-[#007AFF] p-6 text-white" style={{ boxShadow: "0 8px 32px rgba(0,122,255,0.35), 0 2px 8px rgba(0,122,255,0.2)" }}>
+      <div
+        className="relative overflow-hidden rounded-3xl bg-primary p-6 text-white"
+        style={{ boxShadow: "0 8px 32px oklch(0.511 0.230 277 / 0.35), 0 2px 8px oklch(0.511 0.230 277 / 0.20)" }}
+      >
         {/* Background orbs */}
         <div className="absolute -right-12 -top-12 size-56 rounded-full bg-white/10 blur-3xl pointer-events-none" />
         <div className="absolute -left-8 -bottom-8 size-36 rounded-full bg-white/5 blur-2xl pointer-events-none" />
@@ -213,10 +211,10 @@ export default function Home() {
             onClick={() => router.push(a.href)}
             className="flex flex-col items-center gap-2 press"
           >
-            <div className={`flex size-14 items-center justify-center rounded-2xl ${a.bg} shadow-card`} style={{ borderColor: `${a.color}20` }}>
+            <div className={`flex size-14 items-center justify-center rounded-2xl ${a.colorClass} shadow-card`}>
               <span
                 className="material-symbols-outlined text-[24px]"
-                style={{ color: a.color, fontVariationSettings: "'FILL' 1" }}
+                style={{ fontVariationSettings: "'FILL' 1" }}
               >
                 {a.icon}
               </span>
@@ -239,13 +237,10 @@ export default function Home() {
               onClick={() => router.push("/clients")}
               className="flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors active:bg-muted/50"
             >
-              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${clientCount > 0 ? "bg-[#16a34a]/10" : "bg-[#007AFF]/10"}`}>
+              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${clientCount > 0 ? "icon-green" : "icon-primary"}`}>
                 <span
                   className="material-symbols-outlined text-[20px]"
-                  style={{
-                    color: clientCount > 0 ? "#16a34a" : "#007AFF",
-                    fontVariationSettings: "'FILL' 1",
-                  }}
+                  style={{ fontVariationSettings: "'FILL' 1" }}
                 >
                   person_add
                 </span>
@@ -254,11 +249,11 @@ export default function Home() {
                 Add your first client
               </span>
               {clientCount > 0 ? (
-                <span className="material-symbols-outlined text-[20px] text-[#16a34a]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span className="material-symbols-outlined text-[20px] text-[var(--color-status-completed)]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   check_circle
                 </span>
               ) : (
-                <span className="material-symbols-outlined text-[20px] text-[#007AFF]">chevron_right</span>
+                <span className="material-symbols-outlined text-[20px] text-primary">chevron_right</span>
               )}
             </button>
 
@@ -267,13 +262,10 @@ export default function Home() {
               onClick={() => router.push("/services")}
               className="flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors active:bg-muted/50"
             >
-              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${serviceCount > 0 ? "bg-[#16a34a]/10" : "bg-[#007AFF]/10"}`}>
+              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${serviceCount > 0 ? "icon-green" : "icon-primary"}`}>
                 <span
                   className="material-symbols-outlined text-[20px]"
-                  style={{
-                    color: serviceCount > 0 ? "#16a34a" : "#007AFF",
-                    fontVariationSettings: "'FILL' 1",
-                  }}
+                  style={{ fontVariationSettings: "'FILL' 1" }}
                 >
                   home_repair_service
                 </span>
@@ -282,11 +274,11 @@ export default function Home() {
                 Add a service to your catalog
               </span>
               {serviceCount > 0 ? (
-                <span className="material-symbols-outlined text-[20px] text-[#16a34a]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span className="material-symbols-outlined text-[20px] text-[var(--color-status-completed)]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   check_circle
                 </span>
               ) : (
-                <span className="material-symbols-outlined text-[20px] text-[#007AFF]">chevron_right</span>
+                <span className="material-symbols-outlined text-[20px] text-primary">chevron_right</span>
               )}
             </button>
 
@@ -295,13 +287,10 @@ export default function Home() {
               onClick={() => router.push("/quotes/new")}
               className="flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors active:bg-muted/50"
             >
-              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${quoteCount > 0 ? "bg-[#16a34a]/10" : "bg-[#007AFF]/10"}`}>
+              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${quoteCount > 0 ? "icon-green" : "icon-primary"}`}>
                 <span
                   className="material-symbols-outlined text-[20px]"
-                  style={{
-                    color: quoteCount > 0 ? "#16a34a" : "#007AFF",
-                    fontVariationSettings: "'FILL' 1",
-                  }}
+                  style={{ fontVariationSettings: "'FILL' 1" }}
                 >
                   request_quote
                 </span>
@@ -310,11 +299,11 @@ export default function Home() {
                 Create your first quote
               </span>
               {quoteCount > 0 ? (
-                <span className="material-symbols-outlined text-[20px] text-[#16a34a]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span className="material-symbols-outlined text-[20px] text-[var(--color-status-completed)]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   check_circle
                 </span>
               ) : (
-                <span className="material-symbols-outlined text-[20px] text-[#007AFF]">chevron_right</span>
+                <span className="material-symbols-outlined text-[20px] text-primary">chevron_right</span>
               )}
             </button>
           </div>
@@ -327,14 +316,14 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Today's Schedule</h3>
             {todayJobs.length > 0 && (
-              <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-[10px] font-bold">
+              <Badge variant="secondary" className="status-scheduled border-0 text-[10px] font-bold">
                 {todayJobs.length}
               </Badge>
             )}
           </div>
           <button
             onClick={() => router.push("/jobs")}
-            className="flex items-center gap-1 text-xs font-bold text-[#007AFF] uppercase tracking-wide hover:underline"
+            className="flex items-center gap-1 text-xs font-bold text-primary uppercase tracking-wide hover:underline"
           >
             All Jobs
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
@@ -362,7 +351,7 @@ export default function Home() {
             </div>
             <button
               onClick={() => router.push("/quotes/new")}
-              className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-bold hover:bg-[#007AFF]/90 transition-colors"
+              className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               New Quote
@@ -373,7 +362,7 @@ export default function Home() {
         {todayJobs.length > 0 && (
           <div className="flex flex-col gap-3">
             {todayJobs.map((job) => {
-              const color = STATUS_COLOR[job.status] ?? "#007AFF";
+              const color = STATUS_HEX[job.status] ?? STATUS_HEX.scheduled;
               const time = formatTime(job.scheduled_at);
               const title = job.job_line_items[0]?.description ?? "Job";
 
@@ -422,12 +411,12 @@ export default function Home() {
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="font-extrabold text-sm text-foreground">${job.total.toFixed(2)}</span>
                       {job.status === "in_progress" && (
-                        <Badge variant="secondary" className="bg-[#ea580c]/10 text-[#ea580c] border-0 text-[9px] font-bold uppercase tracking-wide">
+                        <Badge variant="secondary" className={`${STATUS_CLASS.in_progress} border-0 text-[9px] font-bold uppercase tracking-wide`}>
                           Live
                         </Badge>
                       )}
                       {job.status === "scheduled" && (
-                        <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-[9px] font-bold uppercase tracking-wide">
+                        <Badge variant="secondary" className={`${STATUS_CLASS.scheduled} border-0 text-[9px] font-bold uppercase tracking-wide`}>
                           Up Next
                         </Badge>
                       )}
@@ -443,8 +432,8 @@ export default function Home() {
       {/* FAB */}
       <button
         onClick={() => router.push("/quotes/new")}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white press"
-        style={{ boxShadow: "0 4px 20px rgba(0,122,255,0.4), 0 1px 4px rgba(0,122,255,0.3)" }}
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white press"
+        style={{ boxShadow: "0 4px 20px oklch(0.511 0.230 277 / 0.40), 0 1px 4px oklch(0.511 0.230 277 / 0.30)" }}
       >
         <span className="material-symbols-outlined text-[28px]">add</span>
       </button>

@@ -153,7 +153,7 @@ export default function SalesPage() {
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pipeline Value</span>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold opacity-80">$</span>
-            <span className="text-3xl font-extrabold tracking-tight text-[#007AFF]">
+            <span className="text-3xl font-extrabold tracking-tight text-primary">
               {pipelineValue.toFixed(0)}
             </span>
           </div>
@@ -162,7 +162,7 @@ export default function SalesPage() {
 
         <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Close Rate</span>
-          <div className={`flex items-baseline gap-1 ${closeRate >= 50 ? "text-[#16a34a]" : closeRate > 0 ? "text-[#ea580c]" : "text-foreground"}`}>
+          <div className={`flex items-baseline gap-1 ${closeRate >= 50 ? "text-[var(--color-status-completed)]" : closeRate > 0 ? "text-[var(--color-status-in-progress)]" : "text-foreground"}`}>
             <span className="text-3xl font-extrabold tracking-tight">{closeRate}</span>
             <span className="text-xl font-bold opacity-80">%</span>
           </div>
@@ -181,7 +181,7 @@ export default function SalesPage() {
               <Badge
                 className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                   activeFilter === tab.value
-                    ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+                    ? "bg-primary text-white hover:bg-primary/90"
                     : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
                 }`}
                 variant={activeFilter === tab.value ? "default" : "outline"}
@@ -214,7 +214,7 @@ export default function SalesPage() {
           const isActing = actingId === quote.id;
 
           return (
-            <Card key={quote.id} onClick={() => router.push('/quotes/' + quote.id)} className="overflow-hidden rounded-2xl border-border shadow-sm flex flex-col gap-0 cursor-pointer hover:shadow-md transition-all hover:border-[#007AFF]/20">
+            <Card key={quote.id} onClick={() => router.push('/quotes/' + quote.id)} className="overflow-hidden rounded-2xl border-border shadow-sm flex flex-col gap-0 cursor-pointer hover:shadow-md transition-all hover:border-primary/20">
               <div className="h-1 w-full" style={{ backgroundColor: quote.status === "draft" ? "#6b7280" : quote.status === "sent" ? "#007AFF" : quote.status === "accepted" ? "#16a34a" : "#ef4444" }} />
               <div className="p-4 flex flex-col gap-3">
               <div className="flex items-start justify-between">
@@ -227,8 +227,8 @@ export default function SalesPage() {
 
               <div className="flex items-center justify-between">
                 {quote.status === "draft" && <Badge variant="secondary" className="bg-muted text-muted-foreground border-0">Draft</Badge>}
-                {quote.status === "sent" && <Badge variant="secondary" className="bg-[#007AFF]/10 text-[#007AFF] border-0">Quote Sent</Badge>}
-                {quote.status === "accepted" && <Badge variant="secondary" className="bg-[#16a34a]/10 text-[#16a34a] border-0">Won ✓</Badge>}
+                {quote.status === "sent" && <Badge variant="secondary" className="bg-primary/10 text-primary border-0">Quote Sent</Badge>}
+                {quote.status === "accepted" && <Badge variant="secondary" className="icon-green  border-0">Won ✓</Badge>}
                 {quote.status === "declined" && <Badge variant="secondary" className="bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-0">Lost</Badge>}
 
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
@@ -243,7 +243,7 @@ export default function SalesPage() {
                   <button
                     onClick={(e) => { e.stopPropagation(); updateStatus(quote.id, "sent"); }}
                     disabled={isActing}
-                    className="flex-1 rounded-xl font-bold py-2.5 text-sm bg-[#007AFF] text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+                    className="flex-1 rounded-xl font-bold py-2.5 text-sm bg-primary text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
                   >
                     {isActing ? "Sending…" : "Send Quote"}
                   </button>
@@ -262,7 +262,7 @@ export default function SalesPage() {
                   <button
                     onClick={(e) => { e.stopPropagation(); markWonAndCreateJob(quote); }}
                     disabled={isActing}
-                    className="flex-1 rounded-xl font-bold py-2.5 text-sm bg-[#16a34a] text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+                    className="flex-1 rounded-xl font-bold py-2.5 text-sm bg-[var(--color-status-completed)] text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
                   >
                     {isActing ? "Creating job…" : "Mark Won → Job"}
                   </button>
@@ -277,7 +277,7 @@ export default function SalesPage() {
       {/* New quote button */}
       <button
         onClick={() => router.push("/quotes/new")}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-[#007AFF]/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-primary/40 shadow-xl transition-transform hover:scale-105 active:scale-95"
       >
         <span className="material-symbols-outlined text-[28px]">add</span>
       </button>

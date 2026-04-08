@@ -38,14 +38,11 @@ export default function EmployeeShell({
 
       {/* ── TOP BAR ── */}
       <header className="sticky top-0 z-30 chrome">
-        <style>{`
-          .dark header.sticky { background: oklch(0.09 0 0 / 0.90) !important; }
-        `}</style>
         <div className="flex items-center justify-between px-4 pt-3 pb-2.5 max-w-xl mx-auto">
           <div className="flex items-center gap-3">
             <div
-              className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#007AFF]"
-              style={{ boxShadow: "0 2px 8px rgba(53,129,243,0.35)" }}
+              className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary"
+              style={{ boxShadow: "0 2px 8px color-mix(in srgb, var(--color-primary) 35%, transparent)" }}
             >
               <span
                 className="material-symbols-outlined text-[18px] text-white"
@@ -74,9 +71,6 @@ export default function EmployeeShell({
 
       {/* ── BOTTOM NAV ── */}
       <nav className="fixed bottom-0 left-0 w-full z-40 chrome">
-        <style>{`
-          .dark nav.fixed { background: oklch(0.09 0 0 / 0.90) !important; }
-        `}</style>
         <div className="flex items-stretch max-w-xl mx-auto h-[52px] px-1">
           {NAV.map(({ href, label, icon, exact }) => {
             const active = isActive(href, exact);
@@ -85,7 +79,7 @@ export default function EmployeeShell({
                 key={href}
                 href={href}
                 className={`relative flex flex-col items-center justify-center flex-1 gap-0.5 py-1.5 transition-all duration-150 active:scale-90 ${
-                  active ? "text-[#007AFF]" : "text-muted-foreground hover:text-foreground/80"
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
                 }`}
               >
                 <span

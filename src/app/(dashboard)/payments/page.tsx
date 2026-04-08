@@ -196,7 +196,7 @@ export default function PaymentsPage() {
 
       {/* Earnings summary */}
       <section>
-        <div className="relative overflow-hidden rounded-3xl bg-[#007AFF] p-6 text-white shadow-2xl shadow-[#007AFF]/30">
+        <div className="relative overflow-hidden rounded-3xl bg-primary p-6 text-white shadow-2xl shadow-primary/30">
           <div className="absolute -right-12 -top-12 size-56 rounded-full bg-white/10 blur-3xl pointer-events-none" />
           <div className="absolute -left-8 -bottom-8 size-36 rounded-full bg-white/5 blur-2xl pointer-events-none" />
           <div className="relative z-10 flex flex-col gap-5">
@@ -251,7 +251,7 @@ export default function PaymentsPage() {
             <Badge
               className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                 filter === tab.value
-                  ? "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+                  ? "bg-primary text-white hover:bg-primary/90"
                   : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
               }`}
               variant={filter === tab.value ? "default" : "outline"}
@@ -308,8 +308,8 @@ export default function PaymentsPage() {
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span className="font-extrabold text-foreground">${(job.payment?.amount ?? job.total).toFixed(2)}</span>
                     {isPaid
-                      ? <Badge variant="secondary" className="bg-[#16a34a]/10 text-[#16a34a] border-0 text-[10px]">Paid</Badge>
-                      : <Badge variant="secondary" className="bg-[#ea580c]/10 text-[#ea580c] border-0 text-[10px]">Unpaid</Badge>
+                      ? <Badge variant="secondary" className="icon-green  border-0 text-[10px]">Paid</Badge>
+                      : <Badge variant="secondary" className="icon-orange  border-0 text-[10px]">Unpaid</Badge>
                     }
                   </div>
                 </div>
@@ -345,8 +345,8 @@ export default function PaymentsPage() {
                         onClick={() => sendInvoice(job.id)}
                         className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-colors ${
                           sentInvoiceId === job.id
-                            ? "text-[#16a34a] bg-[#16a34a]/10"
-                            : "text-[#007AFF] bg-[#007AFF]/10 hover:bg-[#007AFF]/20"
+                            ? "text-[var(--color-status-completed)] bg-status-completed/10"
+                            : "text-primary bg-primary/10 hover:bg-primary/20"
                         }`}
                       >
                         {sentInvoiceId === job.id ? "Opened!" : "Send Invoice"}
@@ -355,7 +355,7 @@ export default function PaymentsPage() {
                     {!isPaid && (
                       <button
                         onClick={() => openPayModal(job)}
-                        className="text-[11px] font-bold uppercase tracking-wider text-[#16a34a] px-3 py-1.5 rounded-full bg-[#16a34a]/10 hover:bg-[#16a34a]/20 transition-colors"
+                        className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-status-completed)] px-3 py-1.5 rounded-full bg-status-completed/10 hover:opacity-90 transition-colors"
                       >
                         Mark Paid
                       </button>
@@ -404,7 +404,7 @@ export default function PaymentsPage() {
                     onChange={(e) => setPayAmount(e.target.value)}
                     step="0.01"
                     min="0"
-                    className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-[#16a34a]/30"
+                    className="w-full rounded-xl border border-border bg-card pl-8 pr-4 py-3 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
               </div>
@@ -419,7 +419,7 @@ export default function PaymentsPage() {
                       onClick={() => setPayMethod(m.value)}
                       className={`flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-bold transition-all active:scale-95 ${
                         payMethod === m.value
-                          ? "bg-[#16a34a] text-white shadow-sm"
+                          ? "bg-[var(--color-status-completed)] text-white shadow-sm"
                           : "bg-muted/50 text-foreground border border-border hover:bg-muted"
                       }`}
                     >
@@ -438,7 +438,7 @@ export default function PaymentsPage() {
               <button
                 onClick={confirmMarkPaid}
                 disabled={paySaving}
-                className="w-full py-3.5 rounded-2xl bg-[#16a34a] text-white font-extrabold text-sm hover:bg-[#16a34a]/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-[#16a34a]/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-[var(--color-status-completed)] text-white font-extrabold text-sm hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-md flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">attach_money</span>
                 {paySaving ? "Saving…" : `Record $${parseFloat(payAmount || "0").toFixed(2)} · ${METHOD_LABELS[payMethod] ?? payMethod}`}
