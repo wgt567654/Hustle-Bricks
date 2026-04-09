@@ -16,11 +16,12 @@ const NAV = [
 ];
 
 const MORE_ITEMS = [
-  { href: "/map",      label: "Job Map",  icon: "map",           colorClass: "icon-primary" },
-  { href: "/reports",  label: "Reports",  icon: "bar_chart",     colorClass: "icon-green"   },
-  { href: "/payments", label: "Payments", icon: "attach_money",  colorClass: "icon-green"   },
-  { href: "/plans",    label: "Plans",    icon: "autorenew",     colorClass: "icon-violet"  },
-  { href: "/leads",    label: "Leads",    icon: "person_search", colorClass: "icon-orange"  },
+  { href: "/map",         label: "Job Map",   icon: "map",           colorClass: "icon-primary" },
+  { href: "/canvassing",  label: "Canvass",   icon: "door_front",    colorClass: "icon-orange"  },
+  { href: "/reports",     label: "Reports",   icon: "bar_chart",     colorClass: "icon-green"   },
+  { href: "/payments",    label: "Payments",  icon: "attach_money",  colorClass: "icon-green"   },
+  { href: "/plans",       label: "Plans",     icon: "autorenew",     colorClass: "icon-violet"  },
+  { href: "/leads",       label: "Leads",     icon: "person_search", colorClass: "icon-orange"  },
 ];
 
 type Notification = {
@@ -186,15 +187,16 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
     router.refresh();
   }
 
-  const unreadCount = notifications.length;
-  const isOwner     = role === "owner";
-  const visibleNav  = isOwner ? NAV : NAV.filter((n) => n.href !== "/sales-dashboard");
+  const unreadCount  = notifications.length;
+  const isOwner      = role === "owner";
+  const visibleNav   = isOwner ? NAV : NAV.filter((n) => n.href !== "/sales-dashboard");
+  const isMapPage    = pathname === "/canvassing" || pathname.startsWith("/map");
 
   return (
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
 
       {/* ── TOP APP BAR — frosted glass chrome ── */}
-      <header className="sticky top-0 z-30 chrome">
+      <header className={`sticky top-0 z-30 ${isMapPage ? "" : "chrome"}`}>
         <div className="flex items-center justify-between px-4 pt-3 pb-2.5 max-w-xl mx-auto">
           {/* Brand + Greeting */}
           <div className="flex items-center gap-3">
@@ -404,7 +406,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       {/* ── MORE BOTTOM SHEET ── */}
       {moreOpen && (
         <div
-          className="fixed inset-0 z-50"
+          className="fixed inset-0 z-[3000]"
           style={{ background: "rgba(0,0,0,0.28)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
           onClick={() => setMoreOpen(false)}
         >
@@ -416,7 +418,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               <div className="w-8 h-1 rounded-full bg-muted-foreground/25" />
             </div>
             <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest px-5 mt-3 mb-3">More</p>
-            <div className="grid grid-cols-5 gap-3 px-5 pb-7">
+            <div className="grid grid-cols-3 gap-3 px-5 pb-7">
               {MORE_ITEMS.map(({ href, label, icon, colorClass }) => (
                 <button
                   key={href}
@@ -440,7 +442,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── BOTTOM NAVIGATION ── */}
-      <nav className="fixed bottom-0 left-0 w-full z-40 chrome">
+      <nav className={`fixed bottom-0 left-0 w-full z-40 ${isMapPage ? "" : "chrome"}`}>
         <div className="flex items-stretch max-w-xl mx-auto h-[52px] px-1">
           {visibleNav.map(({ href, label, icon, exact }) => {
             const active = isActive(href, exact);

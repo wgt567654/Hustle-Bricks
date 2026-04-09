@@ -5,8 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
-  { href: "/employee",          label: "Today",    icon: "home",          exact: true  },
-  { href: "/employee/schedule", label: "Schedule", icon: "calendar_month", exact: false },
+  { href: "/employee",            label: "Today",    icon: "home",          exact: true  },
+  { href: "/employee/canvassing", label: "Canvass",  icon: "door_front",    exact: false },
+  { href: "/employee/schedule",   label: "Schedule", icon: "calendar_month", exact: false },
 ];
 
 export default function EmployeeShell({
