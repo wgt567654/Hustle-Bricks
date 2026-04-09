@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { UserGreeting } from './UserGreeting';
 import { createClient } from '@/lib/supabase/client';
 import { STATUS_HEX } from '@/lib/status-colors';
 
@@ -16,12 +15,12 @@ const NAV = [
 ];
 
 const MORE_ITEMS = [
-  { href: "/map",         label: "Job Map",   icon: "map",           colorClass: "icon-primary" },
-  { href: "/canvassing",  label: "Canvass",   icon: "door_front",    colorClass: "icon-orange"  },
-  { href: "/reports",     label: "Reports",   icon: "bar_chart",     colorClass: "icon-green"   },
-  { href: "/payments",    label: "Payments",  icon: "attach_money",  colorClass: "icon-green"   },
-  { href: "/plans",       label: "Plans",     icon: "autorenew",     colorClass: "icon-violet"  },
-  { href: "/leads",       label: "Leads",     icon: "person_search", colorClass: "icon-orange"  },
+  { href: "/map",         label: "Job Map",  icon: "map"            },
+  { href: "/canvassing",  label: "Canvass",  icon: "door_front"     },
+  { href: "/reports",     label: "Reports",  icon: "bar_chart"      },
+  { href: "/payments",    label: "Payments", icon: "attach_money"   },
+  { href: "/plans",       label: "Plans",    icon: "autorenew"      },
+  { href: "/leads",       label: "Leads",    icon: "person_search"  },
 ];
 
 type Notification = {
@@ -195,64 +194,58 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
   return (
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
 
-      {/* ── TOP APP BAR — frosted glass chrome ── */}
-      <header className={`sticky top-0 z-30 ${isMapPage ? "" : "chrome"}`}>
-        <div className="flex items-center justify-between px-4 pt-3 pb-2.5 max-w-xl mx-auto">
-          {/* Brand + Greeting */}
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary"
-              style={{ boxShadow: "0 2px 8px color-mix(in srgb, var(--color-primary) 35%, transparent)" }}
-            >
-              <span
-                className="material-symbols-outlined text-[18px] text-white"
-                style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}
-              >
-                bolt
-              </span>
-            </div>
-            <UserGreeting />
-          </div>
-
-          {/* Icon buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
-              className={`flex size-8 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
-                settingsOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <span
-                className="material-symbols-outlined text-[19px]"
-                style={{ fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0" }}
-              >
-                settings
-              </span>
-            </button>
-
-            <button
-              onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
-              className={`relative flex size-8 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
-                open ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <span
-                className="material-symbols-outlined text-[19px]"
-                style={{ fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0" }}
-              >
-                notifications
-              </span>
-              {/* Unread badge */}
-              {(!open || !loaded) && (
-                <span className="absolute top-1 right-1 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" style={{ boxShadow: "0 0 0 1.5px var(--color-background)" }} />
-              )}
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* ── FLOATING icon buttons (settings + notifications) — all pages ── */}
+      <div className="fixed top-3 right-3 z-[450] flex items-center gap-1.5">
+        <button
+          onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
+          className="flex size-9 items-center justify-center rounded-full active:scale-90 transition-all"
+          style={{
+            background: isMapPage ? "rgba(0,0,0,0.45)" : "var(--card)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            border: isMapPage ? "none" : "1px solid var(--border)",
+            boxShadow: isMapPage ? "none" : "0 2px 8px rgba(0,0,0,0.08)",
+          }}
+        >
+          <span
+            className="material-symbols-outlined text-[19px]"
+            style={{
+              color: isMapPage ? "white" : "var(--muted-foreground)",
+              fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0",
+            }}
+          >
+            settings
+          </span>
+        </button>
+        <button
+          onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
+          className="relative flex size-9 items-center justify-center rounded-full active:scale-90 transition-all"
+          style={{
+            background: isMapPage ? "rgba(0,0,0,0.45)" : "var(--card)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            border: isMapPage ? "none" : "1px solid var(--border)",
+            boxShadow: isMapPage ? "none" : "0 2px 8px rgba(0,0,0,0.08)",
+          }}
+        >
+          <span
+            className="material-symbols-outlined text-[19px]"
+            style={{
+              color: isMapPage ? "white" : "var(--muted-foreground)",
+              fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0",
+            }}
+          >
+            notifications
+          </span>
+          {(!open || !loaded) && (
+            <span className="absolute top-1 right-1 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" style={{ boxShadow: "0 0 0 1.5px transparent" }} />
+          )}
+        </button>
+      </div>
 
       {/* ── SETTINGS PANEL ── */}
       {settingsOpen && (
-        <div className="fixed inset-0 z-40" style={{ top: 56 }}>
+        <div className="fixed inset-0 z-40" style={{ top: 52 }}>
           <div className="absolute inset-0" onClick={() => setSettingsOpen(false)} />
           <div className="absolute right-3 top-2 w-72 max-w-[calc(100vw-24px)]">
             <div
@@ -329,7 +322,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── NOTIFICATION DRAWER ── */}
       {open && (
-        <div className="fixed inset-0 z-40" style={{ top: 56 }}>
+        <div className="fixed inset-0 z-40" style={{ top: 52 }}>
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
           <div className="absolute right-3 top-2 w-80 max-w-[calc(100vw-24px)]">
             <div
@@ -401,7 +394,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 pb-24">{children}</main>
+      <main className="flex-1 pb-28">{children}</main>
 
       {/* ── MORE BOTTOM SHEET ── */}
       {moreOpen && (
@@ -411,78 +404,117 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           onClick={() => setMoreOpen(false)}
         >
           <div
-            className="absolute bottom-0 left-0 w-full glass-sheet rounded-t-[28px]"
+            className="absolute bottom-0 left-0 w-full rounded-t-[28px] overflow-hidden"
+            style={{
+              background: "oklch(1 0 0 / 0.92)",
+              backdropFilter: "blur(24px) saturate(1.6)",
+              WebkitBackdropFilter: "blur(24px) saturate(1.6)",
+              borderTop: "1px solid oklch(0 0 0 / 0.07)",
+              boxShadow: "0 -8px 32px rgba(0,0,0,0.10)",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-center pt-3 pb-0.5">
+            <div className="flex justify-center pt-3">
               <div className="w-8 h-1 rounded-full bg-muted-foreground/25" />
             </div>
-            <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest px-5 mt-3 mb-3">More</p>
-            <div className="grid grid-cols-3 gap-3 px-5 pb-7">
-              {MORE_ITEMS.map(({ href, label, icon, colorClass }) => (
-                <button
-                  key={href}
-                  onClick={() => router.push(href)}
-                  className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
-                >
-                  <div
-                    className={`flex size-14 items-center justify-center rounded-2xl ${colorClass}`}
-                    style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+            <div className="grid grid-cols-3 gap-0 px-2 pt-3 pb-8">
+              {MORE_ITEMS.map(({ href, label, icon }) => {
+                const active = pathname === href || pathname.startsWith(href + "/");
+                return (
+                  <button
+                    key={href}
+                    onClick={() => router.push(href)}
+                    className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl active:scale-95 transition-all duration-150 hover:bg-black/[0.04]"
                   >
-                    <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    <span
+                      className="material-symbols-outlined text-[26px]"
+                      style={{
+                        color: active ? "var(--color-primary)" : "var(--muted-foreground)",
+                        fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                      }}
+                    >
                       {icon}
                     </span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-foreground text-center">{label}</span>
-                </button>
-              ))}
+                    <span
+                      className="text-[10px] leading-none font-semibold"
+                      style={{ color: active ? "var(--color-primary)" : "var(--muted-foreground)" }}
+                    >
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── BOTTOM NAVIGATION ── */}
-      <nav className={`fixed bottom-0 left-0 w-full z-40 ${isMapPage ? "" : "chrome"}`}>
-        <div className="flex items-stretch max-w-xl mx-auto h-[52px] px-1">
-          {visibleNav.map(({ href, label, icon, exact }) => {
-            const active = isActive(href, exact);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`relative flex flex-col items-center justify-center flex-1 gap-0.5 py-1.5 transition-all duration-150 active:scale-90 ${
-                  active ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
-                }`}
-              >
-                <span
-                  className="material-symbols-outlined text-[23px]"
-                  style={active ? { fontVariationSettings: "'FILL' 1, 'wght' 500" } : undefined}
-                >
-                  {icon}
-                </span>
-                <span className={`text-[9px] leading-none ${active ? "font-bold" : "font-medium"}`}>{label}</span>
-              </Link>
-            );
-          })}
-
-          <button
-            onClick={() => setMoreOpen((v) => !v)}
-            className={`relative flex flex-col items-center justify-center flex-1 gap-0.5 py-1.5 transition-all duration-150 active:scale-90 ${
-              moreOpen ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
-            }`}
+      {/* ── BOTTOM NAVIGATION — floating pill ── */}
+      {!isMapPage && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40" style={{ width: "calc(100% - 32px)", maxWidth: 480 }}>
+          <div
+            className="flex items-center justify-around px-2 py-3 rounded-[28px] shadow-2xl"
+            style={{
+              background: "oklch(1 0 0 / 0.88)",
+              backdropFilter: "blur(24px) saturate(1.6)",
+              WebkitBackdropFilter: "blur(24px) saturate(1.6)",
+              border: "1px solid oklch(0 0 0 / 0.07)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
+            }}
           >
-            <span
-              className="material-symbols-outlined text-[23px]"
-              style={moreOpen ? { fontVariationSettings: "'FILL' 1, 'wght' 500" } : undefined}
+            {visibleNav.map(({ href, label, icon, exact }) => {
+              const active = isActive(href, exact);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className="relative flex flex-col items-center justify-center flex-1 gap-1 py-0.5 transition-all duration-150 active:scale-90"
+                >
+                  <span
+                    className="material-symbols-outlined text-[22px]"
+                    style={{
+                      color: active ? "var(--color-primary)" : "var(--muted-foreground)",
+                      fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                    }}
+                  >
+                    {icon}
+                  </span>
+                  <span
+                    className="text-[9px] leading-none font-semibold"
+                    style={{ color: active ? "var(--color-primary)" : "var(--muted-foreground)" }}
+                  >
+                    {label}
+                  </span>
+                  {active && (
+                    <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                  )}
+                </Link>
+              );
+            })}
+
+            <button
+              onClick={() => setMoreOpen((v) => !v)}
+              className="relative flex flex-col items-center justify-center flex-1 gap-1 py-0.5 transition-all duration-150 active:scale-90"
             >
-              grid_view
-            </span>
-            <span className={`text-[9px] leading-none ${moreOpen ? "font-bold" : "font-medium"}`}>More</span>
-          </button>
+              <span
+                className="material-symbols-outlined text-[22px]"
+                style={{
+                  color: moreOpen ? "var(--color-primary)" : "var(--muted-foreground)",
+                  fontVariationSettings: moreOpen ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                }}
+              >
+                grid_view
+              </span>
+              <span
+                className="text-[9px] leading-none font-semibold"
+                style={{ color: moreOpen ? "var(--color-primary)" : "var(--muted-foreground)" }}
+              >
+                More
+              </span>
+            </button>
+          </div>
         </div>
-        {/* iOS home indicator space */}
-        <div className="h-5" />
-      </nav>
+      )}
     </div>
   );
 }

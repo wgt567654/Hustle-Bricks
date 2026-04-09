@@ -495,7 +495,7 @@ export default function CanvassingMap() {
   const chipInactive = { background: "rgba(0,0,0,0.40)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", color: "rgba(255,255,255,0.85)" } as const;
 
   return (
-    <div className="relative h-screen max-h-screen overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden" style={{ touchAction: "none" }}>
       {/* ── Map (full screen) ── */}
       <div className="absolute inset-0">
         <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }} zoomControl={false}>
@@ -653,7 +653,7 @@ export default function CanvassingMap() {
         </div>
 
         {/* Satellite / Street toggle */}
-        <div className="absolute bottom-16 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20">
+        <div className="absolute bottom-24 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20">
           <button onClick={() => setMapLayer("satellite")}
             className={`px-3 py-1.5 text-xs font-bold transition-colors ${mapLayer === "satellite" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}>
             Satellite
@@ -666,7 +666,7 @@ export default function CanvassingMap() {
 
         {/* My location button */}
         <button onClick={recenterOnUser} disabled={!userPosition}
-          className="absolute bottom-16 right-3 z-[400] size-10 flex items-center justify-center rounded-full bg-background shadow-lg border border-border active:scale-90 transition-all disabled:opacity-40"
+          className="absolute bottom-24 right-3 z-[400] size-10 flex items-center justify-center rounded-full bg-background shadow-lg border border-border active:scale-90 transition-all disabled:opacity-40"
           title="Go to my location">
           <span className="material-symbols-outlined text-[20px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>my_location</span>
         </button>
@@ -722,6 +722,29 @@ export default function CanvassingMap() {
           </div>
         </div>
       )}
+
+      {/* ── Floating bottom nav ── */}
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
+        style={{ width: "calc(100% - 32px)", maxWidth: 420 }}>
+        <div className="flex items-center justify-around px-4 py-3 rounded-[28px] shadow-2xl"
+          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)" }}>
+          {[
+            { href: "/",                label: "Home",     icon: "home"           },
+            { href: "/calendar",        label: "Schedule", icon: "calendar_month" },
+            { href: "/clients",         label: "Clients",  icon: "group"          },
+            { href: "/sales-dashboard", label: "Sales",    icon: "leaderboard"    },
+            { href: "/map",             label: "Job Map",  icon: "map"            },
+          ].map(({ href, label, icon }) => (
+            <Link key={href} href={href}
+              className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <span className="material-symbols-outlined text-[22px] text-white/80" style={{ fontVariationSettings: "'FILL' 0" }}>
+                {icon}
+              </span>
+              <span className="text-[9px] font-semibold text-white/60 leading-none">{label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
 
       {/* ── Quick Action Sheet (canvass mode only) ── */}
       {selected && mapMode === "canvass" && (
