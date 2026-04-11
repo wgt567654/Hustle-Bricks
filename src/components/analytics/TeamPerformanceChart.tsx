@@ -96,7 +96,7 @@ export function TeamPerformanceChart({ members }: Props) {
                     <LabelList
                       dataKey="revenue"
                       position="right"
-                      formatter={(v: number) => fmtShort(v)}
+                      formatter={(v) => fmtShort(v as number)}
                       style={{ fontSize: 11, fill: "var(--muted-foreground)", fontWeight: 600 }}
                     />
                   </Bar>
