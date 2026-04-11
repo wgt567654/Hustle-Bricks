@@ -88,7 +88,7 @@ async function fetchNotifications(): Promise<Notification[]> {
   const notes: Notification[] = [];
 
   // Pending booking requests from client portal
-  const bookings = (pendingBookings ?? []) as { id: string; requested_date: string; requested_time: string; clients: { name: string } | null }[];
+  const bookings = (pendingBookings ?? []) as unknown as { id: string; requested_date: string; requested_time: string; clients: { name: string } | null }[];
   if (bookings.length > 0) {
     const first = bookings[0];
     const dateLabel = new Date(first.requested_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
