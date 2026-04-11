@@ -47,6 +47,18 @@ export default function SettingsPage() {
   const [smartScheduling, setSmartScheduling] = useState(false);
   const [savingAutomation, setSavingAutomation] = useState<string | null>(null);
 
+  // Scheduling settings
+  const [unavailableDays, setUnavailableDays] = useState<number[]>([0, 6]);
+  const [dayHours, setDayHours] = useState<Record<number, { from: string; until: string }>>({
+    1: { from: "08:00", until: "17:00" },
+    2: { from: "08:00", until: "17:00" },
+    3: { from: "08:00", until: "17:00" },
+    4: { from: "08:00", until: "17:00" },
+    5: { from: "08:00", until: "17:00" },
+  });
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleSaved, setScheduleSaved] = useState(false);
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -78,6 +90,16 @@ export default function SettingsPage() {
         setCommissionRate(business.commission_rate != null ? String(business.commission_rate) : "5.00");
         setSmsReminders(business.sms_reminders_enabled ?? false);
         setSmartScheduling(business.smart_scheduling_enabled ?? false);
+
+        const { data: schedSettings } = await supabase
+          .from("scheduling_settings")
+          .select("unavailable_days, day_hours")
+          .eq("business_id", business.id)
+          .maybeSingle();
+        if (schedSettings) {
+          setUnavailableDays((schedSettings as { unavailable_days: number[] }).unavailable_days ?? [0, 6]);
+          setDayHours((schedSettings as { day_hours: Record<number, { from: string; until: string }> }).day_hours ?? {});
+        }
       }
       setLoading(false);
     }
@@ -169,6 +191,30 @@ export default function SettingsPage() {
     setSavingAutomation(null);
   }
 
+  async function saveScheduling() {
+    if (!businessId) return;
+    setSavingSchedule(true);
+    const supabase = createClient();
+    await supabase.from("scheduling_settings").upsert({
+      business_id: businessId,
+      unavailable_days: unavailableDays,
+      day_hours: dayHours,
+    }, { onConflict: "business_id" });
+    setSavingSchedule(false);
+    setScheduleSaved(true);
+    setTimeout(() => setScheduleSaved(false), 2000);
+  }
+
+  function toggleDay(day: number) {
+    setUnavailableDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  }
+
+  function setDayHour(day: number, field: "from" | "until", value: string) {
+    setDayHours((prev) => ({ ...prev, [day]: { ...(prev[day] ?? { from: "08:00", until: "17:00" }), [field]: value } }));
+  }
+
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -180,7 +226,7 @@ export default function SettingsPage() {
   const hasContactInfo = contactEmail || contactPhone;
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 max-w-xl mx-auto pb-40">
+    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-2xl pb-40 lg:pb-8">
       <div className="flex flex-col gap-1 mb-2">
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground">Manage your business profile and account.</p>
@@ -661,6 +707,67 @@ export default function SettingsPage() {
             ))}
           </Card>
         </section>
+
+        {/* Scheduling Availability */}
+        {(() => {
+          const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          const HOURS = Array.from({ length: 14 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`); // 06:00–19:00
+          return (
+            <section className="flex flex-col gap-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Scheduling</h3>
+              <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+                <div className="p-4 flex flex-col gap-1">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Set which days and hours clients can request appointments from your booking link.
+                  </p>
+                  {DAY_LABELS.map((label, day) => {
+                    const isAvailable = !unavailableDays.includes(day);
+                    const hours = dayHours[day] ?? { from: "08:00", until: "17:00" };
+                    return (
+                      <div key={day} className="flex flex-col gap-2 py-2 border-b border-border/40 last:border-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-bold ${isAvailable ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
+                          <button
+                            onClick={() => toggleDay(day)}
+                            className={`w-10 h-5 rounded-full relative shadow-inner transition-colors duration-200 ${isAvailable ? "bg-primary" : "bg-muted"}`}
+                          >
+                            <div className={`size-4 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform duration-200 ${isAvailable ? "translate-x-5" : "translate-x-0.5"}`} />
+                          </button>
+                        </div>
+                        {isAvailable && (
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={hours.from}
+                              onChange={(e) => setDayHour(day, "from", e.target.value)}
+                              className="flex-1 rounded-lg border border-border bg-muted/30 px-2 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
+                            >
+                              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                            <span className="text-xs text-muted-foreground">to</span>
+                            <select
+                              value={hours.until}
+                              onChange={(e) => setDayHour(day, "until", e.target.value)}
+                              className="flex-1 rounded-lg border border-border bg-muted/30 px-2 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
+                            >
+                              {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    onClick={saveScheduling}
+                    disabled={savingSchedule}
+                    className="mt-3 w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {scheduleSaved ? "Saved!" : savingSchedule ? "Saving…" : "Save Schedule"}
+                  </button>
+                </div>
+              </Card>
+            </section>
+          );
+        })()}
 
         {/* Account */}
         <section className="flex flex-col gap-3">

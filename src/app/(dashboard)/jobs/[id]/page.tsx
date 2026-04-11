@@ -465,7 +465,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       : null;
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 max-w-xl mx-auto pb-36">
+    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-36 lg:pb-8">
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
@@ -492,6 +492,12 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </button>
         )}
       </div>
+
+      {/* Two-column body on desktop */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+
+      {/* ── Left column: job info + line items + expenses ── */}
+      <div className="flex flex-col gap-6 lg:flex-[3]">
 
       {/* Details card */}
       <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
@@ -740,6 +746,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         )}
       </section>
 
+      </div>{/* end left column */}
+
+      {/* ── Right column: recurring + photos ── */}
+      <div className="flex flex-col gap-6 lg:flex-[2]">
+
       {/* ── RECURRING SECTION ── */}
       <section>
         <div className="flex items-center justify-between mb-3">
@@ -849,10 +860,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         </div>
       </section>
 
+      </div>{/* end right column */}
+      </div>{/* end two-column body */}
+
       {/* Completed — show collect payment prompt if no modal */}
       {job.status === "completed" && !payModalOpen && (
-        <div className="fixed bottom-0 left-0 w-full z-40 bg-card border-t border-border p-4 pb-10">
-          <div className="max-w-xl mx-auto flex gap-3">
+        <div className="fixed bottom-0 left-0 lg:left-[60px] w-full lg:w-[calc(100%-60px)] z-40 bg-card border-t border-border p-4 pb-10">
+          <div className="max-w-xl mx-auto lg:max-w-none lg:max-w-3xl flex gap-3">
             <button
               onClick={() => setPayModalOpen(true)}
               className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[var(--color-status-completed)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
@@ -872,8 +886,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Action bar */}
       {(job.status === "scheduled" || job.status === "in_progress") && (
-        <div className="fixed bottom-0 left-0 w-full z-40 bg-card border-t border-border p-4 pb-10">
-          <div className="max-w-xl mx-auto flex gap-3">
+        <div className="fixed bottom-0 left-0 lg:left-[60px] w-full lg:w-[calc(100%-60px)] z-40 bg-card border-t border-border p-4 pb-10">
+          <div className="max-w-xl mx-auto lg:max-w-none lg:max-w-3xl flex gap-3">
             {job.status === "scheduled" && (
               <button
                 onClick={() => updateStatus("in_progress")}

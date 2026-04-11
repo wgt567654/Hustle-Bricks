@@ -34,6 +34,15 @@ type Job = {
   payments: { status: string }[];
 };
 
+type BookingRequest = {
+  id: string;
+  requested_date: string;
+  requested_time: string;
+  notes: string | null;
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
+};
+
 const TAG_LABELS: Record<Tag, string> = {
   residential: "Residential",
   commercial: "Commercial",
@@ -82,10 +91,16 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", tag: "residential" as Tag, notes: "", recurring_plan: "none" as RecurringPlan });
   const [saving, setSaving] = useState(false);
-  const [portalCopied, setPortalCopied] = useState(false);
+  const [sendMenuOpen, setSendMenuOpen] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
+  const [actioningRequest, setActioningRequest] = useState<string | null>(null);
 
   // Inline notes editing
   const [editingNotes, setEditingNotes] = useState(false);
@@ -93,12 +108,35 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const [savingNotes, setSavingNotes] = useState(false);
   const notesRef = useRef<HTMLTextAreaElement>(null);
 
-  function copyPortalLink() {
-    const url = `${window.location.origin}/portal/${id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setPortalCopied(true);
-      setTimeout(() => setPortalCopied(false), 2000);
+  async function sendByEmail() {
+    setEmailSending(true);
+    await fetch("/api/email/send-booking-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: id }),
     });
+    setEmailSending(false);
+    setEmailSent(true);
+    setTimeout(() => { setEmailSent(false); setSendMenuOpen(false); }, 2000);
+  }
+
+  function sendBySms() {
+    if (!client) return;
+    const url = `${window.location.origin}/portal/${id}`;
+    const msg = encodeURIComponent(`Hi ${client.name}! Use this link to book your appointment: ${url}`);
+    window.open(`sms:${client.phone}?body=${msg}`);
+    setSendMenuOpen(false);
+  }
+
+  function copyLink() {
+    const url = `${window.location.origin}/portal/${id}`;
+    if (navigator.share) {
+      navigator.share({ title: "Book your appointment", url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
   }
 
   useEffect(() => {
@@ -137,6 +175,24 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         .order("scheduled_at", { ascending: false });
 
       setJobs((jobsData as unknown as Job[]) ?? []);
+
+      // Load pending booking requests
+      const { data: biz } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", (await supabase.auth.getUser()).data.user!.id)
+        .single();
+      if (biz) {
+        setBusinessId(biz.id);
+        const { data: reqs } = await supabase
+          .from("booking_requests")
+          .select("id, requested_date, requested_time, notes, status, created_at")
+          .eq("client_id", id)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false });
+        setBookingRequests((reqs as BookingRequest[]) ?? []);
+      }
+
       setLoading(false);
     }
     load();
@@ -180,6 +236,41 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     setEditingNotes(false);
   }
 
+  async function approveBooking(req: BookingRequest) {
+    if (!businessId || !client) return;
+    setActioningRequest(req.id);
+    const supabase = createClient();
+    const scheduledAt = new Date(`${req.requested_date}T${req.requested_time}:00`).toISOString();
+    await Promise.all([
+      supabase.from("jobs").insert({
+        business_id: businessId,
+        client_id: client.id,
+        status: "scheduled",
+        scheduled_at: scheduledAt,
+        total: 0,
+        notes: req.notes || null,
+      }),
+      supabase.from("booking_requests").update({ status: "accepted" }).eq("id", req.id),
+    ]);
+    setBookingRequests((prev) => prev.filter((r) => r.id !== req.id));
+    setActioningRequest(null);
+    // Reload jobs to show the new one
+    const { data: jobsData } = await supabase
+      .from("jobs")
+      .select("id, status, total, scheduled_at, completed_at, job_line_items(description), payments(status)")
+      .eq("client_id", id)
+      .order("scheduled_at", { ascending: false });
+    setJobs((jobsData as unknown as Job[]) ?? []);
+  }
+
+  async function declineBooking(reqId: string) {
+    setActioningRequest(reqId);
+    const supabase = createClient();
+    await supabase.from("booking_requests").update({ status: "declined" }).eq("id", reqId);
+    setBookingRequests((prev) => prev.filter((r) => r.id !== reqId));
+    setActioningRequest(null);
+  }
+
   function startEditingNotes() {
     setEditingNotes(true);
     setTimeout(() => notesRef.current?.focus(), 50);
@@ -217,7 +308,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const hasPlan = client.recurring_plan && client.recurring_plan !== "none";
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 max-w-xl mx-auto pb-32">
+    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-32 lg:pb-8">
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -238,6 +329,12 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           <span className="material-symbols-outlined text-[20px]">edit</span>
         </button>
       </div>
+
+      {/* Two-column body on desktop */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+
+      {/* ── Left column: profile + stats + notes ── */}
+      <div className="flex flex-col gap-6 lg:flex-[3]">
 
       {/* Profile card */}
       <Card className="rounded-3xl border-border shadow-sm overflow-hidden">
@@ -288,17 +385,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               </a>
             )}
             <button
-              onClick={copyPortalLink}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${
-                portalCopied
-                  ? "icon-green "
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
+              onClick={() => setSendMenuOpen(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-muted-foreground hover:bg-muted/80 font-bold text-sm transition-colors"
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {portalCopied ? "check_circle" : "share"}
-              </span>
-              {portalCopied ? "Copied!" : "Portal"}
+              <span className="material-symbols-outlined text-[18px]">send</span>
+              Send Link
             </button>
             <button
               onClick={() => router.push(`/quotes/new?client=${client.id}`)}
@@ -434,6 +525,61 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </div>
       </Card>
 
+      </div>{/* end left column */}
+
+      {/* ── Right column: booking requests + job history ── */}
+      <div className="flex flex-col gap-6 lg:flex-[2]">
+
+      {/* Booking Requests */}
+      {bookingRequests.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Booking Requests</h3>
+            <span className="text-[10px] font-bold bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-full">{bookingRequests.length} pending</span>
+          </div>
+          {bookingRequests.map((req) => {
+            const dateLabel = new Date(req.requested_date + "T12:00:00").toLocaleDateString("en-US", {
+              weekday: "short", month: "short", day: "numeric",
+            });
+            const [h] = req.requested_time.split(":").map(Number);
+            const timeLabel = `${h % 12 === 0 ? 12 : h % 12} ${h >= 12 ? "PM" : "AM"}`;
+            const isActioning = actioningRequest === req.id;
+            return (
+              <Card key={req.id} className="rounded-2xl border-amber-200 shadow-sm overflow-hidden">
+                <div className="h-1 w-full bg-amber-400" />
+                <div className="p-4 flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <p className="font-extrabold text-sm text-foreground">{dateLabel} · {timeLabel}</p>
+                      {req.notes && <p className="text-xs text-muted-foreground line-clamp-2">{req.notes}</p>}
+                    </div>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold shrink-0">
+                      Pending
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => declineBooking(req.id)}
+                      disabled={isActioning}
+                      className="flex-1 py-2 rounded-xl border border-border text-sm font-bold text-muted-foreground hover:bg-muted/50 disabled:opacity-50 transition-colors"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => approveBooking(req)}
+                      disabled={isActioning}
+                      className="flex-[2] py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      {isActioning ? "Creating job…" : "Approve & Schedule"}
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </section>
+      )}
+
       {/* Upcoming jobs */}
       {upcomingJobs.length > 0 && (
         <section className="flex flex-col gap-3">
@@ -474,6 +620,9 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         {pastJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => router.push(`/jobs/${job.id}`)} />)}
       </section>
 
+      </div>{/* end right column */}
+      </div>{/* end two-column body */}
+
       {/* New quote FAB */}
       <button
         onClick={() => router.push(`/quotes/new?client=${client.id}`)}
@@ -481,6 +630,79 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       >
         <span className="material-symbols-outlined text-[28px]">request_quote</span>
       </button>
+
+      {/* Send Booking Link bottom sheet */}
+      {sendMenuOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setSendMenuOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden">
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+            </div>
+            <div className="px-5 py-3 border-b border-border/50">
+              <h2 className="text-base font-extrabold text-foreground">Send Booking Link</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Choose how to send {client?.name} their scheduling link</p>
+            </div>
+            <div className="flex flex-col divide-y divide-border/40 px-2 py-2">
+              {client?.email && (
+                <button
+                  onClick={sendByEmail}
+                  disabled={emailSending || emailSent}
+                  className="flex items-center gap-4 px-3 py-4 rounded-2xl hover:bg-muted/40 transition-colors text-left disabled:opacity-70"
+                >
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <span className="material-symbols-outlined text-[22px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>mail</span>
+                  </div>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="font-bold text-sm text-foreground">
+                      {emailSent ? "Email sent!" : emailSending ? "Sending…" : "Send Email"}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate">{client.email}</span>
+                  </div>
+                  {emailSent && <span className="material-symbols-outlined text-[var(--color-status-completed)] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                </button>
+              )}
+              {client?.phone && (
+                <button
+                  onClick={sendBySms}
+                  className="flex items-center gap-4 px-3 py-4 rounded-2xl hover:bg-muted/40 transition-colors text-left"
+                >
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-green-500/10">
+                    <span className="material-symbols-outlined text-[22px] text-green-600" style={{ fontVariationSettings: "'FILL' 1" }}>chat_bubble</span>
+                  </div>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="font-bold text-sm text-foreground">Send Text</span>
+                    <span className="text-xs text-muted-foreground">{client.phone}</span>
+                  </div>
+                  <span className="material-symbols-outlined text-muted-foreground/40 text-[18px]">open_in_new</span>
+                </button>
+              )}
+              <button
+                onClick={copyLink}
+                className="flex items-center gap-4 px-3 py-4 rounded-2xl hover:bg-muted/40 transition-colors text-left"
+              >
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted">
+                  <span className="material-symbols-outlined text-[22px] text-muted-foreground" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    {linkCopied ? "check_circle" : "link"}
+                  </span>
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="font-bold text-sm text-foreground">{linkCopied ? "Copied!" : "Copy Link"}</span>
+                  <span className="text-xs text-muted-foreground">Share the portal URL any way you like</span>
+                </div>
+              </button>
+            </div>
+            <div className="px-5 py-4 border-t border-border/50">
+              <button
+                onClick={() => setSendMenuOpen(false)}
+                className="w-full py-3 rounded-xl border border-border text-sm font-bold text-foreground hover:bg-muted/40 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Edit modal */}
       {editOpen && (

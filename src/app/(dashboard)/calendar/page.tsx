@@ -565,9 +565,9 @@ export default function CalendarPage() {
   const selectedDayJobs = selectedDay ? (jobsByDay[selectedDay] ?? []) : [];
 
   return (
-    <div className="flex flex-col gap-0 max-w-xl mx-auto">
+    <div className="flex flex-col gap-0 max-w-xl mx-auto lg:max-w-none">
       {/* Header */}
-      <div className="px-4 py-6 flex flex-col gap-4">
+      <div className="px-4 lg:px-8 py-6 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Calendar</h1>
@@ -608,7 +608,7 @@ export default function CalendarPage() {
       {tab === "calendar" && (
         <div className="flex flex-col gap-0 pb-40">
           {/* Month nav */}
-          <div className="flex items-center justify-between px-4 mb-3">
+          <div className="flex items-center justify-between px-4 lg:px-8 mb-3">
             <button
               onClick={prevMonth}
               className="flex size-9 items-center justify-center rounded-full bg-card border border-border text-foreground hover:bg-muted/50 transition-colors"
@@ -628,7 +628,7 @@ export default function CalendarPage() {
 
           {/* Booking requests */}
           {!bookingTableMissing && bookingRequests.length > 0 && (
-            <div className="px-4 mb-5">
+            <div className="px-4 lg:px-8 mb-5">
               <div className="flex items-center gap-2 mb-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Booking Requests
@@ -696,7 +696,7 @@ export default function CalendarPage() {
           )}
 
           {/* Day-of-week headers */}
-          <div className="grid grid-cols-7 px-4 mb-1">
+          <div className="grid grid-cols-7 px-4 lg:px-8 mb-1">
             {DAYS.map((d) => (
               <div key={d} className="text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground py-1">
                 {d}
@@ -766,7 +766,7 @@ export default function CalendarPage() {
 
           {/* Selected day panel */}
           {selectedDay && (
-            <div className="px-4 mt-5 flex flex-col gap-3">
+            <div className="px-4 lg:px-8 mt-5 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
@@ -871,7 +871,7 @@ export default function CalendarPage() {
           )}
 
           {/* Legend */}
-          <div className="px-4 mt-6 flex items-center gap-4 flex-wrap">
+          <div className="px-4 lg:px-8 mt-6 flex items-center gap-4 flex-wrap">
             {(["scheduled", "in_progress", "completed"] as JobStatus[]).map((s) => (
               <div key={s} className="flex items-center gap-1.5">
                 <div className="size-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[s] }} />
@@ -976,7 +976,7 @@ export default function CalendarPage() {
 
       {/* ── UNAVAILABILITY TAB ── */}
       {tab === "unavailability" && (
-        <div className="px-4 pb-40 flex flex-col gap-5">
+        <div className="px-4 lg:px-8 pb-40 lg:pb-8 flex flex-col gap-5">
 
           {/* Weekly Schedule (days off + hours combined) */}
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
@@ -1160,7 +1160,7 @@ export default function CalendarPage() {
 
       {/* ── AVAILABILITY TAB ── */}
       {tab === "availability" && (
-        <div className="px-4 pb-40 flex flex-col gap-4">
+        <div className="px-4 lg:px-8 pb-40 lg:pb-8 flex flex-col gap-4">
           {/* Setup notice if table missing */}
           {availTableMissing && (
             <div className="p-4 rounded-2xl bg-status-in-progress/10 border border-[var(--color-status-in-progress)]/20">

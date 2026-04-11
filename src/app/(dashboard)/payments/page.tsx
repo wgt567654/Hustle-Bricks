@@ -188,7 +188,7 @@ export default function PaymentsPage() {
   const displayed = filter === "unpaid" ? unpaidJobs : paidJobs;
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 max-w-xl mx-auto pb-40">
+    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-40 lg:pb-8">
       <div className="flex flex-col gap-1 mb-2">
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Payments</h1>
         <p className="text-sm text-muted-foreground">Track earnings from completed jobs.</p>
@@ -263,7 +263,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Invoice list */}
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {loading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
 
         {!loading && displayed.length === 0 && (

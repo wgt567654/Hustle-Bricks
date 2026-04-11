@@ -163,7 +163,7 @@ export default function LeadsPage() {
   return (
     <div className="flex flex-col gap-0 pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+      <div className="flex items-center justify-between px-4 lg:px-8 pt-4 pb-2">
         <div>
           <h1 className="text-xl font-extrabold text-foreground tracking-tight">Leads</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -181,7 +181,7 @@ export default function LeadsPage() {
 
       {/* Pipeline summary */}
       {leads.length > 0 && (
-        <div className="mx-4 mb-3 grid grid-cols-2 gap-2">
+        <div className="mx-4 lg:mx-8 mb-3 grid grid-cols-2 lg:grid-cols-4 gap-2">
           <div className="rounded-2xl bg-card border border-border p-3">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pipeline</p>
             <p className="text-lg font-extrabold text-foreground mt-0.5">${totalPipeline.toFixed(0)}</p>
@@ -249,7 +249,7 @@ export default function LeadsPage() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-2 px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 px-4 lg:px-8">
           {filtered.map((lead) => {
             const stage = STAGES.find((s) => s.value === lead.stage)!;
             return (

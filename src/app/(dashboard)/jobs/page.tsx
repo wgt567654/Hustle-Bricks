@@ -21,6 +21,17 @@ type Job = {
   job_line_items: { description: string }[];
 };
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function getTodayLabel() {
+  return new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+}
+
 const STATUS_FILTERS: { label: string; value: JobStatus | "all" }[] = [
   { label: "All", value: "all" },
   { label: "Scheduled", value: "scheduled" },
@@ -46,6 +57,11 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<JobStatus | "all">("all");
+  const [firstName, setFirstName] = useState("");
+  const [weekEarnings, setWeekEarnings] = useState(0);
+  const [outstandingAmount, setOutstandingAmount] = useState(0);
+  const [outstandingCount, setOutstandingCount] = useState(0);
+  const [statsLoaded, setStatsLoaded] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -53,16 +69,39 @@ export default function JobsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const fullName: string = user.user_metadata?.full_name ?? user.email ?? "";
+      setFirstName(fullName.split(" ")[0] || "");
+
       const businessId = await getBusinessId(supabase);
       if (!businessId) return;
 
-      const { data } = await supabase
-        .from("jobs")
-        .select("id, status, total, scheduled_at, created_at, notes, clients(name, address), job_line_items(description)")
-        .eq("business_id", businessId)
-        .order("created_at", { ascending: false });
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const [{ data }, { data: weekPayments }, { data: completedJobs }] = await Promise.all([
+        supabase
+          .from("jobs")
+          .select("id, status, total, scheduled_at, created_at, notes, clients(name, address), job_line_items(description)")
+          .eq("business_id", businessId)
+          .order("created_at", { ascending: false }),
+        supabase.from("payments").select("amount").eq("business_id", businessId)
+          .eq("status", "paid").gte("paid_at", startOfWeek.toISOString()),
+        supabase.from("jobs").select("id, total, payments(id)")
+          .eq("business_id", businessId).eq("status", "completed"),
+      ]);
 
       setJobs((data as unknown as Job[]) ?? []);
+
+      setWeekEarnings((weekPayments ?? []).reduce((s: number, p: { amount: number }) => s + p.amount, 0));
+      const unpaid = (completedJobs ?? []).filter(
+        (j: { payments: { id: string }[] }) => !j.payments || j.payments.length === 0
+      );
+      setOutstandingCount(unpaid.length);
+      setOutstandingAmount((unpaid as { total: number }[]).reduce((s, j) => s + j.total, 0));
+      setStatsLoaded(true);
+
       setLoading(false);
     }
     load();
@@ -76,15 +115,71 @@ export default function JobsPage() {
     completed: jobs.filter((j) => j.status === "completed").length,
   };
 
+  const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 max-w-xl mx-auto pb-40">
-      <div className="flex flex-col gap-1 mb-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Schedule & Jobs</h1>
-        <p className="text-sm text-muted-foreground">Manage your upcoming work and operations.</p>
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-40 lg:pb-8">
+      {/* Greeting + compact stats */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{getTodayLabel()}</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            {getGreeting()}{firstName ? `, ${firstName}` : ""}
+          </h1>
+        </div>
+
+        {/* Stats chips */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-card border border-border/60 shadow-sm">
+            <span className="material-symbols-outlined text-[14px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+              trending_up
+            </span>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">This week</span>
+              <span className="text-sm font-extrabold text-foreground leading-tight">
+                {statsLoaded ? `$${fmt(weekEarnings)}` : "—"}
+              </span>
+            </div>
+          </div>
+
+          <div
+            onClick={() => outstandingCount > 0 && router.push("/payments")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-border/60 shadow-sm ${
+              outstandingCount > 0
+                ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40 cursor-pointer"
+                : "bg-card"
+            }`}
+          >
+            <span
+              className="material-symbols-outlined text-[14px]"
+              style={{
+                fontVariationSettings: "'FILL' 1",
+                color: outstandingCount > 0 ? "#f59e0b" : "var(--color-primary)",
+              }}
+            >
+              {outstandingCount > 0 ? "pending_actions" : "check_circle"}
+            </span>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Outstanding</span>
+              <span className={`text-sm font-extrabold leading-tight ${outstandingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+                {!statsLoaded ? "—" : outstandingCount > 0 ? `$${fmt(outstandingAmount)}` : "✓ Clear"}
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => router.push("/quotes/new")}
+            className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-primary text-white shadow-sm active:scale-95 transition-transform shrink-0"
+            style={{ boxShadow: "0 2px 8px oklch(0.511 0.230 277 / 0.30)" }}
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            <span className="text-xs font-bold">New Quote</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 scrollbar-none">
         {STATUS_FILTERS.map((tab) => {
           const count = counts[tab.value as keyof typeof counts] ?? jobs.length;
           return (
@@ -105,7 +200,7 @@ export default function JobsPage() {
       </div>
 
       {/* Jobs list */}
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {loading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
 
         {!loading && filtered.length === 0 && (

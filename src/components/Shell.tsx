@@ -8,19 +8,35 @@ import { createClient } from '@/lib/supabase/client';
 import { STATUS_HEX } from '@/lib/status-colors';
 
 const NAV = [
-  { href: "/",                label: "Home",     icon: "home",           exact: true  },
+  { href: "/jobs",            label: "Jobs",     icon: "work",           exact: false },
+  { href: "/analytics",       label: "Analytics", icon: "leaderboard",    exact: false },
+  { href: "/canvassing",      label: "Map",      icon: "map",            exact: false },
   { href: "/calendar",        label: "Schedule", icon: "calendar_month", exact: false },
-  { href: "/clients",         label: "Clients",  icon: "group",          exact: false },
-  { href: "/sales-dashboard", label: "Sales",    icon: "leaderboard",    exact: false },
 ];
 
-const MORE_ITEMS = [
-  { href: "/map",         label: "Job Map",  icon: "map"            },
-  { href: "/canvassing",  label: "Canvass",  icon: "door_front"     },
-  { href: "/reports",     label: "Reports",  icon: "bar_chart"      },
-  { href: "/payments",    label: "Payments", icon: "attach_money"   },
-  { href: "/plans",       label: "Plans",    icon: "autorenew"      },
-  { href: "/leads",       label: "Leads",    icon: "person_search"  },
+const MORE_GROUPS = [
+  {
+    label: "Money",
+    items: [
+      { href: "/payments", label: "Payments", icon: "attach_money" },
+    ],
+  },
+  {
+    label: "Business",
+    items: [
+      { href: "/clients", label: "Clients",  icon: "group"         },
+      { href: "/leads",   label: "Leads",    icon: "person_search" },
+      { href: "/plans",   label: "Plans",    icon: "autorenew"     },
+    ],
+  },
+];
+
+const SIDEBAR_NAV = [
+  ...NAV,
+  { href: "/payments", label: "Payments", icon: "attach_money", exact: false },
+  { href: "/clients",  label: "Clients",  icon: "group",        exact: false },
+  { href: "/leads",    label: "Leads",    icon: "person_search", exact: false },
+  { href: "/plans",    label: "Plans",    icon: "autorenew",    exact: false },
 ];
 
 type Notification = {
@@ -49,7 +65,7 @@ async function fetchNotifications(): Promise<Notification[]> {
   const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
   const endOfToday   = new Date(now); endOfToday.setHours(23, 59, 59, 999);
 
-  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }, { data: pendingMembers }] = await Promise.all([
+  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }, { data: pendingMembers }, { data: newLeads }, { data: pendingBookings }] = await Promise.all([
     supabase.from("jobs").select("id, total, clients(name), payments(id)")
       .eq("business_id", business.id).eq("status", "completed"),
     supabase.from("jobs").select("id, scheduled_at, job_line_items(description), clients(name)")
@@ -61,9 +77,49 @@ async function fetchNotifications(): Promise<Notification[]> {
       .eq("business_id", business.id).eq("status", "in_progress"),
     supabase.from("team_members").select("id, name")
       .eq("business_id", business.id).eq("is_active", false).eq("is_pending", true),
+    supabase.from("leads").select("id, name")
+      .eq("business_id", business.id).eq("stage", "new")
+      .order("created_at", { ascending: false }).limit(10),
+    supabase.from("booking_requests").select("id, requested_date, requested_time, clients(name)")
+      .eq("business_id", business.id).eq("status", "pending")
+      .order("created_at", { ascending: false }).limit(5),
   ]);
 
   const notes: Notification[] = [];
+
+  // Pending booking requests from client portal
+  const bookings = (pendingBookings ?? []) as { id: string; requested_date: string; requested_time: string; clients: { name: string } | null }[];
+  if (bookings.length > 0) {
+    const first = bookings[0];
+    const dateLabel = new Date(first.requested_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const [h] = first.requested_time.split(":").map(Number);
+    const timeLabel = `${h % 12 === 0 ? 12 : h % 12} ${h >= 12 ? "PM" : "AM"}`;
+    notes.push({
+      id: "pending-bookings",
+      icon: "calendar_clock",
+      iconColor: "#f59e0b",
+      iconBg: "icon-orange",
+      title: `${bookings.length} booking request${bookings.length !== 1 ? "s" : ""} to review`,
+      subtitle: bookings.length === 1
+        ? `${first.clients?.name ?? "Client"} wants ${dateLabel} at ${timeLabel}`
+        : `${first.clients?.name ?? "Client"} and ${bookings.length - 1} more need approval`,
+      href: "/clients",
+    });
+  }
+
+  // New leads from quote-request form
+  const leads = (newLeads ?? []) as { id: string; name: string }[];
+  if (leads.length > 0) {
+    notes.push({
+      id: "new-leads",
+      icon: "person_search",
+      iconColor: "#16a34a",
+      iconBg: "icon-green",
+      title: `${leads.length} new lead${leads.length !== 1 ? "s" : ""} from website`,
+      subtitle: leads.length === 1 ? `${leads[0].name} submitted a quote request` : `${leads[0].name} and ${leads.length - 1} more submitted quote requests`,
+      href: "/leads",
+    });
+  }
 
   // Pending employee approvals
   const pending = (pendingMembers ?? []) as { id: string; name: string }[];
@@ -186,16 +242,113 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
     router.refresh();
   }
 
-  const unreadCount  = notifications.length;
-  const isOwner      = role === "owner";
-  const visibleNav   = isOwner ? NAV : NAV.filter((n) => n.href !== "/sales-dashboard");
-  const isMapPage    = pathname === "/canvassing" || pathname.startsWith("/map");
+  const unreadCount        = notifications.length;
+  const isOwner            = role === "owner";
+  const visibleNav         = isOwner ? NAV : NAV.filter((n) => n.href !== "/analytics");
+  const visibleSidebarNav  = isOwner ? SIDEBAR_NAV : SIDEBAR_NAV.filter((n) => n.href !== "/analytics");
+  const isMapPage          = pathname === "/map" || pathname.startsWith("/map/") || pathname === "/canvassing" || pathname.startsWith("/canvassing/");
 
   return (
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
 
-      {/* ── FLOATING icon buttons (settings + notifications) — all pages ── */}
-      <div className="fixed top-3 right-3 z-[450] flex items-center gap-1.5">
+      {/* ── DESKTOP SIDEBAR — lg+ only, hidden on map ── */}
+      {!isMapPage && (
+        <div
+          className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-[60px] z-40 border-r border-border/40"
+          style={{ background: "var(--card)" }}
+        >
+          {/* Logo mark */}
+          <div className="flex items-center justify-center h-14 shrink-0">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground text-xs font-black tracking-tight select-none">
+              HB
+            </div>
+          </div>
+
+          <div className="h-px bg-border/40 mx-2" />
+
+          {/* Nav items */}
+          <nav className="flex flex-col items-center gap-1 flex-1 py-3">
+            {visibleSidebarNav.map(({ href, label, icon, exact }) => {
+              const active = isActive(href, exact);
+              return (
+                <div key={href} className="group relative w-full flex justify-center">
+                  <Link
+                    href={href}
+                    className={`flex size-10 items-center justify-center rounded-xl transition-all active:scale-90 ${
+                      active ? "bg-primary/10" : "hover:bg-muted/60"
+                    }`}
+                  >
+                    <span
+                      className="material-symbols-outlined text-[22px]"
+                      style={{
+                        color: active ? "var(--color-primary)" : "var(--muted-foreground)",
+                        fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                      }}
+                    >
+                      {icon}
+                    </span>
+                  </Link>
+                  {/* Tooltip */}
+                  <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold whitespace-nowrap shadow-lg opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[60]">
+                    {label}
+                  </div>
+                </div>
+              );
+            })}
+          </nav>
+
+          <div className="h-px bg-border/40 mx-2" />
+
+          {/* Notifications + Settings at bottom */}
+          <div className="flex flex-col items-center gap-1 py-3">
+            <div className="group relative w-full flex justify-center">
+              <button
+                onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
+                className="relative flex size-10 items-center justify-center rounded-xl hover:bg-muted/60 transition-all active:scale-90"
+              >
+                <span
+                  className="material-symbols-outlined text-[22px]"
+                  style={{
+                    color: "var(--muted-foreground)",
+                    fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0",
+                  }}
+                >
+                  notifications
+                </span>
+                {(!open || !loaded) && (
+                  <span className="absolute top-2 right-2 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" />
+                )}
+              </button>
+              <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold whitespace-nowrap shadow-lg opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[60]">
+                Notifications
+              </div>
+            </div>
+
+            <div className="group relative w-full flex justify-center">
+              <button
+                onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
+                className="flex size-10 items-center justify-center rounded-xl hover:bg-muted/60 transition-all active:scale-90"
+              >
+                <span
+                  className="material-symbols-outlined text-[22px]"
+                  style={{
+                    color: "var(--muted-foreground)",
+                    fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0",
+                  }}
+                >
+                  settings
+                </span>
+              </button>
+              <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold whitespace-nowrap shadow-lg opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[60]">
+                Settings
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── FLOATING icon buttons (settings + notifications) — mobile only ── */}
+      <div className="fixed top-3 right-3 z-[450] flex items-center gap-1.5 lg:hidden">
         <button
           onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
           className="flex size-9 items-center justify-center rounded-full active:scale-90 transition-all"
@@ -245,9 +398,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── SETTINGS PANEL ── */}
       {settingsOpen && (
-        <div className="fixed inset-0 z-40" style={{ top: 52 }}>
+        <div className="fixed inset-0 z-40 lg:left-[60px]" style={{ top: 52 }}>
           <div className="absolute inset-0" onClick={() => setSettingsOpen(false)} />
-          <div className="absolute right-3 top-2 w-72 max-w-[calc(100vw-24px)]">
+          <div className="absolute right-3 top-2 w-72 max-w-[calc(100vw-24px)] lg:right-auto lg:left-3 lg:top-auto lg:bottom-14">
             <div
               ref={settingsRef}
               className="rounded-2xl overflow-hidden glass-panel animate-in-down"
@@ -322,9 +475,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── NOTIFICATION DRAWER ── */}
       {open && (
-        <div className="fixed inset-0 z-40" style={{ top: 52 }}>
+        <div className="fixed inset-0 z-40 lg:left-[60px]" style={{ top: 52 }}>
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
-          <div className="absolute right-3 top-2 w-80 max-w-[calc(100vw-24px)]">
+          <div className="absolute right-3 top-2 w-80 max-w-[calc(100vw-24px)] lg:right-auto lg:left-3 lg:top-3">
             <div
               ref={drawerRef}
               className="rounded-2xl overflow-hidden glass-panel animate-in-down"
@@ -394,7 +547,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 pb-28">{children}</main>
+      <main className="flex-1 pb-28 lg:pb-0 lg:ml-[60px]">{children}</main>
 
       {/* ── MORE BOTTOM SHEET ── */}
       {moreOpen && (
@@ -417,41 +570,51 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
             <div className="flex justify-center pt-3">
               <div className="w-8 h-1 rounded-full bg-muted-foreground/25" />
             </div>
-            <div className="grid grid-cols-3 gap-0 px-2 pt-3 pb-8">
-              {MORE_ITEMS.map(({ href, label, icon }) => {
-                const active = pathname === href || pathname.startsWith(href + "/");
-                return (
-                  <button
-                    key={href}
-                    onClick={() => router.push(href)}
-                    className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl active:scale-95 transition-all duration-150 hover:bg-black/[0.04]"
-                  >
-                    <span
-                      className="material-symbols-outlined text-[26px]"
-                      style={{
-                        color: active ? "var(--color-primary)" : "var(--muted-foreground)",
-                        fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
-                      }}
-                    >
-                      {icon}
-                    </span>
-                    <span
-                      className="text-[10px] leading-none font-semibold"
-                      style={{ color: active ? "var(--color-primary)" : "var(--muted-foreground)" }}
-                    >
-                      {label}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="flex flex-col px-4 pt-3 pb-8 gap-0">
+              {MORE_GROUPS.map((group, gi) => (
+                <div key={group.label}>
+                  {gi > 0 && <div className="h-px bg-black/[0.06] my-1" />}
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 px-1 pt-2 pb-1">
+                    {group.label}
+                  </p>
+                  <div className="grid grid-cols-3 gap-0">
+                    {group.items.map(({ href, label, icon }) => {
+                      const active = pathname === href || pathname.startsWith(href + "/");
+                      return (
+                        <button
+                          key={href}
+                          onClick={() => router.push(href)}
+                          className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl active:scale-95 transition-all duration-150 hover:bg-black/[0.04]"
+                        >
+                          <span
+                            className="material-symbols-outlined text-[26px]"
+                            style={{
+                              color: active ? "var(--color-primary)" : "var(--muted-foreground)",
+                              fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                            }}
+                          >
+                            {icon}
+                          </span>
+                          <span
+                            className="text-[10px] leading-none font-semibold"
+                            style={{ color: active ? "var(--color-primary)" : "var(--muted-foreground)" }}
+                          >
+                            {label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── BOTTOM NAVIGATION — floating pill ── */}
+      {/* ── BOTTOM NAVIGATION — floating pill, mobile only ── */}
       {!isMapPage && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40" style={{ width: "calc(100% - 32px)", maxWidth: 480 }}>
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 lg:hidden" style={{ width: "calc(100% - 32px)", maxWidth: 480 }}>
           <div
             className="flex items-center justify-around px-2 py-3 rounded-[28px] shadow-2xl"
             style={{
