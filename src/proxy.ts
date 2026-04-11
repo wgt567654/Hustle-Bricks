@@ -36,6 +36,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/update-password") ||
+    pathname.startsWith("/check-email") ||
     pathname.startsWith("/api/google-calendar/callback");
 
   if (!user && !isPublicPath) {
