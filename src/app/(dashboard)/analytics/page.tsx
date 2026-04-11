@@ -213,7 +213,7 @@ export default function AnalyticsPage() {
           .eq("business_id", businessId),
       ]);
 
-      setJobs((jobsRes.data as Job[]) ?? []);
+      setJobs((jobsRes.data as unknown as Job[]) ?? []);
       setQuotes((quotesRes.data as Quote[]) ?? []);
       setTeamMembers((membersRes.data as Member[]) ?? []);
       const expTotal = ((expensesRes.data ?? []) as { amount: number }[]).reduce((s, e) => s + e.amount, 0);
