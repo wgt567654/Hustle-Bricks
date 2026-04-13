@@ -13,7 +13,7 @@ export default async function EmployeeLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/");
 
   // Must be an active team member (not an owner logging in here directly)
   const { data: tm } = await supabase

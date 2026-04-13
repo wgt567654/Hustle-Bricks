@@ -28,8 +28,7 @@ export default function EmployeeShell({
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/";
   }
 
   const firstName = employeeName.split(" ")[0];

@@ -14,8 +14,7 @@ import { Badge } from "@/components/ui/badge";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type CanvassingStatus = "not_visited" | "no_answer" | "no" | "interested" | "booked";
-type ViewMode = "canvass" | "jobs";      // outer tab
-type CanvasMode = "canvass" | "route";   // inner canvass sub-tab
+type ViewMode = "canvass" | "jobs";
 
 type CanvassingProperty = {
   id: string;
@@ -84,12 +83,6 @@ const TILE_LAYERS = {
   },
 };
 
-const ROUTE_FILTER_OPTIONS: { value: CanvassingStatus | "visited"; label: string }[] = [
-  { value: "interested", label: "Interested" },
-  { value: "no_answer",  label: "No Answer"  },
-  { value: "booked",     label: "Booked"     },
-  { value: "visited",    label: "All Visited" },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -159,10 +152,6 @@ function normalizeProperty(raw: Record<string, unknown>): CanvassingProperty {
   };
 }
 
-function filterForRoute(properties: CanvassingProperty[], filter: CanvassingStatus | "visited"): CanvassingProperty[] {
-  if (filter === "visited") return properties.filter((p) => p.status !== "not_visited");
-  return properties.filter((p) => p.status === filter);
-}
 
 // ─── Inner map components ─────────────────────────────────────────────────────
 
@@ -313,14 +302,6 @@ export default function CanvassingMap() {
   const [selected, setSelected]         = useState<CanvassingProperty | null>(null);
   const [loading, setLoading]           = useState(true);
   const [creating, setCreating]         = useState(false);
-  const [filterStatus, setFilterStatus] = useState<CanvassingStatus | "all">("all");
-  const [canvasMode, setCanvasMode]     = useState<CanvasMode>("canvass");
-
-  // ── Canvassing route state ────────────────────────────────────────────────
-  const [canvRouteFilter, setCanvRouteFilter]     = useState<CanvassingStatus | "visited">("interested");
-  const [canvRouteStops, setCanvRouteStops]       = useState<CanvassingProperty[]>([]);
-  const [canvRouteOptimizing, setCanvRouteOptimizing] = useState(false);
-  const [canvRouteUrls, setCanvRouteUrls]         = useState<string[]>([]);
 
   // ── Jobs state ────────────────────────────────────────────────────────────
   const [jobsLoaded, setJobsLoaded]               = useState(false);
@@ -506,32 +487,11 @@ export default function CanvassingMap() {
     }
   }
 
-  // ── Canvassing route optimization ────────────────────────────────────────
-  async function handleCanvOptimize() {
-    const candidates = filterForRoute(properties, canvRouteFilter);
-    if (candidates.length === 0) return;
-    setCanvRouteOptimizing(true);
-    const startPoint = userPosition ? { lat: userPosition[0], lng: userPosition[1] } : undefined;
-    const optimized = nearestNeighborTSP(candidates, startPoint);
-    const withAddresses = await Promise.all(
-      optimized.map(async (p) => {
-        if (p.address) return p;
-        const addr = await reverseGeocode(p.lat, p.lng);
-        return { ...p, address: addr };
-      })
-    );
-    const urls = buildGoogleMapsRouteUrls(withAddresses.map((p) => p.address ?? `${p.lat},${p.lng}`));
-    setCanvRouteStops(withAddresses);
-    setCanvRouteUrls(urls);
-    setCanvRouteOptimizing(false);
-  }
-
-  function moveCanvStop(from: number, to: number) {
-    const next = [...canvRouteStops];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    setCanvRouteStops(next);
-    setCanvRouteUrls(buildGoogleMapsRouteUrls(next.map((p) => p.address ?? `${p.lat},${p.lng}`)));
+  // ── Remove canvassing pin ────────────────────────────────────────────────
+  async function handleRemoveProperty(id: string) {
+    const supabase = createClient();
+    await supabase.from("canvassing_properties").delete().eq("id", id);
+    setProperties((prev) => prev.filter((p) => p.id !== id));
   }
 
   // ── Job route planning ───────────────────────────────────────────────────
@@ -625,14 +585,6 @@ export default function CanvassingMap() {
   }
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const filteredCanvass = filterStatus === "all" ? properties : properties.filter((p) => p.status === filterStatus);
-  const canvCounts = {
-    all: properties.length,
-    no_answer: properties.filter((p) => p.status === "no_answer").length,
-    no: properties.filter((p) => p.status === "no").length,
-    interested: properties.filter((p) => p.status === "interested").length,
-    booked: properties.filter((p) => p.status === "booked").length,
-  };
 
   const filteredJobs = jobFilterStatus === "all" ? jobPins : jobPins.filter((p) => p.job.status === jobFilterStatus);
   const jobCounts = {
@@ -641,7 +593,6 @@ export default function CanvassingMap() {
     completed:   jobPins.filter((p) => p.job.status === "completed").length,
   };
 
-  const canvCandidateCount = filterForRoute(properties, canvRouteFilter).length;
   const jobRouteStopIds = new Set(jobRouteStops.map((s) => s.job.id));
   const tile = TILE_LAYERS[mapLayer];
 
@@ -664,19 +615,8 @@ export default function CanvassingMap() {
       <div className="absolute inset-0">
         <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }} zoomControl={false}>
           <TileLayer url={tile.url} attribution={tile.attribution} />
-          <MapClickHandler onMapClick={handleMapClick} skipRef={skipClickRef} enabled={viewMode === "canvass" && canvasMode === "canvass"} />
+          <MapClickHandler onMapClick={handleMapClick} skipRef={skipClickRef} enabled={viewMode === "canvass"} />
           <FlyToController target={flyTarget} />
-
-          {/* Canvassing route polyline */}
-          {viewMode === "canvass" && canvasMode === "route" && canvRouteStops.length > 1 && (
-            <Polyline
-              positions={[
-                ...(userPosition ? [userPosition] : []),
-                ...canvRouteStops.map((s) => [s.lat, s.lng] as [number, number]),
-              ]}
-              pathOptions={{ color: "#3B82F6", weight: 3, opacity: 0.8, dashArray: "8 5" }}
-            />
-          )}
 
           {/* Job route polyline */}
           {viewMode === "jobs" && jobRouteStops.length > 0 && (
@@ -706,26 +646,17 @@ export default function CanvassingMap() {
           )}
 
           {/* Canvassing property pins */}
-          {viewMode === "canvass" && (filteredCanvass).map((prop) => {
-            const routeIdx = canvRouteStops.findIndex((s) => s.id === prop.id);
-            const inRoute  = routeIdx >= 0;
-            const dimmed   = canvasMode === "route" && canvRouteStops.length > 0 && !inRoute;
-            const icon = inRoute
-              ? makeNumberedMarker(routeIdx + 1, CANVASS_COLORS[prop.status])
-              : makeCanvassMarker(CANVASS_COLORS[prop.status], dimmed ? 0.3 : 1);
-            return (
-              <Marker key={prop.id} position={[prop.lat, prop.lng]} icon={icon}
-                zIndexOffset={inRoute ? 1000 : 0}
-                eventHandlers={{
-                  click: (e) => {
-                    e.originalEvent.stopPropagation();
-                    skipClickRef.current = true;
-                    if (canvasMode === "canvass") setSelected(properties.find((p) => p.id === prop.id) ?? prop);
-                  },
-                }}
-              />
-            );
-          })}
+          {viewMode === "canvass" && properties.map((prop) => (
+            <Marker key={prop.id} position={[prop.lat, prop.lng]} icon={makeCanvassMarker(CANVASS_COLORS[prop.status])}
+              eventHandlers={{
+                click: (e) => {
+                  e.originalEvent.stopPropagation();
+                  skipClickRef.current = true;
+                  setSelected(properties.find((p) => p.id === prop.id) ?? prop);
+                },
+              }}
+            />
+          ))}
 
           {/* Job pins */}
           {viewMode === "jobs" && filteredJobs.map((pin) => {
@@ -748,8 +679,26 @@ export default function CanvassingMap() {
           })}
         </MapContainer>
 
+        {/* Follow-ups / Analytics — top right (canvass pin mode only) */}
+        {viewMode === "canvass" && (
+          <div className="absolute top-3 right-3 z-[500] hidden lg:flex flex-row gap-1.5">
+            <Link href="/canvassing/follow-ups"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
+              style={{ ...glassStyle, color: "#FCD34D" }}>
+              <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_today</span>
+              Follow-ups
+            </Link>
+            <Link href="/canvassing/analytics"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
+              style={{ ...glassStyle, color: "#93C5FD" }}>
+              <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>leaderboard</span>
+              Analytics
+            </Link>
+          </div>
+        )}
+
         {/* ── Floating top bar ── */}
-        <div className="absolute top-3 left-3 right-14 z-[400] flex flex-col gap-2 pointer-events-none">
+        <div className="absolute top-3 left-3 right-3 z-[400] flex flex-col gap-2 pointer-events-none">
 
           {/* Outer view mode toggle: Canvass | Jobs */}
           <div className="flex justify-center pointer-events-auto">
@@ -769,89 +718,20 @@ export default function CanvassingMap() {
 
           {/* ── CANVASS MODE overlay ── */}
           {viewMode === "canvass" && (
-            <>
-              {/* Inner Canvass | Route sub-toggle */}
-              <div className="flex justify-center pointer-events-auto">
-                <div className="flex rounded-xl overflow-hidden" style={{ background: "rgba(0,0,0,0.30)", backdropFilter: "blur(6px)" }}>
-                  <button onClick={() => { setCanvasMode("canvass"); setCanvRouteStops([]); setCanvRouteUrls([]); }}
-                    className="px-4 py-1.5 text-[11px] font-bold transition-all active:scale-95"
-                    style={canvasMode === "canvass" ? { background: "rgba(255,255,255,0.85)", color: "#111" } : { color: "rgba(255,255,255,0.65)" }}>
-                    Pin
-                  </button>
-                  <button onClick={() => setCanvasMode("route")}
-                    className="px-4 py-1.5 text-[11px] font-bold transition-all active:scale-95"
-                    style={canvasMode === "route" ? { background: "#3B82F6", color: "white" } : { color: "rgba(255,255,255,0.65)" }}>
-                    Route
-                  </button>
-                </div>
-              </div>
-
-              {canvasMode === "canvass" && (
-                <>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex flex-col px-3 py-2 rounded-2xl pointer-events-auto" style={glassStyle}>
-                      <span className="text-sm font-extrabold text-white leading-tight">Canvassing</span>
-                      <span className="text-[10px] text-white/70 leading-tight">
-                        {creating ? "Dropping pin…" : `${properties.length} door${properties.length !== 1 ? "s" : ""} · Tap to log`}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 pointer-events-auto">
-                      <Link href="/canvassing/follow-ups"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
-                        style={{ ...glassStyle, color: "#FCD34D" }}>
-                        <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_today</span>
-                        Follow-ups
-                      </Link>
-                      <Link href="/canvassing/analytics"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
-                        style={{ ...glassStyle, color: "#93C5FD" }}>
-                        <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>leaderboard</span>
-                        Analytics
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="flex gap-1.5 overflow-x-auto scrollbar-none pointer-events-auto">
-                    {(["all", "no_answer", "no", "interested", "booked"] as const).map((s) => (
-                      <button key={s} onClick={() => setFilterStatus(s)}
-                        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-full transition-all active:scale-95"
-                        style={filterStatus === s ? chipActive : chipInactive}>
-                        {s !== "all" && <span className="size-1.5 rounded-full shrink-0" style={{ background: CANVASS_COLORS[s], display: "inline-block" }} />}
-                        {s === "all" ? `All (${canvCounts.all})` : `${CANVASS_LABELS[s]} (${canvCounts[s as keyof typeof canvCounts]})`}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {canvasMode === "route" && (
-                <>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex flex-col px-3 py-2 rounded-2xl pointer-events-auto" style={glassStyle}>
-                      <span className="text-sm font-extrabold text-white leading-tight">Canvass Route</span>
-                      <span className="text-[10px] text-white/70 leading-tight">
-                        {canvRouteStops.length > 0 ? `${canvRouteStops.length} stops optimized` : `${canvCandidateCount} candidate${canvCandidateCount !== 1 ? "s" : ""}`}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-1.5 overflow-x-auto scrollbar-none pointer-events-auto">
-                    {ROUTE_FILTER_OPTIONS.map((opt) => (
-                      <button key={opt.value} onClick={() => { setCanvRouteFilter(opt.value); setCanvRouteStops([]); setCanvRouteUrls([]); }}
-                        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-full transition-all active:scale-95"
-                        style={canvRouteFilter === opt.value ? chipActive : chipInactive}>
-                        {opt.value !== "visited" && <span className="size-1.5 rounded-full shrink-0" style={{ background: CANVASS_COLORS[opt.value as CanvassingStatus], display: "inline-block" }} />}
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={handleCanvOptimize} disabled={canvRouteOptimizing || canvCandidateCount === 0}
-                    className="pointer-events-auto self-start flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-extrabold active:scale-95 transition-all disabled:opacity-40"
-                    style={{ background: "#3B82F6", color: "white", boxShadow: "0 4px 14px rgba(59,130,246,.5)" }}>
-                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>route</span>
-                    {canvRouteOptimizing ? "Optimizing…" : `Optimize ${canvCandidateCount} Stop${canvCandidateCount !== 1 ? "s" : ""}`}
-                  </button>
-                </>
-              )}
-            </>
+            <div className="flex lg:hidden items-center justify-end gap-1.5 pointer-events-auto">
+              <Link href="/canvassing/follow-ups"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
+                style={{ ...glassStyle, color: "#FCD34D" }}>
+                <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_today</span>
+                Follow-ups
+              </Link>
+              <Link href="/canvassing/analytics"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
+                style={{ ...glassStyle, color: "#93C5FD" }}>
+                <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>leaderboard</span>
+                Analytics
+              </Link>
+            </div>
           )}
 
           {/* ── JOBS MODE overlay ── */}
@@ -896,7 +776,7 @@ export default function CanvassingMap() {
         </div>
 
         {/* Satellite / Street toggle */}
-        <div className="absolute bottom-24 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20">
+        <div className="absolute bottom-24 lg:bottom-6 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20">
           <button onClick={() => setMapLayer("satellite")}
             className={`px-3 py-1.5 text-xs font-bold transition-colors ${mapLayer === "satellite" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}>
             Satellite
@@ -909,54 +789,11 @@ export default function CanvassingMap() {
 
         {/* My location button */}
         <button onClick={recenterOnUser} disabled={!userPosition}
-          className="absolute bottom-24 right-3 z-[400] size-10 flex items-center justify-center rounded-full bg-background shadow-lg border border-border active:scale-90 transition-all disabled:opacity-40">
+          className="absolute bottom-24 lg:bottom-6 right-3 z-[400] size-10 flex items-center justify-center rounded-full bg-background shadow-lg border border-border active:scale-90 transition-all disabled:opacity-40">
           <span className="material-symbols-outlined text-[20px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>my_location</span>
         </button>
       </div>
 
-      {/* ── Canvassing route stop list ── */}
-      {viewMode === "canvass" && canvasMode === "route" && canvRouteStops.length > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 z-[500] bg-background rounded-t-[24px] shadow-2xl" style={{ maxHeight: "38vh" }}>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-background rounded-t-[24px]">
-            <span className="text-sm font-bold text-foreground">{canvRouteStops.length} stop{canvRouteStops.length !== 1 ? "s" : ""} · Optimized</span>
-            <div className="flex gap-2">
-              {canvRouteUrls.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-500 text-white text-xs font-bold active:scale-95 transition-all">
-                  <span className="material-symbols-outlined text-[13px]">navigation</span>
-                  {canvRouteUrls.length > 1 ? `Part ${i + 1}` : "Navigate"}
-                </a>
-              ))}
-            </div>
-          </div>
-          <div className="overflow-y-auto divide-y divide-border/40" style={{ maxHeight: "calc(38vh - 56px)" }}>
-            {canvRouteStops.map((stop, i) => (
-              <div key={stop.id} className="flex items-center gap-3 px-4 py-2.5">
-                <div className="size-6 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white shrink-0"
-                  style={{ background: CANVASS_COLORS[stop.status] }}>
-                  {i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">
-                    {stop.address?.split(",")[0] ?? `${stop.lat.toFixed(4)}, ${stop.lng.toFixed(4)}`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{CANVASS_LABELS[stop.status]}</p>
-                </div>
-                <div className="flex gap-0.5 shrink-0">
-                  <button onClick={() => i > 0 && moveCanvStop(i, i - 1)} disabled={i === 0}
-                    className="p-1 rounded-lg hover:bg-muted transition-colors disabled:opacity-20">
-                    <span className="material-symbols-outlined text-[18px] text-muted-foreground">arrow_upward</span>
-                  </button>
-                  <button onClick={() => i < canvRouteStops.length - 1 && moveCanvStop(i, i + 1)} disabled={i === canvRouteStops.length - 1}
-                    className="p-1 rounded-lg hover:bg-muted transition-colors disabled:opacity-20">
-                    <span className="material-symbols-outlined text-[18px] text-muted-foreground">arrow_downward</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Job route planner panel ── */}
       {viewMode === "jobs" && (
@@ -1040,8 +877,8 @@ export default function CanvassingMap() {
         </div>
       )}
 
-      {/* ── Floating bottom nav ── */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
+      {/* ── Floating bottom nav (mobile only) ── */}
+      <div className="lg:hidden absolute bottom-5 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
         style={{ width: "calc(100% - 32px)", maxWidth: 420 }}>
         <div className="flex items-center justify-around px-4 py-3 rounded-[28px] shadow-2xl"
           style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)" }}>
@@ -1065,8 +902,18 @@ export default function CanvassingMap() {
         </div>
       </div>
 
+      {/* ── Desktop back button ── */}
+      <button
+        onClick={() => router.back()}
+        className="hidden lg:flex absolute top-4 left-4 z-[500] items-center gap-2 px-3 py-2 rounded-xl pointer-events-auto transition-opacity hover:opacity-90"
+        style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)", color: "white" }}
+      >
+        <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 0" }}>arrow_back</span>
+        <span className="text-sm font-medium">Back</span>
+      </button>
+
       {/* ── Quick Action Sheet (canvass pin mode only) ── */}
-      {selected && viewMode === "canvass" && canvasMode === "canvass" && (
+      {selected && viewMode === "canvass" && (
         <QuickActionSheet
           property={selected}
           onClose={() => setSelected(null)}
@@ -1075,6 +922,7 @@ export default function CanvassingMap() {
             router.push(`/quotes/new?address=${encodeURIComponent(selected.address ?? "")}`);
             setSelected(null);
           }}
+          onRemove={async () => { await handleRemoveProperty(selected.id); setSelected(null); }}
         />
       )}
     </div>

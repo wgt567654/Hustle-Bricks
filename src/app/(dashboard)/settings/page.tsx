@@ -218,8 +218,7 @@ export default function SettingsPage() {
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/";
   }
 
   const hasPaymentMethods = venmoUsername || cashappTag || checkPayableTo;

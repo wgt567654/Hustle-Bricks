@@ -238,8 +238,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
     setSettingsOpen(false);
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/";
   }
 
   const unreadCount        = notifications.length;
