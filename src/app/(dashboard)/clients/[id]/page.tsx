@@ -590,7 +590,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Upcoming</h3>
             <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-xs font-bold">{upcomingJobs.length}</Badge>
           </div>
-          {upcomingJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => router.push(`/jobs/${job.id}`)} />)}
+          {upcomingJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => router.push(`/jobs/${job.id}`)} currency={currency} />)}
         </section>
       )}
 
@@ -620,7 +620,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           <p className="text-sm text-muted-foreground text-center py-4">No completed jobs yet</p>
         )}
 
-        {pastJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => router.push(`/jobs/${job.id}`)} />)}
+        {pastJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => router.push(`/jobs/${job.id}`)} currency={currency} />)}
       </section>
 
       </div>{/* end right column */}
@@ -812,7 +812,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   );
 }
 
-function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
+function JobCard({ job, onClick, currency }: { job: Job; onClick: () => void; currency: string }) {
   const title = job.job_line_items[0]?.description ?? "Job";
   const color = STATUS_COLORS[job.status];
   const isPaid = job.payments?.some((p) => p.status === "paid");
