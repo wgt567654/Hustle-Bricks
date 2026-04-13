@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrency } from "@/lib/currency";
 
 type Service = {
   id: string;
@@ -40,6 +41,7 @@ export default function QuoteBuilder() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
   const [services, setServices] = useState<Service[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -63,12 +65,13 @@ export default function QuoteBuilder() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id")
+        .select("id, currency")
         .eq("owner_id", user.id)
         .single();
 
       if (!business) return;
       setBusinessId(business.id);
+      setCurrency(business.currency ?? "USD");
 
       const [{ data: servicesData }, { data: clientsData }] = await Promise.all([
         supabase
@@ -278,7 +281,7 @@ export default function QuoteBuilder() {
                       )}
                       <span className="font-bold text-sm leading-tight mb-1">{service.name}</span>
                       <span className="text-sm font-extrabold text-primary mt-auto">
-                        ${service.price}{formatUnit(service.unit)}
+                        {formatCurrency(service.price, currency)}{formatUnit(service.unit)}
                       </span>
                     </div>
                   );
@@ -298,7 +301,7 @@ export default function QuoteBuilder() {
               <Card key={item.serviceId} className="p-3 pr-4 flex items-center justify-between rounded-2xl">
                 <div className="flex flex-col gap-0.5 max-w-[55%]">
                   <span className="font-bold text-sm leading-tight text-foreground truncate">{item.name}</span>
-                  <span className="text-xs font-semibold text-muted-foreground">${item.unitPrice.toFixed(2)}</span>
+                  <span className="text-xs font-semibold text-muted-foreground">{formatCurrency(item.unitPrice, currency)}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 bg-muted rounded-full p-1 border border-border">
@@ -317,7 +320,7 @@ export default function QuoteBuilder() {
                     </button>
                   </div>
                   <span className="font-bold text-sm text-foreground w-14 text-right">
-                    ${(item.unitPrice * item.qty).toFixed(2)}
+                    {formatCurrency(item.unitPrice * item.qty, currency)}
                   </span>
                 </div>
               </Card>
@@ -331,7 +334,7 @@ export default function QuoteBuilder() {
         <div className="p-5 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">Subtotal</span>
-            <span className="text-sm font-bold text-foreground">${subtotal.toFixed(2)}</span>
+            <span className="text-sm font-bold text-foreground">{formatCurrency(subtotal, currency)}</span>
           </div>
 
           <div className="flex items-center justify-between">
@@ -346,7 +349,7 @@ export default function QuoteBuilder() {
                 {applyTax ? "ON" : "OFF"}
               </button>
             </div>
-            <span className="text-sm font-bold text-foreground">${tax.toFixed(2)}</span>
+            <span className="text-sm font-bold text-foreground">{formatCurrency(tax, currency)}</span>
           </div>
 
           <div className="flex items-center justify-between gap-4">
@@ -368,7 +371,7 @@ export default function QuoteBuilder() {
 
           <div className="flex items-end justify-between">
             <span className="text-lg font-bold text-foreground">Total</span>
-            <span className="text-3xl font-extrabold tracking-tighter text-foreground">${total.toFixed(2)}</span>
+            <span className="text-3xl font-extrabold tracking-tighter text-foreground">{formatCurrency(total, currency)}</span>
           </div>
         </div>
 

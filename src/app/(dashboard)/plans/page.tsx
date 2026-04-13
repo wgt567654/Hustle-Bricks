@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
 
 type Frequency = "weekly" | "biweekly" | "monthly" | "quarterly" | "annually";
 type PlanStatus = "active" | "paused" | "cancelled";
@@ -76,6 +77,7 @@ export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editPlan, setEditPlan] = useState<Plan | null>(null);
@@ -92,11 +94,12 @@ export default function PlansPage() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id")
+        .select("id, currency")
         .eq("owner_id", user.id)
         .single();
       if (!business) return;
       setBusinessId(business.id);
+      setCurrency(business.currency ?? "USD");
 
       const [{ data: plansData }, { data: clientsData }] = await Promise.all([
         supabase
@@ -246,7 +249,7 @@ export default function PlansPage() {
           <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Est. Monthly</span>
             <span className="text-xl font-extrabold text-highlight-violet tracking-tight">
-              ${monthlyRecurring.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              {formatCurrencyRounded(monthlyRecurring, currency)}
             </span>
             <span className="text-[10px] text-muted-foreground">recurring revenue</span>
           </Card>
@@ -302,7 +305,7 @@ export default function PlansPage() {
                     <span className="text-sm text-muted-foreground">{plan.clients?.name ?? "—"}</span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="font-extrabold text-base text-foreground">${plan.price.toFixed(2)}</span>
+                    <span className="font-extrabold text-base text-foreground">{formatCurrency(plan.price, currency)}</span>
                     <button
                       onClick={() => openEdit(plan)}
                       className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"

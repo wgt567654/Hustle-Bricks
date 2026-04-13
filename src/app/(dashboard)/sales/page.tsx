@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
 
 type QuoteStatus = "draft" | "sent" | "accepted" | "declined";
 
@@ -40,6 +41,7 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<"active" | "won" | "lost">("active");
   const [actingId, setActingId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
     async function load() {
@@ -49,12 +51,13 @@ export default function SalesPage() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id")
+        .select("id, currency")
         .eq("owner_id", user.id)
         .single();
 
       if (!business) return;
       setBusinessId(business.id);
+      setCurrency(business.currency ?? "USD");
 
       const { data } = await supabase
         .from("quotes")
@@ -152,9 +155,8 @@ export default function SalesPage() {
         <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pipeline Value</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl font-bold opacity-80">$</span>
             <span className="text-3xl font-extrabold tracking-tight text-primary">
-              {pipelineValue.toFixed(0)}
+              {formatCurrencyRounded(pipelineValue, currency)}
             </span>
           </div>
           <span className="text-[10px] font-semibold text-muted-foreground">{activeQuotes.length} open quote{activeQuotes.length !== 1 ? "s" : ""}</span>
@@ -222,7 +224,7 @@ export default function SalesPage() {
                   <h3 className="font-bold text-foreground leading-tight">{quote.clients?.name ?? "Unknown client"}</h3>
                   <span className="text-sm font-medium text-muted-foreground truncate">{services || "No services"}</span>
                 </div>
-                <span className="font-extrabold text-foreground shrink-0">${quote.total.toFixed(2)}</span>
+                <span className="font-extrabold text-foreground shrink-0">{formatCurrency(quote.total, currency)}</span>
               </div>
 
               <div className="flex items-center justify-between">

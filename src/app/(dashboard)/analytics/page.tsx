@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
+import { formatCurrencyRounded } from "@/lib/currency";
 
 import {
   AnalyticsTimeFilter,
@@ -156,9 +157,9 @@ function buildPeriodLabel(filter: DateFilter): string {
   return `${fmt(filter.start)} – ${fmt(filter.end)}`;
 }
 
-function fmtCurrency(v: number) {
+function fmtCurrency(v: number, currency = "USD") {
   if (v === 0) return "—";
-  return v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return formatCurrencyRounded(v, currency);
 }
 
 // ─── Inline KPI mini-card ─────────────────────────────────────────────────────
@@ -177,6 +178,7 @@ function KpiMiniCard({ label, value }: { label: string; value: string }) {
 export default function AnalyticsPage() {
   const router = useRouter();
   const [loading, setLoading]         = useState(true);
+  const [currency, setCurrency]       = useState("USD");
   const [jobs, setJobs]               = useState<Job[]>([]);
   const [quotes, setQuotes]           = useState<Quote[]>([]);
   const [teamMembers, setTeamMembers] = useState<Member[]>([]);
@@ -192,6 +194,8 @@ export default function AnalyticsPage() {
       const supabase   = createClient();
       const businessId = await getBusinessId(supabase);
       if (!businessId) { setLoading(false); return; }
+      const { data: bizData } = await supabase.from("businesses").select("currency").eq("id", businessId).single();
+      setCurrency(bizData?.currency ?? "USD");
 
       const [jobsRes, quotesRes, membersRes, expensesRes] = await Promise.all([
         supabase
@@ -383,7 +387,7 @@ export default function AnalyticsPage() {
               {/* KPI mini-cards */}
               <div className="grid grid-cols-3 gap-3">
                 <KpiMiniCard label="Deals Closed" value={dealsClosed.toString()} />
-                <KpiMiniCard label="Avg Deal" value={fmtCurrency(avgDealSize)} />
+                <KpiMiniCard label="Avg Deal" value={fmtCurrency(avgDealSize, currency)} />
                 <KpiMiniCard label="Conversion" value={conversionRate > 0 ? `${conversionRate.toFixed(0)}%` : "—"} />
               </div>
 
@@ -413,7 +417,7 @@ export default function AnalyticsPage() {
                     >
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-status-in-progress)]">Outstanding</span>
                       <span className="text-xl font-extrabold text-[var(--color-status-in-progress)] tracking-tight">
-                        ${outstanding.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                        {formatCurrencyRounded(outstanding, currency)}
                       </span>
                       <span className="text-[10px] text-muted-foreground">uncollected · tap to collect</span>
                     </Card>
@@ -422,10 +426,10 @@ export default function AnalyticsPage() {
                     <Card className="p-4 rounded-2xl shadow-sm flex flex-col gap-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Net Profit</span>
                       <span className={`text-xl font-extrabold tracking-tight ${netProfit >= 0 ? "text-[var(--color-status-completed)]" : "text-destructive"}`}>
-                        ${netProfit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                        {formatCurrencyRounded(netProfit, currency)}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
-                        ${totalExpenses.toLocaleString("en-US", { maximumFractionDigits: 0 })} in expenses
+                        {formatCurrencyRounded(totalExpenses, currency)} in expenses
                       </span>
                     </Card>
                   )}

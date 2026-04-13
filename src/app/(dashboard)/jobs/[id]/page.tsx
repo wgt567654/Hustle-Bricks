@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
+import { formatCurrency } from "@/lib/currency";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -111,6 +112,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [updating, setUpdating] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
 
   // Payment modal
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -166,6 +168,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         setLoading(false);
         return;
       }
+      const { data: bizData } = await supabase.from("businesses").select("currency").eq("id", bizId).single();
+      if (bizData?.currency) setCurrency(bizData.currency);
 
       setBusinessId(bizId);
 
@@ -401,7 +405,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
   function sendInvoice() {
     if (!job?.clients?.phone) return;
-    const body = `Hi ${job.clients.name}! Your invoice for $${job.total.toFixed(2)} is ready. Reply to confirm or call to pay. - HustleBricks`;
+    const body = `Hi ${job.clients.name}! Your invoice for ${formatCurrency(job.total, currency)} is ready. Reply to confirm or call to pay. - HustleBricks`;
     window.location.href = `sms:${job.clients.phone}?body=${encodeURIComponent(body)}`;
     setInvoiceSent(true);
     setTimeout(() => setInvoiceSent(false), 3000);
@@ -597,7 +601,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       <section>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Line Items</h3>
-          <span className="font-extrabold text-foreground">${job.total.toFixed(2)}</span>
+          <span className="font-extrabold text-foreground">{formatCurrency(job.total, currency)}</span>
         </div>
         <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
           {job.job_line_items.map((item, i) => (
@@ -614,7 +618,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   </div>
                 </div>
                 <span className="font-bold text-sm text-foreground">
-                  ${(item.unit_price * item.quantity).toFixed(2)}
+                  {formatCurrency(item.unit_price * item.quantity, currency)}
                 </span>
               </div>
             </div>
@@ -647,16 +651,16 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             <div className="grid grid-cols-3 gap-2 mb-3">
               <div className="rounded-2xl border border-border bg-card p-3 flex flex-col gap-0.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Revenue</span>
-                <span className="text-base font-extrabold text-foreground">${job.total.toFixed(2)}</span>
+                <span className="text-base font-extrabold text-foreground">{formatCurrency(job.total, currency)}</span>
               </div>
               <div className="rounded-2xl border border-border bg-card p-3 flex flex-col gap-0.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Expenses</span>
-                <span className="text-base font-extrabold text-[var(--color-status-in-progress)]">${totalExpenses.toFixed(2)}</span>
+                <span className="text-base font-extrabold text-[var(--color-status-in-progress)]">{formatCurrency(totalExpenses, currency)}</span>
               </div>
               <div className={`rounded-2xl border p-3 flex flex-col gap-0.5 ${profit >= 0 ? "border-[var(--color-status-completed)]/20 bg-status-completed/10" : "border-destructive/30 bg-destructive/5"}`}>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Profit</span>
                 <span className={`text-base font-extrabold ${profit >= 0 ? "text-[var(--color-status-completed)]" : "text-destructive"}`}>
-                  ${profit.toFixed(2)}
+                  {formatCurrency(profit, currency)}
                 </span>
                 <span className="text-[9px] font-bold text-muted-foreground">{margin.toFixed(0)}% margin</span>
               </div>
@@ -721,7 +725,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                     <span className="text-xs text-muted-foreground capitalize">{exp.category}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-sm font-bold text-[var(--color-status-in-progress)]">${Number(exp.amount).toFixed(2)}</span>
+                    <span className="text-sm font-bold text-[var(--color-status-in-progress)]">{formatCurrency(Number(exp.amount), currency)}</span>
                     <button
                       onClick={() => deleteExpense(exp.id)}
                       className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
@@ -1127,7 +1131,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 <div>
                   <h2 className="text-lg font-extrabold text-foreground leading-tight">Job Complete!</h2>
                   <p className="text-sm text-muted-foreground">
-                    {job.clients?.name ?? "Client"} · ${job.total.toFixed(2)} due
+                    {job.clients?.name ?? "Client"} · {formatCurrency(job.total, currency)} due
                   </p>
                 </div>
               </div>
@@ -1198,7 +1202,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 className="w-full py-3.5 rounded-2xl bg-[var(--color-status-completed)] text-white font-extrabold text-sm hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-md flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">attach_money</span>
-                {paySaving ? "Recording…" : `Record $${parseFloat(payAmount || "0").toFixed(2)} Payment`}
+                {paySaving ? "Recording…" : `Record ${formatCurrency(parseFloat(payAmount || "0"), currency)} Payment`}
               </button>
               <button
                 onClick={() => { setPayModalOpen(false); router.push("/jobs"); }}

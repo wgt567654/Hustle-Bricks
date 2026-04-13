@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrency } from "@/lib/currency";
 
 type Service = {
   id: string;
@@ -29,8 +30,8 @@ const UNIT_OPTIONS: { value: Service["unit"]; label: string }[] = [
   { value: "per_item", label: "Per item" },
 ];
 
-function formatPrice(price: number, unit: Service["unit"]) {
-  return `$${price.toFixed(2)}${UNIT_LABELS[unit] === "flat" ? "" : UNIT_LABELS[unit]}`;
+function formatPrice(price: number, unit: Service["unit"], currency = "USD") {
+  return `${formatCurrency(price, currency)}${UNIT_LABELS[unit] === "flat" ? "" : UNIT_LABELS[unit]}`;
 }
 
 function formatDuration(mins: number | null) {
@@ -60,6 +61,7 @@ export default function ServicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
     async function load() {
@@ -69,12 +71,13 @@ export default function ServicesPage() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id")
+        .select("id, currency")
         .eq("owner_id", user.id)
         .single();
 
       if (!business) return;
       setBusinessId(business.id);
+      setCurrency(business.currency ?? "USD");
 
       const { data } = await supabase
         .from("services")
@@ -184,7 +187,7 @@ export default function ServicesPage() {
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-bold text-foreground leading-tight">{service.name}</h3>
                   <span className="font-extrabold text-foreground shrink-0">
-                    {formatPrice(service.price, service.unit)}
+                    {formatPrice(service.price, service.unit, currency)}
                   </span>
                 </div>
                 <span className="text-xs font-medium text-muted-foreground mt-0.5 mb-2">

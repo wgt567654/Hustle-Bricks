@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PrintButton } from "./PrintButton";
 import { EmailInvoiceButton } from "./EmailInvoiceButton";
 import { StripePaymentForm } from "./StripePaymentForm";
+import { formatCurrency } from "@/lib/currency";
 
 type LineItem = {
   id: string;
@@ -27,6 +28,7 @@ type InvoiceJob = {
   signature_url: string | null;
   businesses: {
     name: string;
+    currency: string | null;
     venmo_username: string | null;
     cashapp_tag: string | null;
     check_payable_to: string | null;
@@ -73,7 +75,7 @@ export default async function InvoicePage({
   const { data, error } = await supabase
     .from("jobs")
     .select(
-      "id, status, total, scheduled_at, notes, signature_url, businesses(name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
+      "id, status, total, scheduled_at, notes, signature_url, businesses(name, currency, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
     )
     .eq("id", jobId)
     .single();
@@ -95,6 +97,7 @@ export default async function InvoicePage({
   }
 
   const job = data as unknown as InvoiceJob;
+  const currency = job.businesses?.currency ?? "USD";
 
   const paidPayment = job.payments?.find((p) => p.status === "paid") ?? null;
   const isPaid = !!paidPayment;
@@ -221,10 +224,10 @@ export default async function InvoicePage({
                     {item.quantity}
                   </td>
                   <td className="py-3.5 px-4 text-sm text-right text-gray-600">
-                    ${item.unit_price.toFixed(2)}
+                    {formatCurrency(item.unit_price, currency)}
                   </td>
                   <td className="py-3.5 pl-4 text-sm text-right font-semibold text-gray-900">
-                    ${(item.unit_price * item.quantity).toFixed(2)}
+                    {formatCurrency(item.unit_price * item.quantity, currency)}
                   </td>
                 </tr>
               ))}
@@ -237,11 +240,11 @@ export default async function InvoicePage({
           <div className="w-64 flex flex-col gap-2">
             <div className="flex items-center justify-between py-2 border-t border-gray-200">
               <span className="text-sm text-gray-500">Subtotal</span>
-              <span className="text-sm font-semibold text-gray-700">${subtotal.toFixed(2)}</span>
+              <span className="text-sm font-semibold text-gray-700">{formatCurrency(subtotal, currency)}</span>
             </div>
             <div className="flex items-center justify-between py-3 border-t-2 border-gray-900">
               <span className="text-base font-extrabold text-gray-900">Total</span>
-              <span className="text-xl font-extrabold text-gray-900">${job.total.toFixed(2)}</span>
+              <span className="text-xl font-extrabold text-gray-900">{formatCurrency(job.total, currency)}</span>
             </div>
           </div>
         </div>
@@ -296,11 +299,11 @@ export default async function InvoicePage({
             <div className="flex flex-col divide-y divide-gray-100">
               {/* Stripe card payment — always available if Stripe is configured */}
               {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && (
-                <StripePaymentForm jobId={job.id} amount={job.total} />
+                <StripePaymentForm jobId={job.id} amount={job.total} currency={currency} />
               )}
               {job.businesses?.venmo_username && (
                 <a
-                  href={`https://venmo.com/${job.businesses.venmo_username}?txn=pay&amount=${job.total.toFixed(2)}&note=${encodeURIComponent(refNum)}`}
+                  href={`https://venmo.com/${job.businesses.venmo_username}?txn=pay&amount=${job.total}&note=${encodeURIComponent(refNum)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-4 px-5 py-4 hover:bg-blue-50 transition-colors group"
@@ -312,7 +315,7 @@ export default async function InvoicePage({
                   </div>
                   <div className="flex flex-col flex-1">
                     <span className="font-bold text-gray-900 text-sm">Pay with Venmo</span>
-                    <span className="text-xs text-gray-500">@{job.businesses.venmo_username} · ${job.total.toFixed(2)}</span>
+                    <span className="text-xs text-gray-500">@{job.businesses.venmo_username} · {formatCurrency(job.total, currency)}</span>
                   </div>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400 group-hover:text-[#008CFF] transition-colors">
                     <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 001.06 0l7.22-7.22v5.69a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h5.69l-7.22 7.22a.75.75 0 000 1.06z" clipRule="evenodd" />
@@ -321,7 +324,7 @@ export default async function InvoicePage({
               )}
               {job.businesses?.cashapp_tag && (
                 <a
-                  href={`https://cash.app/$${job.businesses.cashapp_tag}/${job.total.toFixed(2)}`}
+                  href={`https://cash.app/$${job.businesses.cashapp_tag}/${job.total}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-4 px-5 py-4 hover:bg-green-50 transition-colors group"
@@ -333,7 +336,7 @@ export default async function InvoicePage({
                   </div>
                   <div className="flex flex-col flex-1">
                     <span className="font-bold text-gray-900 text-sm">Pay with Cash App</span>
-                    <span className="text-xs text-gray-500">${job.businesses.cashapp_tag} · ${job.total.toFixed(2)}</span>
+                    <span className="text-xs text-gray-500">${job.businesses.cashapp_tag} · {formatCurrency(job.total, currency)}</span>
                   </div>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400 group-hover:text-[#00C244] transition-colors">
                     <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 001.06 0l7.22-7.22v5.69a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h5.69l-7.22 7.22a.75.75 0 000 1.06z" clipRule="evenodd" />

@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
-import { getBusinessId } from "@/lib/supabase/get-business";
 import { STATUS_HEX, STATUS_CLASS } from "@/lib/status-colors";
+import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -62,6 +62,7 @@ export default function JobsPage() {
   const [outstandingAmount, setOutstandingAmount] = useState(0);
   const [outstandingCount, setOutstandingCount] = useState(0);
   const [statsLoaded, setStatsLoaded] = useState(false);
+  const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
     async function load() {
@@ -72,8 +73,14 @@ export default function JobsPage() {
       const fullName: string = user.user_metadata?.full_name ?? user.email ?? "";
       setFirstName(fullName.split(" ")[0] || "");
 
-      const businessId = await getBusinessId(supabase);
-      if (!businessId) return;
+      const { data: biz } = await supabase
+        .from("businesses")
+        .select("id, currency")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+      if (!biz) return;
+      const businessId = biz.id;
+      setCurrency(biz.currency ?? "USD");
 
       const now = new Date();
       const startOfWeek = new Date(now);
@@ -115,7 +122,6 @@ export default function JobsPage() {
     completed: jobs.filter((j) => j.status === "completed").length,
   };
 
-  const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-40 lg:pb-8">
@@ -137,7 +143,7 @@ export default function JobsPage() {
             <div className="flex flex-col">
               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">This week</span>
               <span className="text-sm font-extrabold text-foreground leading-tight">
-                {statsLoaded ? `$${fmt(weekEarnings)}` : "—"}
+                {statsLoaded ? formatCurrencyRounded(weekEarnings, currency) : "—"}
               </span>
             </div>
           </div>
@@ -162,7 +168,7 @@ export default function JobsPage() {
             <div className="flex flex-col">
               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Outstanding</span>
               <span className={`text-sm font-extrabold leading-tight ${outstandingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
-                {!statsLoaded ? "—" : outstandingCount > 0 ? `$${fmt(outstandingAmount)}` : "✓ Clear"}
+                {!statsLoaded ? "—" : outstandingCount > 0 ? formatCurrencyRounded(outstandingAmount, currency) : "✓ Clear"}
               </span>
             </div>
           </div>
@@ -237,7 +243,7 @@ export default function JobsPage() {
                       <span className="text-sm font-medium text-muted-foreground">{job.clients?.name ?? "Unknown client"}</span>
                     </div>
                   </div>
-                  <span className="font-extrabold text-foreground">${job.total.toFixed(2)}</span>
+                  <span className="font-extrabold text-foreground">{formatCurrency(job.total, currency)}</span>
                 </div>
 
                 <div className="flex items-center gap-2 bg-muted/40 rounded-xl p-2.5 border border-border/50">

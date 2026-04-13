@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { formatCurrency } from "@/lib/currency";
 import { BookingForm } from "./BookingForm";
 
 type Job = {
@@ -20,6 +21,7 @@ type ClientData = {
   business_id: string;
   businesses: {
     name: string;
+    currency: string | null;
     contact_email: string | null;
     contact_phone: string | null;
   } | null;
@@ -56,7 +58,7 @@ export default async function ClientPortalPage({
     supabase
       .from("clients")
       .select(
-        "id, name, email, phone, address, business_id, businesses(name, contact_email, contact_phone), jobs(id, status, total, scheduled_at, notes, payments(id, status))"
+        "id, name, email, phone, address, business_id, businesses(name, currency, contact_email, contact_phone), jobs(id, status, total, scheduled_at, notes, payments(id, status))"
       )
       .eq("id", clientId)
       .single(),
@@ -114,6 +116,7 @@ export default async function ClientPortalPage({
   }
 
   const client = data as unknown as ClientData;
+  const currency = client.businesses?.currency ?? "USD";
   const latestRequest = (requestsData?.[0] ?? null) as {
     id: string; status: "pending" | "declined"; requested_date: string; requested_time: string;
   } | null;
@@ -172,7 +175,7 @@ export default async function ClientPortalPage({
                 Balance Due
               </p>
               <p className="text-3xl font-extrabold text-amber-800">
-                ${totalOwed.toFixed(2)}
+                {formatCurrency(totalOwed, currency)}
               </p>
               <p className="text-xs text-amber-600">
                 {unpaidJobs.length} unpaid invoice{unpaidJobs.length !== 1 ? "s" : ""}
@@ -251,7 +254,7 @@ export default async function ClientPortalPage({
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="text-lg font-extrabold text-gray-900">
-                        ${job.total.toFixed(2)}
+                        {formatCurrency(job.total, currency)}
                       </p>
                       <p className="text-xs text-amber-600 font-medium">Tap to pay</p>
                     </div>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { STATUS_HEX, STATUS_CLASS } from "@/lib/status-colors";
+import { formatCurrency } from "@/lib/currency";
 
 type QuoteStatus = "draft" | "sent" | "accepted" | "declined";
 
@@ -54,6 +55,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
   const [acting, setActing] = useState(false);
   const [linkedJobId, setLinkedJobId] = useState<string | null>(null);
 
@@ -65,10 +67,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
       const { data: biz } = await supabase
         .from("businesses")
-        .select("id")
+        .select("id, currency")
         .eq("owner_id", user.id)
         .single();
-      if (biz) setBusinessId(biz.id);
+      if (biz) {
+        setBusinessId(biz.id);
+        setCurrency(biz.currency ?? "USD");
+      }
 
       const { data, error } = await supabase
         .from("quotes")
@@ -283,7 +288,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       <section>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Line Items</h3>
-          <span className="font-extrabold text-foreground">${quote.total.toFixed(2)}</span>
+          <span className="font-extrabold text-foreground">{formatCurrency(quote.total, currency)}</span>
         </div>
         <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
           {quote.quote_line_items.length === 0 && (
@@ -308,7 +313,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
                 <span className="font-bold text-sm text-foreground">
-                  ${(item.unit_price * item.quantity).toFixed(2)}
+                  {formatCurrency(item.unit_price * item.quantity, currency)}
                 </span>
               </div>
             </div>
@@ -321,12 +326,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         <div className="p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground font-medium">Subtotal</span>
-            <span className="text-sm font-bold text-foreground">${subtotal.toFixed(2)}</span>
+            <span className="text-sm font-bold text-foreground">{formatCurrency(subtotal, currency)}</span>
           </div>
           <Separator className="bg-border/50" />
           <div className="flex items-center justify-between">
             <span className="text-sm font-extrabold text-foreground">Total</span>
-            <span className="text-lg font-extrabold text-foreground">${quote.total.toFixed(2)}</span>
+            <span className="text-lg font-extrabold text-foreground">{formatCurrency(quote.total, currency)}</span>
           </div>
         </div>
       </Card>

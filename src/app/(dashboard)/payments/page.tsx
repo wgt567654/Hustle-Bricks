@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
 
 type Payment = {
   id: string;
@@ -66,6 +67,7 @@ export default function PaymentsPage() {
 
   // Send invoice
   const [sentInvoiceId, setSentInvoiceId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
     load();
@@ -78,7 +80,7 @@ export default function PaymentsPage() {
 
     const { data: business } = await supabase
       .from("businesses")
-      .select("id")
+      .select("id, currency")
       .eq("owner_id", user.id)
       .single();
 
@@ -87,6 +89,7 @@ export default function PaymentsPage() {
       return;
     }
     setBusinessId(business.id);
+    setCurrency(business.currency ?? "USD");
 
     const { data: jobsData } = await supabase
       .from("jobs")
@@ -124,7 +127,7 @@ export default function PaymentsPage() {
     const job = jobs.find((j) => j.id === jobId);
     if (!job?.clients?.phone) return;
     const serviceTitle = job.job_line_items[0]?.description ?? "service";
-    const body = `Hi ${job.clients.name}! Your invoice for $${job.total.toFixed(2)} (${serviceTitle}) is ready. Reply to confirm or call to pay. - HustleBricks`;
+    const body = `Hi ${job.clients.name}! Your invoice for ${formatCurrency(job.total, currency)} (${serviceTitle}) is ready. Reply to confirm or call to pay. - HustleBricks`;
     window.location.href = `sms:${job.clients.phone}?body=${encodeURIComponent(body)}`;
     setSentInvoiceId(jobId);
     setTimeout(() => setSentInvoiceId(null), 3000);
@@ -210,15 +213,14 @@ export default function PaymentsPage() {
               {totalOutstanding > 0 && (
                 <div className="flex items-center gap-1.5 text-xs font-bold text-white/70 bg-white/15 px-2.5 py-1 rounded-full">
                   <span className="material-symbols-outlined text-[12px]">schedule</span>
-                  ${totalOutstanding.toLocaleString("en-US", { maximumFractionDigits: 0 })} pending
+                  {formatCurrencyRounded(totalOutstanding, currency)} pending
                 </div>
               )}
             </div>
 
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold text-white/70">$</span>
               <span className="text-5xl font-extrabold tracking-tighter text-white leading-none">
-                {loading ? "—" : totalEarned.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                {loading ? "—" : formatCurrencyRounded(totalEarned, currency)}
               </span>
             </div>
 
@@ -306,7 +308,7 @@ export default function PaymentsPage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="font-extrabold text-foreground">${(job.payment?.amount ?? job.total).toFixed(2)}</span>
+                    <span className="font-extrabold text-foreground">{formatCurrency(job.payment?.amount ?? job.total, currency)}</span>
                     {isPaid
                       ? <Badge variant="secondary" className="icon-green  border-0 text-[10px]">Paid</Badge>
                       : <Badge variant="secondary" className="icon-orange  border-0 text-[10px]">Unpaid</Badge>
@@ -441,7 +443,7 @@ export default function PaymentsPage() {
                 className="w-full py-3.5 rounded-2xl bg-[var(--color-status-completed)] text-white font-extrabold text-sm hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-md flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">attach_money</span>
-                {paySaving ? "Saving…" : `Record $${parseFloat(payAmount || "0").toFixed(2)} · ${METHOD_LABELS[payMethod] ?? payMethod}`}
+                {paySaving ? "Saving…" : `Record ${formatCurrency(parseFloat(payAmount || "0"), currency)} · ${METHOD_LABELS[payMethod] ?? payMethod}`}
               </button>
             </div>
           </div>

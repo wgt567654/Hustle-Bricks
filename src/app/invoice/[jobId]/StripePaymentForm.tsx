@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
+import { formatCurrency } from "@/lib/currency";
 import {
   Elements,
   PaymentElement,
@@ -16,10 +17,12 @@ const stripePromise = loadStripe(
 function CheckoutForm({
   jobId,
   amount,
+  currency,
   onSuccess,
 }: {
   jobId: string;
   amount: number;
+  currency: string;
   onSuccess: () => void;
 }) {
   const stripe = useStripe();
@@ -92,7 +95,7 @@ function CheckoutForm({
         disabled={submitting || !stripe}
         className="w-full py-3 rounded-xl bg-[#635bff] text-white font-bold text-sm hover:bg-[#5a52e8] disabled:opacity-50 transition-colors"
       >
-        {submitting ? "Processing…" : `Pay $${amount.toFixed(2)}`}
+        {submitting ? "Processing…" : `Pay ${formatCurrency(amount, currency)}`}
       </button>
     </form>
   );
@@ -101,16 +104,18 @@ function CheckoutForm({
 export function StripePaymentForm({
   jobId,
   amount,
+  currency = "USD",
 }: {
   jobId: string;
   amount: number;
+  currency?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [paid, setPaid] = useState(false);
   const [options] = useState({
     mode: "payment" as const,
     amount: Math.round(amount * 100),
-    currency: "usd",
+    currency: currency.toLowerCase(),
     appearance: {
       theme: "stripe" as const,
       variables: {
@@ -151,7 +156,7 @@ export function StripePaymentForm({
           </div>
           <div className="flex flex-col flex-1 text-left">
             <span className="font-bold text-gray-900 text-sm">Pay by Card</span>
-            <span className="text-xs text-gray-500">${amount.toFixed(2)} · Secured by Stripe</span>
+            <span className="text-xs text-gray-500">{formatCurrency(amount, currency)} · Secured by Stripe</span>
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400 group-hover:text-[#635bff] transition-colors">
             <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 001.06 0l7.22-7.22v5.69a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h5.69l-7.22 7.22a.75.75 0 000 1.06z" clipRule="evenodd" />
@@ -166,7 +171,7 @@ export function StripePaymentForm({
             </button>
           </div>
           <Elements stripe={stripePromise} options={options}>
-            <CheckoutForm jobId={jobId} amount={amount} onSuccess={() => setPaid(true)} />
+            <CheckoutForm jobId={jobId} amount={amount} currency={currency} onSuccess={() => setPaid(true)} />
           </Elements>
           <p className="text-[10px] text-gray-400 text-center flex items-center justify-center gap-1">
             <svg viewBox="0 0 24 24" className="w-3 h-3 fill-gray-400">

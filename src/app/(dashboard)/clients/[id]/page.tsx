@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { STATUS_HEX } from "@/lib/status-colors";
+import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
 
 type Tag = "residential" | "commercial" | "vip";
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
@@ -92,6 +93,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("USD");
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", tag: "residential" as Tag, notes: "", recurring_plan: "none" as RecurringPlan });
   const [saving, setSaving] = useState(false);
@@ -179,9 +181,10 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       // Load pending booking requests
       const { data: biz } = await supabase
         .from("businesses")
-        .select("id")
+        .select("id, currency")
         .eq("owner_id", (await supabase.auth.getUser()).data.user!.id)
         .single();
+      if (biz?.currency) setCurrency(biz.currency);
       if (biz) {
         setBusinessId(biz.id);
         const { data: reqs } = await supabase
@@ -444,14 +447,14 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Revenue</span>
           <span className="text-xl font-extrabold text-[var(--color-status-completed)] tracking-tight">
-            ${lifetimeRevenue.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            {formatCurrencyRounded(lifetimeRevenue, currency)}
           </span>
           <span className="text-[10px] text-muted-foreground">lifetime</span>
         </Card>
         <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Outstanding</span>
           <span className={`text-xl font-extrabold tracking-tight ${outstanding > 0 ? "text-[var(--color-status-in-progress)]" : "text-[var(--color-status-completed)]"}`}>
-            {outstanding > 0 ? `$${outstanding.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "✓"}
+            {outstanding > 0 ? formatCurrencyRounded(outstanding, currency) : "✓"}
           </span>
           <span className="text-[10px] text-muted-foreground">unpaid</span>
         </Card>
@@ -840,7 +843,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className="font-extrabold text-sm text-foreground">${job.total.toFixed(2)}</span>
+          <span className="font-extrabold text-sm text-foreground">{formatCurrency(job.total, currency)}</span>
           {job.status === "completed" && (
             <Badge variant="secondary" className={`border-0 text-[9px] font-bold px-1.5 py-0 ${isPaid ? "icon-green " : "icon-orange "}`}>
               {isPaid ? "Paid" : "Unpaid"}
