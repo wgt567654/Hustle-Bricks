@@ -184,11 +184,12 @@ function FlyToController({ target }: { target: { coords: [number, number]; zoom:
 
 // ─── Quick Action Sheet ───────────────────────────────────────────────────────
 
-function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow }: {
+function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemove }: {
   property: CanvassingProperty;
   onClose: () => void;
   onStatusUpdate: (updates: Partial<CanvassingProperty>) => Promise<void>;
   onBookNow: () => void;
+  onRemove?: () => Promise<void>;
 }) {
   const [mode, setMode] = useState<"actions" | "interested">("actions");
   const [notes, setNotes] = useState(property.notes ?? "");
