@@ -27,6 +27,7 @@ const PLANS = [
     tagline: "Start solo. Scale into the next plan.",
     monthlyPrice: 49,
     yearlyPrice: 34,
+    highlight: false,
     features: ["1 user", "Unlimited jobs", "Client portal", "Quotes & invoices", "Payment tracking"],
   },
   {
@@ -44,6 +45,7 @@ const PLANS = [
     tagline: "For scaled operations.",
     monthlyPrice: 249,
     yearlyPrice: 174,
+    highlight: false,
     features: ["Up to 30 users", "Everything in Team", "Route optimization", "Analytics", "Priority support"],
   },
 ] as const;
