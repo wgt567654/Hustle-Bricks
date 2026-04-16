@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 const CanvassingMap = dynamic(
   () => import("@/components/canvassing/CanvassingMap"),
@@ -15,5 +16,12 @@ const CanvassingMap = dynamic(
 );
 
 export default function CanvassingPage() {
-  return <CanvassingMap />;
+  const router = useRouter();
+  return (
+    <CanvassingMap
+      onBookNow={(address) =>
+        router.push(`/quotes/new?address=${encodeURIComponent(address)}`)
+      }
+    />
+  );
 }

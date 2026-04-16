@@ -47,7 +47,38 @@ type JobPin = { job: MapJob; lat: number; lng: number };
 
 type TeamMember = { id: string; name: string };
 
+type CanvassingVisit = {
+  id: string;
+  status: CanvassingStatus;
+  notes: string | null;
+  follow_up_date: string | null;
+  visited_at: string;
+  team_members: { name: string } | null;
+};
+
+type CustomField = {
+  id: string;
+  label: string;
+  field_type: "text" | "number" | "boolean" | "select";
+  options: string[] | null;
+  required: boolean;
+  position: number;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const TIME_SLOTS = [
+  { label: "8 AM",  value: "08:00", hour: 8  },
+  { label: "9 AM",  value: "09:00", hour: 9  },
+  { label: "10 AM", value: "10:00", hour: 10 },
+  { label: "11 AM", value: "11:00", hour: 11 },
+  { label: "12 PM", value: "12:00", hour: 12 },
+  { label: "1 PM",  value: "13:00", hour: 13 },
+  { label: "2 PM",  value: "14:00", hour: 14 },
+  { label: "3 PM",  value: "15:00", hour: 15 },
+  { label: "4 PM",  value: "16:00", hour: 16 },
+  { label: "5 PM",  value: "17:00", hour: 17 },
+];
 
 const CANVASS_COLORS: Record<CanvassingStatus, string> = {
   not_visited: "#9CA3AF",
@@ -122,10 +153,23 @@ function makeLocationMarker() {
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
       { headers: { "User-Agent": "HustleBricks/1.0 (service scheduling app)" } }
     );
     const data = await res.json();
+    // Build a clean "123 Main St, City, ST 12345" address from structured parts
+    const a = data.address as Record<string, string> | undefined;
+    if (a) {
+      const houseNumber = a.house_number ?? "";
+      const road       = a.road ?? a.pedestrian ?? a.path ?? "";
+      const city       = a.city ?? a.town ?? a.village ?? a.hamlet ?? a.county ?? "";
+      const state      = a.state ?? "";
+      const postcode   = a.postcode ?? "";
+      const street     = [houseNumber, road].filter(Boolean).join(" ");
+      const cityLine   = [city, [state, postcode].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+      const full       = [street, cityLine].filter(Boolean).join(", ");
+      if (full) return full;
+    }
     return (data.display_name as string) ?? null;
   } catch { return null; }
 }
@@ -184,17 +228,134 @@ function FlyToController({ target }: { target: { coords: [number, number]; zoom:
 
 // ─── Quick Action Sheet ───────────────────────────────────────────────────────
 
-function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemove }: {
+function formatVisitDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
+  if (diffDays === 0) return "Today " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  return d.toLocaleDateString([], { month: "short", day: "numeric", year: diffDays > 365 ? "numeric" : undefined });
+}
+
+function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemove, onAddressUpdate, businessId, captureLeadOnBook = false, visits = [] }: {
   property: CanvassingProperty;
   onClose: () => void;
   onStatusUpdate: (updates: Partial<CanvassingProperty>) => Promise<void>;
   onBookNow: () => void;
   onRemove?: () => Promise<void>;
+  onAddressUpdate?: (address: string) => Promise<void>;
+  businessId?: string;
+  captureLeadOnBook?: boolean;
+  visits?: CanvassingVisit[];
 }) {
-  const [mode, setMode] = useState<"actions" | "interested">("actions");
+  const [mode, setMode] = useState<"actions" | "interested" | "confirm-remove" | "book" | "edit-address">("actions");
   const [notes, setNotes] = useState(property.notes ?? "");
   const [followUpDate, setFollowUpDate] = useState(property.follow_up_date ?? "");
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  // Booking form state — contact
+  const [bookName, setBookName] = useState("");
+  const [bookPhone, setBookPhone] = useState("");
+  const [bookPhoneAlt, setBookPhoneAlt] = useState("");
+  const [bookEmail, setBookEmail] = useState("");
+  const [bookAddress, setBookAddress] = useState(property.address ?? "");
+  // Booking form state — appointment
+  const [bookPreferredDate, setBookPreferredDate] = useState("");
+  const [bookPreferredTime, setBookPreferredTime] = useState("");
+  const [bookedHours, setBookedHours] = useState<Set<number>>(new Set());
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  // Booking form state — notes
+  const [bookRapportNotes, setBookRapportNotes] = useState("");
+  const [bookServiceNotes, setBookServiceNotes] = useState("");
+  // Booking form state — custom fields
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+  const [cfLoading, setCfLoading] = useState(false);
+  const cfFetchedRef = useRef(false);
+  // Booking form state — photos
+  const [bookPhotos, setBookPhotos] = useState<File[]>([]);
+  const [bookPhotoUrls, setBookPhotoUrls] = useState<string[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Address edit state
+  const [editAddress, setEditAddress] = useState(property.address ?? "");
+  const [savingAddress, setSavingAddress] = useState(false);
+
+  // Load custom fields when book mode opens (once per sheet open)
+  useEffect(() => {
+    if (mode !== "book" || !businessId || cfFetchedRef.current) return;
+    cfFetchedRef.current = true;
+    setCfLoading(true);
+    const supabase = createClient();
+    supabase
+      .from("canvassing_custom_fields")
+      .select("id, label, field_type, options, required, position")
+      .eq("business_id", businessId)
+      .order("position")
+      .then(({ data }) => {
+        setCustomFields((data as CustomField[]) ?? []);
+        setCfLoading(false);
+      });
+  }, [mode, businessId]);
+
+  // Load booked hours when preferred date changes
+  useEffect(() => {
+    if (!bookPreferredDate || !businessId) { setBookedHours(new Set()); return; }
+    setSlotsLoading(true);
+    setBookPreferredTime(""); // reset time when date changes
+    const supabase = createClient();
+    const dayStart = new Date(bookPreferredDate + "T00:00:00").toISOString();
+    const dayEnd   = new Date(bookPreferredDate + "T23:59:59").toISOString();
+    supabase
+      .from("jobs")
+      .select("scheduled_at")
+      .eq("business_id", businessId)
+      .gte("scheduled_at", dayStart)
+      .lte("scheduled_at", dayEnd)
+      .neq("status", "cancelled")
+      .then(({ data }) => {
+        const hours = new Set<number>(
+          (data ?? [])
+            .filter((j): j is { scheduled_at: string } => !!j.scheduled_at)
+            .map((j) => new Date(j.scheduled_at).getHours())
+        );
+        setBookedHours(hours);
+        setSlotsLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookPreferredDate, businessId]);
+
+  // Revoke object URLs on unmount
+  useEffect(() => {
+    return () => { bookPhotoUrls.forEach((u) => URL.revokeObjectURL(u)); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    const remaining = 4 - bookPhotos.length;
+    const toAdd = files.slice(0, remaining);
+    setBookPhotos((prev) => [...prev, ...toAdd]);
+    setBookPhotoUrls((prev) => [...prev, ...toAdd.map((f) => URL.createObjectURL(f))]);
+    e.target.value = "";
+  }
+
+  function removePhoto(idx: number) {
+    URL.revokeObjectURL(bookPhotoUrls[idx]);
+    setBookPhotos((prev) => prev.filter((_, i) => i !== idx));
+    setBookPhotoUrls((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  async function handleAddressSave() {
+    const trimmed = editAddress.trim();
+    if (!trimmed || !onAddressUpdate) return;
+    setSavingAddress(true);
+    await onAddressUpdate(trimmed);
+    setSavingAddress(false);
+    setMode("actions");
+  }
 
   async function handleSimpleStatus(status: CanvassingStatus) {
     setSaving(true);
@@ -211,7 +372,68 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
   }
 
   async function handleBookNow() {
+    if (captureLeadOnBook) {
+      setMode("book");
+      return;
+    }
     setSaving(true);
+    await onStatusUpdate({ status: "booked" });
+    setSaving(false);
+    onBookNow();
+  }
+
+  async function handleBookSubmit() {
+    if (!bookName.trim()) return;
+    setSaving(true);
+    const supabase = createClient();
+    let leadId: string | null = null;
+
+    if (businessId) {
+      // Build custom_field_values jsonb
+      const cfValues: Record<string, string | number | boolean> = {};
+      for (const cf of customFields) {
+        const raw = customFieldValues[cf.id] ?? "";
+        if (cf.field_type === "number") cfValues[cf.id] = raw === "" ? "" : Number(raw);
+        else if (cf.field_type === "boolean") cfValues[cf.id] = raw === "true";
+        else cfValues[cf.id] = raw;
+      }
+
+      const { data: lead } = await supabase.from("leads").insert({
+        business_id: businessId,
+        name: bookName.trim(),
+        phone: bookPhone.trim() || null,
+        phone_alt: bookPhoneAlt.trim() || null,
+        email: bookEmail.trim() || null,
+        address: bookAddress.trim() || null,
+        rapport_notes: bookRapportNotes.trim() || null,
+        service_notes: bookServiceNotes.trim() || null,
+        preferred_date: bookPreferredDate || null,
+        preferred_time: bookPreferredTime ? (TIME_SLOTS.find((s) => s.value === bookPreferredTime)?.label ?? bookPreferredTime) : null,
+        custom_field_values: cfValues,
+        stage: "new",
+        source: "Canvassing",
+      }).select("id").single();
+
+      leadId = (lead as { id: string } | null)?.id ?? null;
+
+      // Upload photos if any
+      if (leadId && bookPhotos.length > 0) {
+        for (const photo of bookPhotos) {
+          const ext = photo.name.split(".").pop() ?? "jpg";
+          const path = `${leadId}/${Date.now()}.${ext}`;
+          const { data: uploaded } = await supabase.storage.from("lead-photos").upload(path, photo, { upsert: false });
+          if (uploaded) {
+            const { data: { publicUrl } } = supabase.storage.from("lead-photos").getPublicUrl(path);
+            await supabase.from("lead_photos").insert({
+              lead_id: leadId,
+              business_id: businessId,
+              url: publicUrl,
+            });
+          }
+        }
+      }
+    }
+
     await onStatusUpdate({ status: "booked" });
     setSaving(false);
     onBookNow();
@@ -219,22 +441,39 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
 
   const displayStatus = property.status !== "not_visited" ? property.status : null;
 
+  const inputCls = "w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40";
+  const labelCls = "text-[10px] font-bold uppercase tracking-widest text-muted-foreground";
+
   return (
     <div className="fixed inset-0 z-[2000]"
       style={{ background: "rgba(0,0,0,0.25)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
       onClick={onClose}>
       <div className="absolute bottom-0 left-0 w-full bg-background rounded-t-[28px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-center pt-3 pb-1"><div className="w-9 h-1 rounded-full bg-muted-foreground/25" /></div>
-        <div className="px-5 pb-10 pt-3">
+        <div className="flex items-center justify-between pt-3 pb-1 px-4">
+          <div className="w-9 h-1 rounded-full bg-muted-foreground/25 mx-auto" />
+          <button onClick={onClose} className="absolute right-4 top-3 flex size-7 items-center justify-center rounded-full bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>
+        </div>
+        <div className={`px-5 pt-3 ${mode === "book" ? "pb-4 overflow-y-auto" : "pb-10"}`}
+          style={mode === "book" ? { maxHeight: "85vh" } : undefined}>
           {displayStatus && (
             <div className="flex items-center gap-1.5 mb-1.5">
               <span className="size-2 rounded-full inline-block shrink-0" style={{ background: CANVASS_COLORS[displayStatus] }} />
               <span className="text-xs font-semibold" style={{ color: CANVASS_COLORS[displayStatus] }}>{CANVASS_LABELS[displayStatus]}</span>
             </div>
           )}
-          <p className="text-sm font-semibold text-foreground mb-5 leading-snug line-clamp-3">
-            {property.address ?? `${property.lat.toFixed(5)}, ${property.lng.toFixed(5)}`}
-          </p>
+          <div className="flex items-start gap-1.5 mb-5">
+            <p className="flex-1 text-sm font-semibold text-foreground leading-snug line-clamp-3">
+              {property.address ?? `${property.lat.toFixed(5)}, ${property.lng.toFixed(5)}`}
+            </p>
+            {onAddressUpdate && mode !== "edit-address" && (
+              <button onClick={() => { setEditAddress(property.address ?? ""); setMode("edit-address"); }}
+                className="shrink-0 flex size-6 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+                <span className="material-symbols-outlined text-[13px]">edit</span>
+              </button>
+            )}
+          </div>
           {mode === "actions" && (
             <div className="flex flex-col gap-2.5">
               <div className="grid grid-cols-2 gap-2.5">
@@ -256,6 +495,228 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
                   className="py-4 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50"
                   style={{ boxShadow: "0 4px 14px rgba(34,197,94,.4)" }}>
                   {saving ? "Saving…" : "Book Now →"}
+                </button>
+              </div>
+              {onRemove && (
+                <button onClick={() => setMode("confirm-remove")} disabled={saving}
+                  className="w-full py-3 rounded-2xl border border-border text-muted-foreground font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 0" }}>delete</span>
+                  Remove Pin
+                </button>
+              )}
+
+              {/* ── Visit history ── */}
+              {visits.length > 0 && (
+                <div className="mt-1 pt-4 border-t border-border/40">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2.5">Visit History</p>
+                  <div className="flex flex-col gap-3 max-h-52 overflow-y-auto pr-1">
+                    {visits.map((v) => (
+                      <div key={v.id} className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="size-2 rounded-full shrink-0" style={{ background: CANVASS_COLORS[v.status] }} />
+                          <span className="text-xs font-semibold text-foreground">{CANVASS_LABELS[v.status]}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">{formatVisitDate(v.visited_at)}</span>
+                        </div>
+                        {v.team_members?.name && (
+                          <p className="text-[11px] text-muted-foreground pl-3.5">by {v.team_members.name}</p>
+                        )}
+                        {v.notes && (
+                          <p className="text-[11px] text-foreground/80 pl-3.5 leading-snug">{v.notes}</p>
+                        )}
+                        {v.follow_up_date && (
+                          <p className="text-[11px] text-blue-500 pl-3.5 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>event</span>
+                            Follow-up {new Date(v.follow_up_date + "T00:00:00").toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {mode === "confirm-remove" && (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col items-center gap-2 py-2">
+                <span className="material-symbols-outlined text-[36px] text-destructive" style={{ fontVariationSettings: "'FILL' 0" }}>delete</span>
+                <p className="text-sm font-semibold text-foreground text-center">Remove this pin?</p>
+                <p className="text-xs text-muted-foreground text-center">This will permanently delete the pin from the map.</p>
+              </div>
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => setMode("actions")} disabled={removing}
+                  className="flex-1 py-3.5 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => { setRemoving(true); await onRemove!(); }}
+                  disabled={removing}
+                  className="flex-[2] py-3.5 rounded-2xl bg-destructive text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  {removing ? "Removing…" : "Remove Pin"}
+                </button>
+              </div>
+            </div>
+          )}
+          {mode === "edit-address" && (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Edit Address</p>
+              <textarea
+                value={editAddress}
+                onChange={(e) => setEditAddress(e.target.value)}
+                autoFocus
+                rows={2}
+                className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40 resize-none"
+              />
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => setMode("actions")} disabled={savingAddress}
+                  className="flex-1 py-3.5 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  Cancel
+                </button>
+                <button onClick={handleAddressSave} disabled={savingAddress || !editAddress.trim()}
+                  className="flex-[2] py-3.5 rounded-2xl bg-primary text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  {savingAddress ? "Saving…" : "Save Address"}
+                </button>
+              </div>
+            </div>
+          )}
+          {mode === "book" && (
+            <div className="flex flex-col gap-4">
+
+              {/* ── Section 1: Contact ── */}
+              <div className="flex flex-col gap-2">
+                <p className={labelCls}>Contact</p>
+                <input type="text" placeholder="Name *" value={bookName} onChange={(e) => setBookName(e.target.value)} autoFocus className={inputCls} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="tel" placeholder="Phone" value={bookPhone} onChange={(e) => setBookPhone(e.target.value)} className={inputCls} />
+                  <input type="tel" placeholder="Alt phone" value={bookPhoneAlt} onChange={(e) => setBookPhoneAlt(e.target.value)} className={inputCls} />
+                </div>
+                <input type="email" placeholder="Email" value={bookEmail} onChange={(e) => setBookEmail(e.target.value)} className={inputCls} />
+                <input type="text" placeholder="Address" value={bookAddress} onChange={(e) => setBookAddress(e.target.value)} className={inputCls} />
+              </div>
+
+              {/* ── Section 2: Appointment ── */}
+              <div className="flex flex-col gap-2">
+                <p className={labelCls}>Appointment</p>
+                <input type="date" value={bookPreferredDate} onChange={(e) => setBookPreferredDate(e.target.value)} className={inputCls} />
+                {bookPreferredDate && (
+                  slotsLoading ? (
+                    <p className="text-xs text-muted-foreground">Checking availability…</p>
+                  ) : (
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {TIME_SLOTS.map((slot) => {
+                        const isBooked = bookedHours.has(slot.hour);
+                        const isSelected = bookPreferredTime === slot.value;
+                        return (
+                          <button key={slot.value} type="button" disabled={isBooked}
+                            onClick={() => setBookPreferredTime(isSelected ? "" : slot.value)}
+                            className={`py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
+                              isBooked
+                                ? "bg-muted/20 text-muted-foreground/30 border-border/20 cursor-not-allowed line-through"
+                                : isSelected
+                                  ? "bg-primary text-white border-primary shadow-sm"
+                                  : "bg-muted/40 text-foreground border-border hover:border-primary/40"
+                            }`}>
+                            {slot.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )
+                )}
+                {!bookPreferredDate && (
+                  <p className="text-xs text-muted-foreground/60">Pick a date to see available times</p>
+                )}
+              </div>
+
+              {/* ── Section 3: Custom fields ── */}
+              {cfLoading && (
+                <p className="text-xs text-muted-foreground">Loading fields…</p>
+              )}
+              {!cfLoading && customFields.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className={labelCls}>Additional Info</p>
+                  {customFields.map((cf) => (
+                    <div key={cf.id} className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground">
+                        {cf.label}{cf.required && <span className="text-red-500 ml-0.5">*</span>}
+                      </label>
+                      {cf.field_type === "text" && (
+                        <input type="text" value={customFieldValues[cf.id] ?? ""} onChange={(e) => setCustomFieldValues((p) => ({ ...p, [cf.id]: e.target.value }))} className={inputCls} />
+                      )}
+                      {cf.field_type === "number" && (
+                        <input type="number" value={customFieldValues[cf.id] ?? ""} onChange={(e) => setCustomFieldValues((p) => ({ ...p, [cf.id]: e.target.value }))} className={inputCls} />
+                      )}
+                      {cf.field_type === "boolean" && (
+                        <div className="flex gap-2">
+                          {["true", "false"].map((v) => (
+                            <button key={v} type="button"
+                              onClick={() => setCustomFieldValues((p) => ({ ...p, [cf.id]: v }))}
+                              className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${customFieldValues[cf.id] === v ? "bg-primary text-white border-primary" : "border-border text-muted-foreground"}`}>
+                              {v === "true" ? "Yes" : "No"}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {cf.field_type === "select" && (
+                        <select value={customFieldValues[cf.id] ?? ""} onChange={(e) => setCustomFieldValues((p) => ({ ...p, [cf.id]: e.target.value }))}
+                          className={inputCls}>
+                          <option value="">Select…</option>
+                          {(cf.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Section 4: Rapport Notes ── */}
+              <div className="flex flex-col gap-2">
+                <p className={labelCls}>Rapport Notes</p>
+                <textarea placeholder="Customer's profession, pets, years in home…" value={bookRapportNotes} onChange={(e) => setBookRapportNotes(e.target.value)} rows={2}
+                  className={`${inputCls} resize-none`} />
+              </div>
+
+              {/* ── Section 5: Service Notes ── */}
+              <div className="flex flex-col gap-2">
+                <p className={labelCls}>Service Notes</p>
+                <textarea placeholder="Gate code, watch flower beds, 3 dogs…" value={bookServiceNotes} onChange={(e) => setBookServiceNotes(e.target.value)} rows={2}
+                  className={`${inputCls} resize-none`} />
+              </div>
+
+              {/* ── Section 6: Photos ── */}
+              <div className="flex flex-col gap-2">
+                <p className={labelCls}>Photos</p>
+                <div className="flex gap-2">
+                  {bookPhotoUrls.map((url, i) => (
+                    <div key={i} className="relative size-16 rounded-xl overflow-hidden border border-border shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => removePhoto(i)}
+                        className="absolute top-0.5 right-0.5 size-4 rounded-full bg-black/60 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[10px] text-white">close</span>
+                      </button>
+                    </div>
+                  ))}
+                  {bookPhotos.length < 4 && (
+                    <button type="button" onClick={() => photoInputRef.current?.click()}
+                      className="size-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center shrink-0 text-muted-foreground active:scale-95 transition-all hover:border-primary hover:text-primary">
+                      <span className="material-symbols-outlined text-[22px]">add_a_photo</span>
+                    </button>
+                  )}
+                </div>
+                <input ref={photoInputRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={handlePhotoSelect} />
+              </div>
+
+              {/* ── Submit ── */}
+              <div className="flex gap-2 pt-1 pb-4">
+                <button onClick={() => setMode("actions")} disabled={saving}
+                  className="flex-1 py-3.5 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  Back
+                </button>
+                <button onClick={handleBookSubmit} disabled={saving || !bookName.trim()}
+                  className="flex-[2] py-3.5 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50"
+                  style={{ boxShadow: "0 4px 14px rgba(34,197,94,.4)" }}>
+                  {saving ? "Saving…" : "Confirm Booking →"}
                 </button>
               </div>
             </div>
@@ -290,7 +751,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CanvassingMap() {
+export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: { onBookNow: (address: string) => void; captureLeadOnBook?: boolean }) {
   const router = useRouter();
 
   // ── View mode (outer tab) ────────────────────────────────────────────────
@@ -301,6 +762,7 @@ export default function CanvassingMap() {
   const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
   const [properties, setProperties]     = useState<CanvassingProperty[]>([]);
   const [selected, setSelected]         = useState<CanvassingProperty | null>(null);
+  const [visits, setVisits]             = useState<CanvassingVisit[]>([]);
   const [loading, setLoading]           = useState(true);
   const [creating, setCreating]         = useState(false);
 
@@ -475,6 +937,19 @@ export default function CanvassingMap() {
     setCreating(false);
   }, [businessId, creating]);
 
+  // ── Load visit history when a pin is selected ───────────────────────────
+  useEffect(() => {
+    if (!selected) { setVisits([]); return; }
+    const supabase = createClient();
+    supabase
+      .from("canvassing_visits")
+      .select("id, status, notes, follow_up_date, visited_at, team_members!employee_id(name)")
+      .eq("property_id", selected.id)
+      .order("visited_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => setVisits((data as unknown as CanvassingVisit[]) ?? []));
+  }, [selected?.id]);
+
   // ── Canvassing status update ──────────────────────────────────────────────
   async function handleStatusUpdate(id: string, updates: Partial<CanvassingProperty>) {
     const supabase = createClient();
@@ -486,6 +961,18 @@ export default function CanvassingMap() {
       const prop = normalizeProperty(updated as Record<string, unknown>);
       setProperties((prev) => prev.map((p) => (p.id === id ? prop : p)));
     }
+    // Log this visit to history
+    if (businessId && updates.status) {
+      const { data: visit } = await supabase.from("canvassing_visits").insert({
+        property_id: id,
+        business_id: businessId,
+        employee_id: teamMemberId ?? null,
+        status: updates.status,
+        notes: (updates.notes as string | undefined) ?? null,
+        follow_up_date: (updates.follow_up_date as string | undefined) ?? null,
+      }).select("id, status, notes, follow_up_date, visited_at, team_members!employee_id(name)").single();
+      if (visit) setVisits((prev) => [visit as unknown as CanvassingVisit, ...prev]);
+    }
   }
 
   // ── Remove canvassing pin ────────────────────────────────────────────────
@@ -493,6 +980,18 @@ export default function CanvassingMap() {
     const supabase = createClient();
     await supabase.from("canvassing_properties").delete().eq("id", id);
     setProperties((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  // ── Update canvassing property address ───────────────────────────────────
+  async function handleAddressUpdate(id: string, address: string) {
+    const supabase = createClient();
+    const { data: updated } = await supabase.from("canvassing_properties")
+      .update({ address }).eq("id", id).select("*").single();
+    if (updated) {
+      const prop = normalizeProperty(updated as Record<string, unknown>);
+      setProperties((prev) => prev.map((p) => (p.id === id ? prop : p)));
+      setSelected(prop);
+    }
   }
 
   // ── Job route planning ───────────────────────────────────────────────────
@@ -878,8 +1377,8 @@ export default function CanvassingMap() {
         </div>
       )}
 
-      {/* ── Floating bottom nav (mobile only) ── */}
-      <div className="lg:hidden absolute bottom-5 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
+      {/* ── Floating bottom nav (owner mobile only) ── */}
+      {!captureLeadOnBook && <div className="lg:hidden absolute bottom-5 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
         style={{ width: "calc(100% - 32px)", maxWidth: 420 }}>
         <div className="flex items-center justify-around px-4 py-3 rounded-[28px] shadow-2xl"
           style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)" }}>
@@ -901,7 +1400,7 @@ export default function CanvassingMap() {
             );
           })}
         </div>
-      </div>
+      </div>}
 
       {/* ── Desktop back button ── */}
       <button
@@ -920,10 +1419,14 @@ export default function CanvassingMap() {
           onClose={() => setSelected(null)}
           onStatusUpdate={async (updates) => { await handleStatusUpdate(selected.id, updates); }}
           onBookNow={() => {
-            router.push(`/quotes/new?address=${encodeURIComponent(selected.address ?? "")}`);
+            onBookNow(selected.address ?? "");
             setSelected(null);
           }}
           onRemove={async () => { await handleRemoveProperty(selected.id); setSelected(null); }}
+          onAddressUpdate={async (address) => { await handleAddressUpdate(selected.id, address); }}
+          businessId={businessId ?? undefined}
+          captureLeadOnBook={captureLeadOnBook}
+          visits={visits}
         />
       )}
     </div>

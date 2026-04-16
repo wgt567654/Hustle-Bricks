@@ -10,11 +10,17 @@ type Lead = {
   id: string;
   name: string;
   phone: string | null;
+  phone_alt: string | null;
   email: string | null;
   address: string | null;
   stage: LeadStage;
   source: string | null;
   notes: string | null;
+  rapport_notes: string | null;
+  service_notes: string | null;
+  preferred_date: string | null;
+  preferred_time: string | null;
+  custom_field_values: Record<string, unknown> | null;
   estimated_value: number | null;
   created_at: string;
 };
@@ -30,8 +36,10 @@ const STAGES: { value: LeadStage; label: string; color: string; bg: string; icon
 const SOURCES = ["Referral", "Google", "Door to Door", "Social Media", "Flyer", "Repeat", "Other"];
 
 const BLANK: Omit<Lead, "id" | "created_at"> = {
-  name: "", phone: "", email: "", address: "", stage: "new",
-  source: null, notes: "", estimated_value: null,
+  name: "", phone: "", phone_alt: "", email: "", address: "", stage: "new",
+  source: null, notes: "", rapport_notes: null, service_notes: null,
+  preferred_date: null, preferred_time: null, custom_field_values: null,
+  estimated_value: null,
 };
 
 export default function LeadsPage() {
@@ -78,11 +86,17 @@ export default function LeadsPage() {
     setForm({
       name: lead.name,
       phone: lead.phone ?? "",
+      phone_alt: lead.phone_alt ?? "",
       email: lead.email ?? "",
       address: lead.address ?? "",
       stage: lead.stage,
       source: lead.source,
       notes: lead.notes ?? "",
+      rapport_notes: lead.rapport_notes,
+      service_notes: lead.service_notes,
+      preferred_date: lead.preferred_date,
+      preferred_time: lead.preferred_time,
+      custom_field_values: lead.custom_field_values,
       estimated_value: lead.estimated_value,
     });
     setModalOpen(true);
@@ -252,8 +266,13 @@ export default function LeadsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 px-4 lg:px-8">
           {filtered.map((lead) => {
             const stage = STAGES.find((s) => s.value === lead.stage)!;
+            const apptDate = lead.preferred_date
+              ? new Date(lead.preferred_date + "T00:00:00").toLocaleDateString([], { month: "short", day: "numeric" })
+              : null;
             return (
-              <div key={lead.id} className="rounded-2xl bg-card border border-border overflow-hidden">
+              <div key={lead.id}
+                className="rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+                onClick={() => router.push(`/leads/${lead.id}`)}>
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
@@ -273,6 +292,12 @@ export default function LeadsPage() {
                             {lead.source}
                           </span>
                         )}
+                        {apptDate && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600">
+                            <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>event</span>
+                            Appt: {apptDate}
+                          </span>
+                        )}
                       </div>
                       {lead.estimated_value != null && lead.estimated_value > 0 && (
                         <p className="text-base font-extrabold text-primary mt-0.5">
@@ -282,7 +307,7 @@ export default function LeadsPage() {
                       )}
                     </div>
                     <button
-                      onClick={() => openEdit(lead)}
+                      onClick={(e) => { e.stopPropagation(); openEdit(lead); }}
                       className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <span className="material-symbols-outlined text-[16px]">edit</span>
@@ -319,7 +344,7 @@ export default function LeadsPage() {
                   )}
 
                   {/* Stage advancement */}
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                     {lead.stage !== "won" && lead.stage !== "lost" && (
                       <>
                         {lead.stage === "new" && (
@@ -388,7 +413,7 @@ export default function LeadsPage() {
 
                 {/* Delete confirm */}
                 {deleteConfirm === lead.id && (
-                  <div className="border-t border-border px-4 py-3 bg-red-50 dark:bg-red-950/20 flex items-center justify-between gap-3">
+                  <div className="border-t border-border px-4 py-3 bg-red-50 dark:bg-red-950/20 flex items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
                     <p className="text-xs font-bold text-red-600">Delete this lead?</p>
                     <div className="flex gap-2">
                       <button

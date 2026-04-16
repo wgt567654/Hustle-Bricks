@@ -15,5 +15,7 @@ const CanvassingMap = dynamic(
 );
 
 export default function EmployeeCanvassingPage() {
-  return <CanvassingMap />;
+  // Employees capture lead info (name, phone, notes) before booking.
+  // The lead saves to the owner's leads list. No quote creation access.
+  return <CanvassingMap onBookNow={() => {}} captureLeadOnBook />;
 }

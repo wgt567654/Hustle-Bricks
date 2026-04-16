@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
@@ -42,6 +42,20 @@ export default function SettingsPage() {
   const [savingTax, setSavingTax] = useState(false);
   const [savingCommission, setSavingCommission] = useState(false);
 
+  // Stripe Connect
+  const searchParams = useSearchParams();
+  const [connectStatus, setConnectStatus] = useState<"not_connected" | "pending" | "active">("not_connected");
+  const [connectType, setConnectType] = useState<string | null>(null);
+  const [connectingExpress, setConnectingExpress] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [connectBanner, setConnectBanner] = useState<"success" | "error" | "refresh" | "return" | null>(null);
+
+  // HustleBricks subscription
+  const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
+  const [openingPortal, setOpeningPortal] = useState(false);
+
   // Automations
   const [smsReminders, setSmsReminders] = useState(false);
   const [smartScheduling, setSmartScheduling] = useState(false);
@@ -58,6 +72,24 @@ export default function SettingsPage() {
   });
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleSaved, setScheduleSaved] = useState(false);
+  const [crewSize, setCrewSize] = useState(1);
+  const [savingCrew, setSavingCrew] = useState(false);
+  const [crewSaved, setCrewSaved] = useState(false);
+
+  // Canvassing custom fields
+  type CustomField = { id: string; label: string; field_type: "text" | "number" | "boolean" | "select"; options: string[]; required: boolean; position: number };
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [cfModalOpen, setCfModalOpen] = useState(false);
+  const [cfEditing, setCfEditing] = useState<CustomField | null>(null);
+  const [cfForm, setCfForm] = useState<Omit<CustomField, "id" | "position">>({ label: "", field_type: "text", options: [], required: false });
+  const [cfOptionsInput, setCfOptionsInput] = useState("");
+  const [cfSaving, setCfSaving] = useState(false);
+  const [cfDeleting, setCfDeleting] = useState<string | null>(null);
+
+  // Share form
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedIframe, setCopiedIframe] = useState(false);
+  const [copiedButton, setCopiedButton] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -66,14 +98,21 @@ export default function SettingsPage() {
       if (!user) return;
       setUserEmail(user.email ?? null);
 
-      const { data: business } = await supabase
+      const { data: business, error: businessError } = await supabase
         .from("businesses")
-        .select("id, name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, tax_rate, commission_rate, sms_reminders_enabled, smart_scheduling_enabled, employee_access_code")
+        .select("id, name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, tax_rate, commission_rate, sms_reminders_enabled, smart_scheduling_enabled, employee_access_code, stripe_connect_account_id, stripe_connect_status, stripe_connect_type, stripe_subscription_id, subscription_status, plan")
         .eq("owner_id", user.id)
-        .single();
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-      if (!business) {
+      // Only redirect if there is truly no business for this user (not on query errors)
+      if (!business && !businessError) {
         router.replace("/");
+        return;
+      }
+      if (!business) {
+        setLoading(false);
         return;
       }
       if (business) {
@@ -91,6 +130,20 @@ export default function SettingsPage() {
         setSmsReminders(business.sms_reminders_enabled ?? false);
         setSmartScheduling(business.smart_scheduling_enabled ?? false);
 
+        // Stripe Connect state
+        const biz = business as unknown as {
+          stripe_connect_status: string | null;
+          stripe_connect_type: string | null;
+          stripe_subscription_id: string | null;
+          subscription_status: string | null;
+          plan: string | null;
+        };
+        setConnectStatus((biz.stripe_connect_status as "not_connected" | "pending" | "active") ?? "not_connected");
+        setConnectType(biz.stripe_connect_type ?? null);
+        setStripeSubscriptionId(biz.stripe_subscription_id ?? null);
+        setSubscriptionStatus(biz.subscription_status ?? null);
+        setPlan(biz.plan ?? null);
+
         const { data: schedSettings } = await supabase
           .from("scheduling_settings")
           .select("unavailable_days, day_hours")
@@ -100,11 +153,85 @@ export default function SettingsPage() {
           setUnavailableDays((schedSettings as { unavailable_days: number[] }).unavailable_days ?? [0, 6]);
           setDayHours((schedSettings as { day_hours: Record<number, { from: string; until: string }> }).day_hours ?? {});
         }
+
+        const { data: crewSettings } = await supabase
+          .from("business_crew_settings")
+          .select("crew_size")
+          .eq("business_id", business.id)
+          .maybeSingle();
+        if (crewSettings) {
+          setCrewSize((crewSettings as { crew_size: number }).crew_size ?? 1);
+        }
+
+        const { data: cfData } = await supabase
+          .from("canvassing_custom_fields")
+          .select("*")
+          .eq("business_id", business.id)
+          .order("position");
+        setCustomFields((cfData as unknown as CustomField[]) ?? []);
       }
       setLoading(false);
     }
     load();
   }, []);
+
+  // Read connect return state from URL on mount
+  useEffect(() => {
+    const param = searchParams.get("connect");
+    if (param === "success" || param === "return" || param === "refresh" || param === "error") {
+      setConnectBanner(param as "success" | "return" | "refresh" | "error");
+    }
+  }, [searchParams]);
+
+  async function connectExpress() {
+    if (!businessId) return;
+    setConnectingExpress(true);
+    try {
+      const res = await fetch("/api/stripe/connect/express", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId }),
+      });
+      const { url, error } = await res.json();
+      if (error || !url) { setConnectingExpress(false); return; }
+      window.location.href = url;
+    } catch {
+      setConnectingExpress(false);
+    }
+  }
+
+  async function connectStandard() {
+    window.location.href = "/api/stripe/connect/standard";
+  }
+
+  async function disconnectStripe() {
+    if (!businessId) return;
+    setDisconnecting(true);
+    const res = await fetch("/api/stripe/connect/disconnect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businessId }),
+    });
+    const { ok, error } = await res.json();
+    if (ok) {
+      setConnectStatus("not_connected");
+      setConnectType(null);
+    } else {
+      alert(error ?? "Could not disconnect");
+    }
+    setDisconnecting(false);
+  }
+
+  async function openSubscriptionPortal() {
+    setOpeningPortal(true);
+    try {
+      const res = await fetch("/api/stripe/customer-portal", { method: "POST" });
+      const { url } = await res.json();
+      if (url) window.open(url, "_blank");
+    } finally {
+      setOpeningPortal(false);
+    }
+  }
 
   function generateCode() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -205,6 +332,19 @@ export default function SettingsPage() {
     setTimeout(() => setScheduleSaved(false), 2000);
   }
 
+  async function saveCrewSize() {
+    if (!businessId) return;
+    setSavingCrew(true);
+    const supabase = createClient();
+    await supabase.from("business_crew_settings").upsert({
+      business_id: businessId,
+      crew_size: crewSize,
+    }, { onConflict: "business_id" });
+    setSavingCrew(false);
+    setCrewSaved(true);
+    setTimeout(() => setCrewSaved(false), 2000);
+  }
+
   function toggleDay(day: number) {
     setUnavailableDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
@@ -213,6 +353,65 @@ export default function SettingsPage() {
 
   function setDayHour(day: number, field: "from" | "until", value: string) {
     setDayHours((prev) => ({ ...prev, [day]: { ...(prev[day] ?? { from: "08:00", until: "17:00" }), [field]: value } }));
+  }
+
+  function openCfModal(field?: CustomField) {
+    if (field) {
+      setCfEditing(field);
+      setCfForm({ label: field.label, field_type: field.field_type, options: field.options ?? [], required: field.required });
+      setCfOptionsInput((field.options ?? []).join(", "));
+    } else {
+      setCfEditing(null);
+      setCfForm({ label: "", field_type: "text", options: [], required: false });
+      setCfOptionsInput("");
+    }
+    setCfModalOpen(true);
+  }
+
+  async function saveCf() {
+    if (!businessId || !cfForm.label.trim()) return;
+    setCfSaving(true);
+    const supabase = createClient();
+    const options = cfForm.field_type === "select"
+      ? cfOptionsInput.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+    if (cfEditing) {
+      const { data } = await supabase.from("canvassing_custom_fields")
+        .update({ label: cfForm.label.trim(), field_type: cfForm.field_type, options, required: cfForm.required })
+        .eq("id", cfEditing.id).select("*").single();
+      if (data) setCustomFields((prev) => prev.map((f) => f.id === cfEditing.id ? data as unknown as CustomField : f));
+    } else {
+      const position = customFields.length;
+      const { data } = await supabase.from("canvassing_custom_fields")
+        .insert({ business_id: businessId, label: cfForm.label.trim(), field_type: cfForm.field_type, options, required: cfForm.required, position })
+        .select("*").single();
+      if (data) setCustomFields((prev) => [...prev, data as unknown as CustomField]);
+    }
+    setCfSaving(false);
+    setCfModalOpen(false);
+  }
+
+  async function deleteCf(id: string) {
+    setCfDeleting(id);
+    const supabase = createClient();
+    await supabase.from("canvassing_custom_fields").delete().eq("id", id);
+    setCustomFields((prev) => prev.filter((f) => f.id !== id));
+    setCfDeleting(null);
+  }
+
+  async function moveCf(id: string, dir: -1 | 1) {
+    const idx = customFields.findIndex((f) => f.id === id);
+    if (idx < 0) return;
+    const next = idx + dir;
+    if (next < 0 || next >= customFields.length) return;
+    const updated = [...customFields];
+    [updated[idx], updated[next]] = [updated[next], updated[idx]];
+    setCustomFields(updated);
+    const supabase = createClient();
+    await Promise.all([
+      supabase.from("canvassing_custom_fields").update({ position: next }).eq("id", updated[idx].id),
+      supabase.from("canvassing_custom_fields").update({ position: idx }).eq("id", updated[next].id),
+    ]);
   }
 
   async function signOut() {
@@ -580,21 +779,109 @@ export default function SettingsPage() {
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Financial & Billing</h3>
           <Card className="rounded-2xl border-border shadow-sm flex flex-col divide-y divide-border/50">
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-[#635bff]/10 flex items-center justify-center">
+            {/* Stripe Connect — real status */}
+            {connectBanner === "success" && (
+              <div className="px-4 py-2.5 bg-green-50 border-b border-green-100 text-xs text-green-700 font-medium">
+                Stripe account connected successfully.
+              </div>
+            )}
+            {connectBanner === "error" && (
+              <div className="px-4 py-2.5 bg-red-50 border-b border-red-100 text-xs text-red-700 font-medium">
+                Something went wrong connecting Stripe. Please try again.
+              </div>
+            )}
+            {connectBanner === "refresh" && (
+              <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 text-xs text-amber-700 font-medium">
+                Your Stripe setup link expired. Click &quot;Resume Setup&quot; to continue.
+              </div>
+            )}
+            <div className="p-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="size-10 shrink-0 rounded-full bg-[#635bff]/10 flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#635bff]">
                     <path d="M4.5 3.75a3 3 0 00-3 3v.75h21v-.75a3 3 0 00-3-3h-15z" />
                     <path fillRule="evenodd" d="M22.5 9.75h-21v7.5a3 3 0 003 3h15a3 3 0 003-3v-7.5zm-18 3.75a.75.75 0 01.75-.75h6a.75.75 0 010 1.5h-6a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-sm text-foreground">Stripe Integration</span>
-                  <span className="text-xs text-muted-foreground">Card payments enabled on invoices</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-sm text-foreground">Stripe Connect</span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {connectStatus === "active"
+                      ? `Connected · ${connectType === "express" ? "Express account" : "Standard account"}`
+                      : connectStatus === "pending"
+                      ? "Finish setup to accept card payments"
+                      : "Connect Stripe to accept card payments"}
+                  </span>
                 </div>
               </div>
-              <span className="text-xs font-bold text-[var(--color-status-completed)] bg-status-completed/10 px-2.5 py-1 rounded-full">Active</span>
+              <div className="flex items-center gap-2 shrink-0">
+                {connectStatus === "active" && (
+                  <>
+                    <span className="text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full">Connected</span>
+                    <button
+                      onClick={disconnectStripe}
+                      disabled={disconnecting}
+                      className="text-xs font-bold text-destructive hover:opacity-80 disabled:opacity-50"
+                    >
+                      {disconnecting ? "…" : "Disconnect"}
+                    </button>
+                  </>
+                )}
+                {connectStatus === "pending" && (
+                  <>
+                    <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">Pending</span>
+                    <button
+                      onClick={connectExpress}
+                      disabled={connectingExpress}
+                      className="text-xs font-bold text-primary hover:opacity-80 disabled:opacity-50"
+                    >
+                      {connectingExpress ? "…" : "Resume Setup"}
+                    </button>
+                  </>
+                )}
+                {connectStatus === "not_connected" && (
+                  <div className="flex flex-col items-end gap-1">
+                    <button
+                      onClick={connectExpress}
+                      disabled={connectingExpress}
+                      className="text-xs font-bold text-primary hover:opacity-80 disabled:opacity-50"
+                    >
+                      {connectingExpress ? "Redirecting…" : "New Stripe account"}
+                    </button>
+                    <button
+                      onClick={connectStandard}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Use existing account
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* HustleBricks Subscription */}
+            {stripeSubscriptionId && (
+              <div className="p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center text-foreground">
+                    <span className="material-symbols-outlined text-[20px]">subscriptions</span>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-sm text-foreground capitalize">
+                      {plan ? `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan` : "HustleBricks Subscription"}
+                    </span>
+                    <span className="text-xs text-muted-foreground capitalize">{subscriptionStatus ?? "active"}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={openSubscriptionPortal}
+                  disabled={openingPortal}
+                  className="text-xs font-bold text-primary hover:opacity-80 disabled:opacity-50 shrink-0"
+                >
+                  {openingPortal ? "Opening…" : "Manage →"}
+                </button>
+              </div>
+            )}
             {/* Tax Settings */}
             <div className="flex flex-col">
               <div className="p-4 flex items-center justify-between">
@@ -762,7 +1049,113 @@ export default function SettingsPage() {
                   >
                     {scheduleSaved ? "Saved!" : savingSchedule ? "Saving…" : "Save Schedule"}
                   </button>
+
+                  {/* Crew size */}
+                  <div className="mt-2 pt-4 border-t border-border/50 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Crew Size</p>
+                        <p className="text-xs text-muted-foreground">How many employees are needed per job</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCrewSize((n) => Math.max(1, n - 1))}
+                          className="flex size-8 items-center justify-center rounded-full border border-border bg-muted/40 text-foreground hover:bg-muted transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">remove</span>
+                        </button>
+                        <span className="w-8 text-center text-lg font-bold tabular-nums">{crewSize}</span>
+                        <button
+                          onClick={() => setCrewSize((n) => n + 1)}
+                          className="flex size-8 items-center justify-center rounded-full border border-border bg-muted/40 text-foreground hover:bg-muted transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">add</span>
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      onClick={saveCrewSize}
+                      disabled={savingCrew}
+                      className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      {crewSaved ? "Saved!" : savingCrew ? "Saving…" : "Save Crew Size"}
+                    </button>
+                  </div>
                 </div>
+              </Card>
+            </section>
+          );
+        })()}
+
+        {/* Share Your Form */}
+        {businessId && (() => {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+          const formUrl = `${appUrl}/quote-request/${businessId}`;
+          const iframeCode = `<iframe\n  src="${formUrl}"\n  width="100%"\n  height="750"\n  style="border:none;border-radius:16px;display:block;"\n  loading="lazy"\n></iframe>`;
+          const buttonCode = `<a href="${formUrl}" style="display:inline-block;background:#111418;color:white;padding:16px 32px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;">Get a Free Quote</a>`;
+
+          function copy(text: string, set: (v: boolean) => void) {
+            navigator.clipboard.writeText(text);
+            set(true);
+            setTimeout(() => set(false), 2000);
+          }
+
+          return (
+            <section className="flex flex-col gap-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Share Your Form</h3>
+              <Card className="rounded-2xl border-border shadow-sm overflow-hidden divide-y divide-border">
+
+                {/* Direct link */}
+                <div className="p-4 flex flex-col gap-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Direct Link</p>
+                  <p className="text-xs text-muted-foreground">Send clients directly to your quote request form.</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs text-foreground font-mono truncate select-all">
+                      {formUrl}
+                    </div>
+                    <button
+                      onClick={() => copy(formUrl, setCopiedLink)}
+                      className={`shrink-0 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors ${copiedLink ? "bg-green-500 text-white" : "bg-primary text-white hover:bg-primary/90"}`}
+                    >
+                      {copiedLink ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Embed iframe */}
+                <div className="p-4 flex flex-col gap-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Embed on Your Website</p>
+                  <p className="text-xs text-muted-foreground">Paste this code into your website to show the form inline.</p>
+                  <div className="flex items-start gap-2 mt-1">
+                    <pre className="flex-1 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs text-foreground font-mono whitespace-pre-wrap break-all overflow-x-auto">
+                      {iframeCode}
+                    </pre>
+                    <button
+                      onClick={() => copy(iframeCode, setCopiedIframe)}
+                      className={`shrink-0 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors ${copiedIframe ? "bg-green-500 text-white" : "bg-primary text-white hover:bg-primary/90"}`}
+                    >
+                      {copiedIframe ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Button snippet */}
+                <div className="p-4 flex flex-col gap-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Button Snippet</p>
+                  <p className="text-xs text-muted-foreground">Add a &quot;Get a Free Quote&quot; button to any page.</p>
+                  <div className="flex items-start gap-2 mt-1">
+                    <pre className="flex-1 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs text-foreground font-mono whitespace-pre-wrap break-all overflow-x-auto">
+                      {buttonCode}
+                    </pre>
+                    <button
+                      onClick={() => copy(buttonCode, setCopiedButton)}
+                      className={`shrink-0 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors ${copiedButton ? "bg-green-500 text-white" : "bg-primary text-white hover:bg-primary/90"}`}
+                    >
+                      {copiedButton ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
               </Card>
             </section>
           );
@@ -770,6 +1163,89 @@ export default function SettingsPage() {
 
         {/* Account */}
         <section className="flex flex-col gap-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Canvassing Fields</h3>
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <div className="p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Custom Booking Fields</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Fields your reps fill in when booking a homeowner</p>
+                </div>
+                <button onClick={() => openCfModal()} className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold active:scale-95 transition-all">
+                  <span className="material-symbols-outlined text-[14px]">add</span> Add
+                </button>
+              </div>
+              {customFields.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No custom fields yet. Add fields like &quot;Number of Windows&quot; or &quot;Service Type&quot;.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {customFields.map((f, i) => (
+                    <div key={f.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <div className="flex flex-col gap-0.5 mr-1">
+                        <button onClick={() => moveCf(f.id, -1)} disabled={i === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors leading-none">
+                          <span className="material-symbols-outlined text-[14px]">arrow_drop_up</span>
+                        </button>
+                        <button onClick={() => moveCf(f.id, 1)} disabled={i === customFields.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors leading-none">
+                          <span className="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+                        </button>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{f.label}{f.required && <span className="text-red-500 ml-0.5">*</span>}</p>
+                        <p className="text-[11px] text-muted-foreground capitalize">
+                          {f.field_type === "boolean" ? "Yes / No" : f.field_type === "select" ? `Dropdown: ${(f.options ?? []).join(", ")}` : f.field_type}
+                        </p>
+                      </div>
+                      <button onClick={() => openCfModal(f)} className="size-7 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                      </button>
+                      <button onClick={() => deleteCf(f.id)} disabled={cfDeleting === f.id} className="size-7 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-muted-foreground hover:text-red-500 disabled:opacity-50">
+                        <span className="material-symbols-outlined text-[16px]">{cfDeleting === f.id ? "hourglass_empty" : "delete"}</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Custom field modal */}
+          {cfModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setCfModalOpen(false)}>
+              <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+                <p className="font-bold text-base text-foreground">{cfEditing ? "Edit Field" : "Add Custom Field"}</p>
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Field Label *</label>
+                    <input value={cfForm.label} onChange={(e) => setCfForm((f) => ({ ...f, label: e.target.value }))} placeholder="e.g. Number of Windows" className="mt-1 w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Field Type</label>
+                    <select value={cfForm.field_type} onChange={(e) => setCfForm((f) => ({ ...f, field_type: e.target.value as CustomField["field_type"] }))} className="mt-1 w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40">
+                      <option value="text">Text</option>
+                      <option value="number">Number</option>
+                      <option value="boolean">Yes / No</option>
+                      <option value="select">Dropdown</option>
+                    </select>
+                  </div>
+                  {cfForm.field_type === "select" && (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Options (comma-separated)</label>
+                      <input value={cfOptionsInput} onChange={(e) => setCfOptionsInput(e.target.value)} placeholder="e.g. Exterior, Interior, Both, Screens" className="mt-1 w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40" />
+                    </div>
+                  )}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={cfForm.required} onChange={(e) => setCfForm((f) => ({ ...f, required: e.target.checked }))} className="rounded" />
+                    <span className="text-sm text-foreground">Required field</span>
+                  </label>
+                </div>
+                <div className="flex gap-2 mt-1">
+                  <button onClick={() => setCfModalOpen(false)} className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm">Cancel</button>
+                  <button onClick={saveCf} disabled={cfSaving || !cfForm.label.trim()} className="flex-[2] py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50">{cfSaving ? "Saving…" : cfEditing ? "Save Changes" : "Add Field"}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Account</h3>
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
             <button
