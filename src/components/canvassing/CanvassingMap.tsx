@@ -1119,8 +1119,8 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
           zoomSnap={0}
-          wheelPxPerZoomLevel={40}
-          preferCanvas={true}
+          wheelPxPerZoomLevel={10}
+          inertia={false}
         >
           <TileLayer url={tile.url} attribution={tile.attribution} keepBuffer={4} />
           <MapClickHandler onMapClick={handleMapClick} skipRef={skipClickRef} enabled={viewMode === "canvass"} />
