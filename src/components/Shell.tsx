@@ -8,10 +8,10 @@ import { createClient } from '@/lib/supabase/client';
 import { STATUS_HEX } from '@/lib/status-colors';
 
 const NAV = [
-  { href: "/jobs",            label: "Jobs",     icon: "work",           exact: false },
-  { href: "/analytics",       label: "Analytics", icon: "leaderboard",    exact: false },
-  { href: "/canvassing",      label: "Map",      icon: "map",            exact: false },
-  { href: "/calendar",        label: "Schedule", icon: "calendar_month", exact: false },
+  { href: "/jobs",            label: "Jobs",     icon: "work",           exact: false, ownerOnly: false },
+  { href: "/analytics",       label: "Analytics", icon: "leaderboard",    exact: false, ownerOnly: true  },
+  { href: "/canvassing",      label: "Map",      icon: "map",            exact: false, ownerOnly: false },
+  { href: "/calendar",        label: "Schedule", icon: "calendar_month", exact: false, ownerOnly: false },
 ];
 
 const MORE_GROUPS = [
@@ -245,8 +245,8 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
   const unreadCount        = notifications.length;
   const isOwner            = role === "owner";
-  const visibleNav         = isOwner ? NAV : NAV.filter((n) => n.href !== "/analytics");
-  const visibleSidebarNav  = SIDEBAR_NAV.filter((n) => (!n.ownerOnly || isOwner) && (isOwner || n.href !== "/analytics"));
+  const visibleNav         = NAV.filter((n) => !n.ownerOnly || isOwner);
+  const visibleSidebarNav  = SIDEBAR_NAV.filter((n) => !n.ownerOnly || isOwner);
   const isMapPage          = pathname === "/map" || pathname.startsWith("/map/") || pathname === "/canvassing" || pathname.startsWith("/canvassing/");
 
   return (
