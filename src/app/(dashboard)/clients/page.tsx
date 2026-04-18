@@ -25,6 +25,16 @@ const TAG_LABELS: Record<Tag, string> = {
   vip: "VIP",
 };
 
+const LEAD_SOURCES = [
+  "Google",
+  "Facebook/Instagram",
+  "Referral",
+  "Door Knock",
+  "Yard Sign",
+  "Repeat Customer",
+  "Other",
+] as const;
+
 const EMPTY_FORM = {
   name: "",
   email: "",
@@ -32,6 +42,7 @@ const EMPTY_FORM = {
   address: "",
   tag: "residential" as Tag,
   notes: "",
+  lead_source: "",
 };
 
 const FILTER_TABS: { label: string; value: Tag | "all" }[] = [
@@ -106,6 +117,7 @@ export default function ClientsPage() {
         address: form.address.trim() || null,
         tag: form.tag,
         notes: form.notes.trim() || null,
+        lead_source: form.lead_source || null,
       })
       .select("id, name, email, phone, address, tag, notes")
       .single();
@@ -130,10 +142,10 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-40 lg:pb-8">
-      <div className="flex flex-col gap-1 mb-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Clients</h1>
-        <p className="text-sm text-muted-foreground">Your customer base and CRM.</p>
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-32 lg:pb-8">
+      <div className="flex flex-col gap-0.5 mb-1">
+        <h1 className="text-xl font-extrabold tracking-tight text-foreground">Clients</h1>
+        <p className="text-xs text-muted-foreground">Your customer base and CRM.</p>
       </div>
 
       {/* Search */}
@@ -345,6 +357,20 @@ export default function ClientsPage() {
                   onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                   className="flex h-12 w-full rounded-xl border border-border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Lead Source <span className="normal-case font-normal text-muted-foreground/60">(optional)</span></label>
+                <select
+                  value={form.lead_source}
+                  onChange={(e) => setForm((f) => ({ ...f, lead_source: e.target.value }))}
+                  className="flex h-12 w-full rounded-xl border border-border bg-transparent px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">— How did they find you? —</option>
+                  {LEAD_SOURCES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex flex-col gap-1.5">

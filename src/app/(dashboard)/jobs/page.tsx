@@ -124,25 +124,25 @@ export default function JobsPage() {
 
 
   return (
-    <div className="flex flex-col gap-4 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-40 lg:pb-8">
+    <div className="flex flex-col gap-3 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-36 lg:pb-8">
       {/* Greeting + compact stats */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
         <div className="flex flex-col gap-0.5">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{getTodayLabel()}</p>
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{getTodayLabel()}</p>
+          <h1 className="text-xl font-extrabold tracking-tight text-foreground">
             {getGreeting()}{firstName ? `, ${firstName}` : ""}
           </h1>
         </div>
 
         {/* Stats chips */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-card border border-border/60 shadow-sm">
-            <span className="material-symbols-outlined text-[14px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-card border border-border/60 shadow-sm">
+            <span className="material-symbols-outlined text-[13px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
               trending_up
             </span>
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">This week</span>
-              <span className="text-sm font-extrabold text-foreground leading-tight">
+              <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">This week</span>
+              <span className="text-xs font-extrabold text-foreground leading-tight">
                 {statsLoaded ? formatCurrencyRounded(weekEarnings, currency) : "—"}
               </span>
             </div>
@@ -150,14 +150,14 @@ export default function JobsPage() {
 
           <div
             onClick={() => outstandingCount > 0 && router.push("/payments")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-border/60 shadow-sm ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border/60 shadow-sm ${
               outstandingCount > 0
                 ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40 cursor-pointer"
                 : "bg-card"
             }`}
           >
             <span
-              className="material-symbols-outlined text-[14px]"
+              className="material-symbols-outlined text-[13px]"
               style={{
                 fontVariationSettings: "'FILL' 1",
                 color: outstandingCount > 0 ? "#f59e0b" : "var(--color-primary)",
@@ -166,8 +166,8 @@ export default function JobsPage() {
               {outstandingCount > 0 ? "pending_actions" : "check_circle"}
             </span>
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Outstanding</span>
-              <span className={`text-sm font-extrabold leading-tight ${outstandingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+              <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Outstanding</span>
+              <span className={`text-xs font-extrabold leading-tight ${outstandingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
                 {!statsLoaded ? "—" : outstandingCount > 0 ? formatCurrencyRounded(outstandingAmount, currency) : "✓ Clear"}
               </span>
             </div>
@@ -175,10 +175,10 @@ export default function JobsPage() {
 
           <button
             onClick={() => router.push("/quotes/new")}
-            className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-primary text-white shadow-sm active:scale-95 transition-transform shrink-0"
+            className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary text-white shadow-sm active:scale-95 transition-transform shrink-0"
             style={{ boxShadow: "0 2px 8px oklch(0.511 0.230 277 / 0.30)" }}
           >
-            <span className="material-symbols-outlined text-[16px]">add</span>
+            <span className="material-symbols-outlined text-[14px]">add</span>
             <span className="text-xs font-bold">New Quote</span>
           </button>
         </div>
@@ -191,7 +191,7 @@ export default function JobsPage() {
           return (
             <button key={tab.value} onClick={() => setActiveFilter(tab.value)}>
               <Badge
-                className={`px-4 py-1.5 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
+                className={`px-3 py-1 text-xs rounded-full shrink-0 cursor-pointer transition-colors ${
                   activeFilter === tab.value
                     ? "bg-primary text-white hover:bg-primary/90"
                     : "bg-card text-muted-foreground border border-border hover:bg-muted font-medium"
@@ -228,13 +228,13 @@ export default function JobsPage() {
               onClick={() => router.push(`/jobs/${job.id}`)}
               className="overflow-hidden rounded-2xl cursor-pointer flex flex-col press"
             >
-              <div className="h-1.5 w-full" style={{ backgroundColor: color }} />
-              <div className="p-4 flex flex-col gap-3">
+              <div className="h-1 w-full" style={{ backgroundColor: color }} />
+              <div className="p-3 flex flex-col gap-2">
 
                 <div className="flex justify-between items-start">
-                  <div className="flex items-start gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm" style={{ backgroundColor: color }}>
-                      <span className="material-symbols-outlined text-[20px]">home_repair_service</span>
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl text-white shadow-sm" style={{ backgroundColor: color }}>
+                      <span className="material-symbols-outlined text-[17px]">home_repair_service</span>
                     </div>
                     <div className="flex flex-col">
                       <h3 className="font-bold text-foreground leading-tight">
@@ -246,9 +246,9 @@ export default function JobsPage() {
                   <span className="font-extrabold text-foreground">{formatCurrency(job.total, currency)}</span>
                 </div>
 
-                <div className="flex items-center gap-2 bg-muted/40 rounded-xl p-2.5 border border-border/50">
-                  <span className="material-symbols-outlined text-[16px] text-muted-foreground">calendar_clock</span>
-                  <span className="text-sm text-foreground font-medium">{formatScheduled(job.scheduled_at)}</span>
+                <div className="flex items-center gap-2 bg-muted/40 rounded-xl p-2 border border-border/50">
+                  <span className="material-symbols-outlined text-[14px] text-muted-foreground">calendar_clock</span>
+                  <span className="text-xs text-foreground font-medium">{formatScheduled(job.scheduled_at)}</span>
                   {job.clients?.address && (
                     <>
                       <span className="text-muted-foreground">·</span>

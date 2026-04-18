@@ -3,14 +3,18 @@ import { stripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
-  const { paymentIntentId, jobId } = await request.json();
+  const { paymentIntentId, jobId, stripeAccount } = await request.json();
 
-  if (!paymentIntentId || !jobId) {
+  if (!paymentIntentId || !jobId || !stripeAccount) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  // Verify with Stripe that the payment actually succeeded
-  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  // Retrieve the PaymentIntent from the connected account
+  const paymentIntent = await stripe.paymentIntents.retrieve(
+    paymentIntentId,
+    {},
+    { stripeAccount }
+  );
 
   if (paymentIntent.status !== "succeeded") {
     return NextResponse.json({ error: "Payment not confirmed" }, { status: 400 });
@@ -18,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient();
 
-  // Check if we already recorded this payment (idempotency)
+  // Idempotency check
   const { data: existing } = await supabase
     .from("payments")
     .select("id")
@@ -31,11 +35,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, alreadyRecorded: true });
   }
 
+  // Fetch business_id from the job for the payments record
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("business_id")
+    .eq("id", jobId)
+    .single();
+
   await supabase.from("payments").insert({
     job_id: jobId,
+    business_id: job?.business_id,
     status: "paid",
     method: "card",
     amount: paymentIntent.amount / 100,
+    stripe_payment_id: paymentIntentId,
     paid_at: new Date().toISOString(),
   });
 

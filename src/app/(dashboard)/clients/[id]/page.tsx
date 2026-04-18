@@ -104,6 +104,25 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
   const [actioningRequest, setActioningRequest] = useState<string | null>(null);
 
+  // Stripe recurring billing
+  type BillingSub = {
+    id: string;
+    stripe_subscription_id: string;
+    status: string;
+    amount: number;
+    currency: string;
+    interval: string;
+    interval_count: number;
+    description: string | null;
+    next_billing_date: string | null;
+  };
+  const [connectStatus, setConnectStatus] = useState<string>("not_connected");
+  const [activeBillingSub, setActiveBillingSub] = useState<BillingSub | null>(null);
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [billingForm, setBillingForm] = useState({ amount: "", interval: "month", description: "" });
+  const [submittingBilling, setSubmittingBilling] = useState(false);
+  const [cancelingBilling, setCancelingBilling] = useState(false);
+
   // Inline notes editing
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState("");
@@ -181,12 +200,14 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       // Load pending booking requests
       const { data: biz } = await supabase
         .from("businesses")
-        .select("id, currency")
+        .select("id, currency, stripe_connect_status")
         .eq("owner_id", (await supabase.auth.getUser()).data.user!.id)
         .single();
       if (biz?.currency) setCurrency(biz.currency);
       if (biz) {
         setBusinessId(biz.id);
+        setConnectStatus((biz as unknown as { stripe_connect_status: string | null }).stripe_connect_status ?? "not_connected");
+
         const { data: reqs } = await supabase
           .from("booking_requests")
           .select("id, requested_date, requested_time, notes, status, created_at")
@@ -194,6 +215,19 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           .eq("status", "pending")
           .order("created_at", { ascending: false });
         setBookingRequests((reqs as BookingRequest[]) ?? []);
+
+        // Load active billing subscription
+        const { data: billingSubs } = await supabase
+          .from("client_billing_subscriptions")
+          .select("id, stripe_subscription_id, status, amount, currency, interval, interval_count, description, next_billing_date")
+          .eq("business_id", biz.id)
+          .eq("client_id", id)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (billingSubs && billingSubs.length > 0) {
+          setActiveBillingSub(billingSubs[0] as BillingSub);
+        }
       }
 
       setLoading(false);
@@ -307,19 +341,64 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     return !paid ? s + j.total : s;
   }, 0);
 
+  async function setupAutoBilling() {
+    if (!businessId) return;
+    const amount = parseFloat(billingForm.amount);
+    if (!amount || amount <= 0) return;
+    setSubmittingBilling(true);
+    try {
+      const res = await fetch("/api/stripe/connect/client-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessId,
+          clientId: id,
+          amount,
+          interval: billingForm.interval,
+          intervalCount: 1,
+          description: billingForm.description || undefined,
+        }),
+      });
+      const { ok, subscription, error } = await res.json();
+      if (ok && subscription) {
+        setActiveBillingSub(subscription as BillingSub);
+        setShowBillingModal(false);
+        setBillingForm({ amount: "", interval: "month", description: "" });
+      } else {
+        alert(error ?? "Could not create subscription");
+      }
+    } finally {
+      setSubmittingBilling(false);
+    }
+  }
+
+  async function cancelAutoBilling() {
+    if (!activeBillingSub) return;
+    setCancelingBilling(true);
+    try {
+      const res = await fetch(`/api/stripe/connect/client-subscription/${activeBillingSub.stripe_subscription_id}`, {
+        method: "DELETE",
+      });
+      const { ok } = await res.json();
+      if (ok) setActiveBillingSub(null);
+    } finally {
+      setCancelingBilling(false);
+    }
+  }
+
   const tagStyle = TAG_COLORS[client.tag];
   const hasPlan = client.recurring_plan && client.recurring_plan !== "none";
 
   return (
-    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-32 lg:pb-8">
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-28 lg:pb-8">
 
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.push("/clients")}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card shadow-sm border border-border text-foreground hover:bg-muted/50 transition-colors"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card shadow-sm border border-border text-foreground hover:bg-muted/50 transition-colors"
         >
-          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Client</p>
@@ -530,8 +609,137 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
       </div>{/* end left column */}
 
-      {/* ── Right column: booking requests + job history ── */}
+      {/* ── Right column: auto-billing + booking requests + job history ── */}
       <div className="flex flex-col gap-6 lg:flex-[2]">
+
+      {/* Auto-Billing */}
+      <section className="flex flex-col gap-3">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Auto-Billing</h3>
+        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          {activeBillingSub ? (
+            <div className="p-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="size-10 shrink-0 rounded-full bg-[#635bff]/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px] text-[#635bff]">autorenew</span>
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-sm text-foreground">
+                    {formatCurrency(activeBillingSub.amount, activeBillingSub.currency.toUpperCase())} / {activeBillingSub.interval}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {activeBillingSub.description ?? "Recurring billing"}
+                    {activeBillingSub.next_billing_date
+                      ? ` · Next: ${new Date(activeBillingSub.next_billing_date).toLocaleDateString([], { month: "short", day: "numeric" })}`
+                      : ""}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full">Active</span>
+                <button
+                  onClick={cancelAutoBilling}
+                  disabled={cancelingBilling}
+                  className="text-xs font-bold text-destructive hover:opacity-80 disabled:opacity-50"
+                >
+                  {cancelingBilling ? "…" : "Cancel"}
+                </button>
+              </div>
+            </div>
+          ) : connectStatus === "active" ? (
+            <button
+              onClick={() => setShowBillingModal(true)}
+              className="w-full flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors group"
+            >
+              <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-[#635bff]/10 group-hover:text-[#635bff] transition-colors">
+                <span className="material-symbols-outlined text-[20px]">add</span>
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-sm text-foreground">Set Up Auto-Billing</span>
+                <span className="text-xs text-muted-foreground">Stripe sends the client a recurring invoice</span>
+              </div>
+            </button>
+          ) : (
+            <div className="p-4 flex items-center gap-3 opacity-60">
+              <div className="size-10 shrink-0 rounded-full bg-muted flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-muted-foreground">credit_card_off</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm text-foreground">Auto-Billing Unavailable</span>
+                <a href="/settings" className="text-xs text-primary hover:underline">Connect Stripe in Settings to enable →</a>
+              </div>
+            </div>
+          )}
+        </Card>
+      </section>
+
+      {/* Auto-Billing Modal */}
+      {showBillingModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowBillingModal(false)}>
+          <div className="w-full max-w-sm bg-card rounded-3xl shadow-xl p-6 flex flex-col gap-5 mx-4 mb-4 sm:mb-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-extrabold text-lg text-foreground">Set Up Auto-Billing</h2>
+              <button onClick={() => setShowBillingModal(false)} className="text-muted-foreground hover:text-foreground">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Amount per cycle</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={billingForm.amount}
+                    onChange={(e) => setBillingForm((f) => ({ ...f, amount: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-muted/30 pl-7 pr-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Frequency</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["week", "month", "year"] as const).map((iv) => (
+                    <button
+                      key={iv}
+                      onClick={() => setBillingForm((f) => ({ ...f, interval: iv }))}
+                      className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                        billingForm.interval === iv
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted/40 text-foreground"
+                      }`}
+                    >
+                      {iv === "week" ? "Weekly" : iv === "month" ? "Monthly" : "Yearly"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description (optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Monthly lawn care"
+                  value={billingForm.description}
+                  onChange={(e) => setBillingForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Stripe will email {client.name} a recurring invoice. They pay via a Stripe-hosted link.
+            </p>
+            <button
+              onClick={setupAutoBilling}
+              disabled={submittingBilling || !billingForm.amount}
+              className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {submittingBilling ? "Creating…" : "Start Auto-Billing"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Booking Requests */}
       {bookingRequests.length > 0 && (

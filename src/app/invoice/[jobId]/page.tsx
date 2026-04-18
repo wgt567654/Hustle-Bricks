@@ -34,6 +34,8 @@ type InvoiceJob = {
     check_payable_to: string | null;
     contact_email: string | null;
     contact_phone: string | null;
+    stripe_connect_account_id: string | null;
+    stripe_connect_status: string | null;
   } | null;
   clients: {
     name: string;
@@ -75,7 +77,7 @@ export default async function InvoicePage({
   const { data, error } = await supabase
     .from("jobs")
     .select(
-      "id, status, total, scheduled_at, notes, signature_url, businesses(name, currency, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
+      "id, status, total, scheduled_at, notes, signature_url, businesses(name, currency, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, stripe_connect_account_id, stripe_connect_status), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
     )
     .eq("id", jobId)
     .single();
@@ -297,9 +299,15 @@ export default async function InvoicePage({
               <p className="text-xs font-bold uppercase tracking-widest text-gray-500">How to Pay</p>
             </div>
             <div className="flex flex-col divide-y divide-gray-100">
-              {/* Stripe card payment — always available if Stripe is configured */}
-              {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && (
-                <StripePaymentForm jobId={job.id} amount={job.total} currency={currency} />
+              {/* Stripe card payment — only available when business has an active connected account */}
+              {job.businesses?.stripe_connect_status === "active" &&
+                job.businesses?.stripe_connect_account_id && (
+                <StripePaymentForm
+                  jobId={job.id}
+                  amount={job.total}
+                  currency={currency}
+                  stripeAccount={job.businesses.stripe_connect_account_id}
+                />
               )}
               {job.businesses?.venmo_username && (
                 <a

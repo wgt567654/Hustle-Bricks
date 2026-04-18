@@ -214,10 +214,10 @@ export default function QuoteBuilder() {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 max-w-xl mx-auto pb-40">
-      <div className="flex flex-col gap-1 mb-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">New Quote</h1>
-        <p className="text-sm text-muted-foreground">Build an estimate for a client.</p>
+    <div className="flex flex-col gap-4 px-4 py-4 max-w-xl mx-auto pb-32">
+      <div className="flex flex-col gap-0.5 mb-1">
+        <h1 className="text-xl font-extrabold tracking-tight text-foreground">New Quote</h1>
+        <p className="text-xs text-muted-foreground">Build an estimate for a client.</p>
       </div>
 
       {error && (

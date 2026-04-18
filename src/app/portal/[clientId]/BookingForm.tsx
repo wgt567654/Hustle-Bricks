@@ -93,6 +93,18 @@ export function BookingForm({
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [slotCapacity, setSlotCapacity] = useState<Record<string, number> | null>(null);
+  const [loadingCapacity, setLoadingCapacity] = useState(false);
+
+  // Fetch capacity whenever a date is selected
+  useEffect(() => {
+    if (!selectedDate || !businessId) { setSlotCapacity(null); return; }
+    setLoadingCapacity(true);
+    fetch(`/api/booking/capacity?businessId=${businessId}&date=${selectedDate}`)
+      .then((r) => r.json())
+      .then((data) => { setSlotCapacity(data); setLoadingCapacity(false); })
+      .catch(() => { setSlotCapacity(null); setLoadingCapacity(false); });
+  }, [selectedDate, businessId]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -296,21 +308,42 @@ export function BookingForm({
           {selectedDate && (
             <div className="flex flex-col gap-2">
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Pick a Time</p>
-              <div className="grid grid-cols-5 gap-2">
-                {timeSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    onClick={() => setSelectedTime(slot === selectedTime ? null : slot)}
-                    className={`py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${
-                      selectedTime === slot
-                        ? "bg-primary text-white shadow-sm"
-                        : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
-                    }`}
-                  >
-                    {formatSlot(slot)}
-                  </button>
-                ))}
-              </div>
+              {loadingCapacity ? (
+                <p className="text-xs text-gray-400 text-center py-3">Checking availability…</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {timeSlots.map((slot) => {
+                    // If we have capacity data, use it; if no data (no employees set), treat as available
+                    const cap = slotCapacity !== null ? (slotCapacity[slot] ?? 0) : null;
+                    const isFull = cap !== null && cap === 0;
+                    const isLow = cap !== null && cap > 0 && cap <= 2;
+                    const isSelected = selectedTime === slot;
+
+                    return (
+                      <button
+                        key={slot}
+                        disabled={isFull}
+                        onClick={() => setSelectedTime(slot === selectedTime ? null : slot)}
+                        className={`py-3 rounded-xl text-sm font-bold transition-all active:scale-95 flex flex-col items-center gap-0.5 ${
+                          isFull
+                            ? "bg-gray-100 text-gray-300 cursor-not-allowed line-through"
+                            : isSelected
+                            ? "bg-primary text-white shadow-sm"
+                            : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        {formatSlot(slot)}
+                        {isLow && !isSelected && (
+                          <span className="text-[9px] font-bold text-amber-500">{cap} left</span>
+                        )}
+                        {isFull && (
+                          <span className="text-[9px] font-bold text-gray-400 no-underline" style={{ textDecoration: "none" }}>Full</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

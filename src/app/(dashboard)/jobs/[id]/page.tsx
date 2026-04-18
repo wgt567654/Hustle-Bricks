@@ -29,6 +29,20 @@ const EXPENSE_CATEGORIES = [
   { value: "other", label: "Other" },
 ];
 
+const SERVICE_TYPES = [
+  "Pressure Washing",
+  "Window Cleaning",
+  "Lawn Care",
+  "Gutter Cleaning",
+  "Landscaping",
+  "Snow Removal",
+  "House Cleaning",
+  "Pest Control",
+  "Pool Service",
+  "Painting",
+  "Other",
+] as const;
+
 type Job = {
   id: string;
   status: JobStatus;
@@ -36,6 +50,7 @@ type Job = {
   scheduled_at: string | null;
   completed_at: string | null;
   notes: string | null;
+  service_type: string | null;
   recurrence_frequency: RecurrenceFrequency;
   recurrence_interval_days: number | null;
   business_id: string | null;
@@ -126,6 +141,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editScheduledAt, setEditScheduledAt] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editServiceType, setEditServiceType] = useState<string>("");
   const [editSaving, setEditSaving] = useState(false);
 
   // Send invoice
@@ -176,7 +192,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       const [{ data, error }, { data: expData }] = await Promise.all([
         supabase
           .from("jobs")
-          .select("id, status, total, scheduled_at, completed_at, notes, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
+          .select("id, status, total, scheduled_at, completed_at, notes, service_type, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
           .eq("id", id)
           .eq("business_id", bizId)
           .single(),
@@ -275,6 +291,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       setEditScheduledAt("");
     }
     setEditNotes(job.notes ?? "");
+    setEditServiceType(job.service_type ?? "");
     setEditModalOpen(true);
   }
 
@@ -282,8 +299,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (!job) return;
     setEditSaving(true);
     const supabase = createClient();
-    const updates: { scheduled_at?: string | null; notes?: string | null } = {
+    const updates: { scheduled_at?: string | null; notes?: string | null; service_type?: string | null } = {
       notes: editNotes || null,
+      service_type: editServiceType || null,
     };
     if (editScheduledAt) {
       updates.scheduled_at = new Date(editScheduledAt).toISOString();
@@ -297,6 +315,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             ...j,
             scheduled_at: updates.scheduled_at ?? null,
             notes: updates.notes ?? null,
+            service_type: updates.service_type ?? null,
           }
         : j
     );
@@ -469,15 +488,15 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       : null;
 
   return (
-    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-36 lg:pb-8">
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-28 lg:pb-8">
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <button
           onClick={() => router.push("/jobs")}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card shadow-sm border border-border text-foreground hover:bg-muted/50 transition-colors"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card shadow-sm border border-border text-foreground hover:bg-muted/50 transition-colors"
         >
-          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
         </button>
         <div className="flex flex-col flex-1">
           <Badge variant="secondary" className={`w-fit mb-1 max-h-5 px-2 text-[10px] uppercase font-bold tracking-wider ${badge.className}`}>
@@ -965,6 +984,21 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   onChange={(e) => setEditScheduledAt(e.target.value)}
                   className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
+              </div>
+
+              {/* Service Type */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Service Type</label>
+                <select
+                  value={editServiceType}
+                  onChange={(e) => setEditServiceType(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                >
+                  <option value="">— Select service type —</option>
+                  {SERVICE_TYPES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Notes */}

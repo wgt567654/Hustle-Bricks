@@ -424,10 +424,10 @@ export default function SettingsPage() {
   const hasContactInfo = contactEmail || contactPhone;
 
   return (
-    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-2xl pb-40 lg:pb-8">
-      <div className="flex flex-col gap-1 mb-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage your business profile and account.</p>
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-2xl pb-32 lg:pb-8">
+      <div className="flex flex-col gap-0.5 mb-1">
+        <h1 className="text-xl font-extrabold tracking-tight text-foreground">Settings</h1>
+        <p className="text-xs text-muted-foreground">Manage your business profile and account.</p>
       </div>
 
       <div className="flex flex-col gap-5">

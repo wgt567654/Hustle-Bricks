@@ -25,6 +25,9 @@ const ROLE_LABELS: Record<Role, string> = {
   sales: "Sales",
 };
 
+const HOURS = Array.from({ length: 14 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`); // 06:00–19:00
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 const CERT_OPTIONS = [
   "Licensed",
   "Insured",
@@ -65,6 +68,9 @@ export default function TeamPage() {
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [editForm, setEditForm] = useState({ name: "", email: "", role: "member" as Role, certifications: [] as string[] });
   const [editSaving, setEditSaving] = useState(false);
+  const [availabilityOpen, setAvailabilityOpen] = useState<Set<string>>(new Set());
+  const [memberAvailability, setMemberAvailability] = useState<Record<string, Record<number, { from: string; until: string }>>>({});
+  const [savingAvailability, setSavingAvailability] = useState<string | null>(null);
 
   function copyPortalLink(id: string) {
     navigator.clipboard.writeText(`${window.location.origin}/team-portal/${id}`);
@@ -130,6 +136,19 @@ export default function TeamPage() {
         }
         setWorkload(counts);
       }
+
+      // Fetch employee availability
+      const { data: availData } = await supabase
+        .from("employee_availability")
+        .select("team_member_id, day_of_week, from_time, until_time")
+        .eq("business_id", business.id);
+
+      const availMap: Record<string, Record<number, { from: string; until: string }>> = {};
+      for (const row of availData ?? []) {
+        if (!availMap[row.team_member_id]) availMap[row.team_member_id] = {};
+        availMap[row.team_member_id][row.day_of_week] = { from: row.from_time, until: row.until_time };
+      }
+      setMemberAvailability(availMap);
 
       setLoading(false);
     }
@@ -229,11 +248,55 @@ export default function TeamPage() {
     setDeletingId(null);
   }
 
+  function toggleAvailDay(memberId: string, day: number) {
+    setMemberAvailability((prev) => {
+      const memberDays = { ...(prev[memberId] ?? {}) };
+      if (memberDays[day]) {
+        delete memberDays[day];
+      } else {
+        memberDays[day] = { from: "08:00", until: "17:00" };
+      }
+      return { ...prev, [memberId]: memberDays };
+    });
+  }
+
+  function setAvailHour(memberId: string, day: number, field: "from" | "until", value: string) {
+    setMemberAvailability((prev) => ({
+      ...prev,
+      [memberId]: {
+        ...(prev[memberId] ?? {}),
+        [day]: { ...(prev[memberId]?.[day] ?? { from: "08:00", until: "17:00" }), [field]: value },
+      },
+    }));
+  }
+
+  async function saveMemberAvailability(memberId: string) {
+    if (!businessId) return;
+    setSavingAvailability(memberId);
+    const supabase = createClient();
+    const days = memberAvailability[memberId] ?? {};
+
+    await supabase.from("employee_availability").delete().eq("team_member_id", memberId);
+
+    const rows = Object.entries(days).map(([day, hours]) => ({
+      team_member_id: memberId,
+      business_id: businessId,
+      day_of_week: parseInt(day),
+      from_time: hours.from,
+      until_time: hours.until,
+    }));
+
+    if (rows.length > 0) {
+      await supabase.from("employee_availability").insert(rows);
+    }
+    setSavingAvailability(null);
+  }
+
   return (
-    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-40 lg:pb-8">
-      <div className="flex flex-col gap-1 mb-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Team Roster</h1>
-        <p className="text-sm text-muted-foreground">Manage your crew, roles, and certifications.</p>
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-32 lg:pb-8">
+      <div className="flex flex-col gap-0.5 mb-1">
+        <h1 className="text-xl font-extrabold tracking-tight text-foreground">Team Roster</h1>
+        <p className="text-xs text-muted-foreground">Manage your crew, roles, and certifications.</p>
       </div>
 
       {/* Filter tabs */}
@@ -398,19 +461,85 @@ export default function TeamPage() {
                 </button>
                 <Separator orientation="vertical" className="bg-border/50 h-auto" />
                 <button
+                  onClick={() => setAvailabilityOpen((prev) => {
+                    const next = new Set(prev);
+                    next.has(member.id) ? next.delete(member.id) : next.add(member.id);
+                    return next;
+                  })}
+                  className={`flex-1 py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 hover:bg-muted/50 ${
+                    availabilityOpen.has(member.id) ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">schedule</span> Hours
+                </button>
+                <Separator orientation="vertical" className="bg-border/50 h-auto" />
+                <button
                   onClick={() => copyPortalLink(member.id)}
                   className={`flex-1 py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 hover:bg-muted/50 ${
-                    copiedId === member.id
-                      ? "text-[var(--color-status-completed)]"
-                      : "text-muted-foreground hover:text-foreground"
+                    copiedId === member.id ? "text-[var(--color-status-completed)]" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {copiedId === member.id ? "check_circle" : "link"}
                   </span>
-                  {copiedId === member.id ? "Copied!" : "Share Link"}
+                  {copiedId === member.id ? "Copied!" : "Share"}
                 </button>
               </div>
+
+              {/* Per-employee availability */}
+              {availabilityOpen.has(member.id) && (
+                <div className="px-4 pb-4 pt-3 flex flex-col gap-3 border-t border-border/50">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Weekly Availability</p>
+
+                  {/* Day toggles — Mon first */}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[1,2,3,4,5,6,0].map((day) => {
+                      const isOn = !!(memberAvailability[member.id]?.[day]);
+                      return (
+                        <button
+                          key={day}
+                          onClick={() => toggleAvailDay(member.id, day)}
+                          className={`w-9 h-9 rounded-full text-xs font-bold transition-all active:scale-95 ${
+                            isOn ? "bg-primary text-white" : "bg-muted text-muted-foreground border border-border"
+                          }`}
+                        >
+                          {DAY_LABELS[day][0]}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* From/until per enabled day */}
+                  {[1,2,3,4,5,6,0].filter((day) => memberAvailability[member.id]?.[day]).map((day) => (
+                    <div key={day} className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground w-8">{DAY_LABELS[day]}</span>
+                      <select
+                        value={memberAvailability[member.id][day].from}
+                        onChange={(e) => setAvailHour(member.id, day, "from", e.target.value)}
+                        className="flex-1 h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <span className="text-xs text-muted-foreground">to</span>
+                      <select
+                        value={memberAvailability[member.id][day].until}
+                        onChange={(e) => setAvailHour(member.id, day, "until", e.target.value)}
+                        className="flex-1 h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={() => saveMemberAvailability(member.id)}
+                    disabled={savingAvailability === member.id}
+                    className="w-full rounded-xl py-2.5 text-sm font-bold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-all active:scale-95"
+                  >
+                    {savingAvailability === member.id ? "Saving…" : "Save Availability"}
+                  </button>
+                </div>
+              )}
             </Card>
           );
         })}

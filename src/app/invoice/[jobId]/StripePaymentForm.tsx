@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { formatCurrency } from "@/lib/currency";
 import {
@@ -9,10 +9,6 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-);
 
 function CheckoutForm({
   jobId,
@@ -43,13 +39,13 @@ function CheckoutForm({
       return;
     }
 
-    // Get client secret
+    // Get client secret + connected account ID
     const res = await fetch("/api/stripe/create-payment-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jobId }),
     });
-    const { clientSecret, error: serverError } = await res.json();
+    const { clientSecret, stripeAccount, error: serverError } = await res.json();
     if (serverError || !clientSecret) {
       setError(serverError ?? "Could not create payment");
       setSubmitting(false);
@@ -70,11 +66,10 @@ function CheckoutForm({
     }
 
     if (paymentIntent?.status === "succeeded") {
-      // Record payment in DB
       await fetch("/api/stripe/confirm-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentIntentId: paymentIntent.id, jobId }),
+        body: JSON.stringify({ paymentIntentId: paymentIntent.id, jobId, stripeAccount }),
       });
       onSuccess();
     }
@@ -105,25 +100,37 @@ export function StripePaymentForm({
   jobId,
   amount,
   currency = "USD",
+  stripeAccount,
 }: {
   jobId: string;
   amount: number;
   currency?: string;
+  stripeAccount: string;
 }) {
   const [open, setOpen] = useState(false);
   const [paid, setPaid] = useState(false);
-  const [options] = useState({
-    mode: "payment" as const,
-    amount: Math.round(amount * 100),
-    currency: currency.toLowerCase(),
-    appearance: {
-      theme: "stripe" as const,
-      variables: {
-        colorPrimary: "#635bff",
-        borderRadius: "12px",
+
+  // loadStripe must be called with the connected account so requests route correctly
+  const stripePromise = useMemo(
+    () => loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!, { stripeAccount }),
+    [stripeAccount]
+  );
+
+  const options = useMemo(
+    () => ({
+      mode: "payment" as const,
+      amount: Math.round(amount * 100),
+      currency: currency.toLowerCase(),
+      appearance: {
+        theme: "stripe" as const,
+        variables: {
+          colorPrimary: "#635bff",
+          borderRadius: "12px",
+        },
       },
-    },
-  });
+    }),
+    [amount, currency]
+  );
 
   if (paid) {
     return (

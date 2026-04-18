@@ -18,25 +18,27 @@ const MORE_GROUPS = [
   {
     label: "Money",
     items: [
-      { href: "/payments", label: "Payments", icon: "attach_money" },
+      { href: "/payments", label: "Payments", icon: "attach_money", ownerOnly: false },
     ],
   },
   {
     label: "Business",
     items: [
-      { href: "/clients", label: "Clients",  icon: "group"         },
-      { href: "/leads",   label: "Leads",    icon: "person_search" },
-      { href: "/plans",   label: "Plans",    icon: "autorenew"     },
+      { href: "/clients", label: "Clients",  icon: "group",         ownerOnly: false },
+      { href: "/leads",   label: "Leads",    icon: "person_search", ownerOnly: false },
+      { href: "/plans",   label: "Plans",    icon: "autorenew",     ownerOnly: false },
+      { href: "/team",    label: "Team",     icon: "badge",         ownerOnly: true  },
     ],
   },
 ];
 
 const SIDEBAR_NAV = [
   ...NAV,
-  { href: "/payments", label: "Payments", icon: "attach_money", exact: false },
-  { href: "/clients",  label: "Clients",  icon: "group",        exact: false },
-  { href: "/leads",    label: "Leads",    icon: "person_search", exact: false },
-  { href: "/plans",    label: "Plans",    icon: "autorenew",    exact: false },
+  { href: "/payments", label: "Payments", icon: "attach_money", exact: false, ownerOnly: false },
+  { href: "/clients",  label: "Clients",  icon: "group",        exact: false, ownerOnly: false },
+  { href: "/leads",    label: "Leads",    icon: "person_search", exact: false, ownerOnly: false },
+  { href: "/plans",    label: "Plans",    icon: "autorenew",    exact: false, ownerOnly: false },
+  { href: "/team",     label: "Team",     icon: "badge",        exact: false, ownerOnly: true  },
 ];
 
 type Notification = {
@@ -244,7 +246,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
   const unreadCount        = notifications.length;
   const isOwner            = role === "owner";
   const visibleNav         = isOwner ? NAV : NAV.filter((n) => n.href !== "/analytics");
-  const visibleSidebarNav  = isOwner ? SIDEBAR_NAV : SIDEBAR_NAV.filter((n) => n.href !== "/analytics");
+  const visibleSidebarNav  = SIDEBAR_NAV.filter((n) => (!n.ownerOnly || isOwner) && (isOwner || n.href !== "/analytics"));
   const isMapPage          = pathname === "/map" || pathname.startsWith("/map/") || pathname === "/canvassing" || pathname.startsWith("/canvassing/");
 
   return (
@@ -347,10 +349,10 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── FLOATING icon buttons (settings + notifications) — mobile only ── */}
-      <div className="fixed top-3 right-3 z-[450] flex items-center gap-1.5 lg:hidden">
+      <div className="fixed top-2.5 right-2.5 z-[450] flex items-center gap-1.5 lg:hidden">
         <button
           onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
-          className="flex size-9 items-center justify-center rounded-full active:scale-90 transition-all"
+          className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
           style={{
             background: isMapPage ? "rgba(0,0,0,0.45)" : "var(--card)",
             backdropFilter: "blur(8px)",
@@ -360,7 +362,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           }}
         >
           <span
-            className="material-symbols-outlined text-[19px]"
+            className="material-symbols-outlined text-[17px]"
             style={{
               color: isMapPage ? "white" : "var(--muted-foreground)",
               fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0",
@@ -371,7 +373,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
         </button>
         <button
           onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
-          className="relative flex size-9 items-center justify-center rounded-full active:scale-90 transition-all"
+          className="relative flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
           style={{
             background: isMapPage ? "rgba(0,0,0,0.45)" : "var(--card)",
             backdropFilter: "blur(8px)",
@@ -381,7 +383,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           }}
         >
           <span
-            className="material-symbols-outlined text-[19px]"
+            className="material-symbols-outlined text-[17px]"
             style={{
               color: isMapPage ? "white" : "var(--muted-foreground)",
               fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0",
@@ -441,17 +443,6 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                       <span className="material-symbols-outlined text-[14px]">tune</span>
                     </div>
                     <span className="font-medium text-sm text-foreground flex-1">App Settings</span>
-                    <span className="material-symbols-outlined text-muted-foreground/40 text-[15px]">chevron_right</span>
-                  </button>
-                  <div className="h-px bg-border/30 ml-14 mr-0" />
-                  <button
-                    onClick={() => { setSettingsOpen(false); router.push("/team"); }}
-                    className="flex w-full items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
-                  >
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-foreground">
-                      <span className="material-symbols-outlined text-[14px]">group</span>
-                    </div>
-                    <span className="font-medium text-sm text-foreground flex-1">Manage Team</span>
                     <span className="material-symbols-outlined text-muted-foreground/40 text-[15px]">chevron_right</span>
                   </button>
                 </>
@@ -546,7 +537,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 pb-28 lg:pb-0 lg:ml-[60px]">{children}</main>
+      <main className="flex-1 pb-24 lg:pb-0 lg:ml-[60px]">{children}</main>
 
       {/* ── MORE BOTTOM SHEET ── */}
       {moreOpen && (
@@ -577,7 +568,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                     {group.label}
                   </p>
                   <div className="grid grid-cols-3 gap-0">
-                    {group.items.map(({ href, label, icon }) => {
+                    {group.items.filter((item) => !item.ownerOnly || isOwner).map(({ href, label, icon }) => {
                       const active = pathname === href || pathname.startsWith(href + "/");
                       return (
                         <button
@@ -586,7 +577,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                           className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl active:scale-95 transition-all duration-150 hover:bg-black/[0.04]"
                         >
                           <span
-                            className="material-symbols-outlined text-[26px]"
+                            className="material-symbols-outlined text-[22px]"
                             style={{
                               color: active ? "var(--color-primary)" : "var(--muted-foreground)",
                               fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
@@ -613,9 +604,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── BOTTOM NAVIGATION — floating pill, mobile only ── */}
       {!isMapPage && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 lg:hidden" style={{ width: "calc(100% - 32px)", maxWidth: 480 }}>
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 lg:hidden" style={{ width: "calc(100% - 32px)", maxWidth: 480 }}>
           <div
-            className="flex items-center justify-around px-2 py-3 rounded-[28px] shadow-2xl"
+            className="flex items-center justify-around px-2 py-2 rounded-[24px] shadow-2xl"
             style={{
               background: "oklch(1 0 0 / 0.88)",
               backdropFilter: "blur(24px) saturate(1.6)",
@@ -633,7 +624,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                   className="relative flex flex-col items-center justify-center flex-1 gap-1 py-0.5 transition-all duration-150 active:scale-90"
                 >
                   <span
-                    className="material-symbols-outlined text-[22px]"
+                    className="material-symbols-outlined text-[20px]"
                     style={{
                       color: active ? "var(--color-primary)" : "var(--muted-foreground)",
                       fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
@@ -648,7 +639,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                     {label}
                   </span>
                   {active && (
-                    <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
                   )}
                 </Link>
               );
@@ -659,7 +650,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               className="relative flex flex-col items-center justify-center flex-1 gap-1 py-0.5 transition-all duration-150 active:scale-90"
             >
               <span
-                className="material-symbols-outlined text-[22px]"
+                className="material-symbols-outlined text-[20px]"
                 style={{
                   color: moreOpen ? "var(--color-primary)" : "var(--muted-foreground)",
                   fontVariationSettings: moreOpen ? "'FILL' 1, 'wght' 500" : "'FILL' 0",

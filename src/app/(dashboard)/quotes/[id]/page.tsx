@@ -196,15 +196,15 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const subtotal = quote.quote_line_items.reduce((s, li) => s + li.unit_price * li.quantity, 0);
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 max-w-xl mx-auto pb-36">
+    <div className="flex flex-col gap-4 px-4 py-4 max-w-xl mx-auto pb-28">
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex items-center gap-3 mb-1">
         <button
           onClick={() => router.push("/sales")}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card shadow-sm border border-border text-foreground hover:bg-muted/50 transition-colors"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-card shadow-sm border border-border text-foreground hover:bg-muted/50 transition-colors"
         >
-          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
         </button>
         <div className="flex flex-col">
           <Badge variant="secondary" className={`w-fit mb-1 max-h-5 px-2 text-[10px] uppercase font-bold tracking-wider ${badge.className}`}>

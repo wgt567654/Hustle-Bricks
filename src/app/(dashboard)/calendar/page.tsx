@@ -567,15 +567,15 @@ export default function CalendarPage() {
   return (
     <div className="flex flex-col gap-0 max-w-xl mx-auto lg:max-w-none">
       {/* Header */}
-      <div className="px-4 lg:px-8 py-6 flex flex-col gap-4">
+      <div className="px-4 lg:px-8 py-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Calendar</h1>
-            <p className="text-sm text-muted-foreground">Schedule & team availability.</p>
+            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Calendar</h1>
+            <p className="text-xs text-muted-foreground">Schedule & team availability.</p>
           </div>
           <button
             onClick={exportICS}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-card border border-border text-sm font-bold text-foreground hover:bg-muted/50 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-card border border-border text-xs font-bold text-foreground hover:bg-muted/50 transition-colors shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">calendar_add_on</span>
             Export
@@ -592,7 +592,7 @@ export default function CalendarPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors ${
                 tab === t.key
                   ? "bg-primary text-white"
                   : "bg-card border border-border text-muted-foreground hover:bg-muted/50"
@@ -648,9 +648,9 @@ export default function CalendarPage() {
                   });
                   const isProcessing = processingBooking === req.id;
                   return (
-                    <div key={req.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                    <div key={req.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex flex-col gap-2">
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-100">
                           <span className="material-symbols-outlined text-[18px] text-amber-700" style={{ fontVariationSettings: "'FILL' 1" }}>
                             calendar_clock
                           </span>
@@ -720,7 +720,7 @@ export default function CalendarPage() {
                 <button
                   key={key}
                   onClick={() => { setSelectedDay(key); openScheduleModal(key); }}
-                  className={`relative flex flex-col items-center pt-2 pb-1.5 min-h-[64px] transition-colors ${
+                  className={`relative flex flex-col items-center pt-1.5 pb-1 min-h-[52px] transition-colors ${
                     isBlocked
                       ? "bg-red-50/60"
                       : isSelected
@@ -729,7 +729,7 @@ export default function CalendarPage() {
                   } ${!isCurrentMonth ? "opacity-35" : ""}`}
                 >
                   <span
-                    className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mb-1 ${
+                    className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-0.5 ${
                       isToday
                         ? "bg-primary text-white"
                         : isBlocked
@@ -881,10 +881,10 @@ export default function CalendarPage() {
           </div>
 
           {/* Google Calendar sync card */}
-          <div className="mx-4 mt-6 p-4 rounded-2xl bg-primary/5 border border-primary/15">
+          <div className="mx-4 mt-4 p-3 rounded-2xl bg-primary/5 border border-primary/15">
             <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <span className="material-symbols-outlined text-[17px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   calendar_month
                 </span>
               </div>
@@ -953,10 +953,10 @@ export default function CalendarPage() {
           </div>
 
           {/* Client Booking CTA */}
-          <div className="mx-4 mt-4 p-4 rounded-2xl bg-status-completed/10 border border-[var(--color-status-completed)]/20">
+          <div className="mx-4 mt-3 p-3 rounded-2xl bg-status-completed/10 border border-[var(--color-status-completed)]/20">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl icon-green ">
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl icon-green ">
+                <span className="material-symbols-outlined text-[17px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   link
                 </span>
               </div>

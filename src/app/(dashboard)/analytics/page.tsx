@@ -14,8 +14,10 @@ import {
 } from "@/components/analytics/AnalyticsTimeFilter";
 import { AnalyticsSkeleton } from "@/components/analytics/AnalyticsSkeleton";
 import { RevenueHeroCard, type RevenueDataPoint } from "@/components/analytics/RevenueHeroCard";
-import { TopClientsChart, type ClientData } from "@/components/analytics/TopClientsChart";
-import { TeamPerformanceChart, type TeamMemberData } from "@/components/analytics/TeamPerformanceChart";
+import { TopRepsDonut, type RepRevenue } from "@/components/analytics/TopRepsDonut";
+import { RevenueBreakdownDonut, type BreakdownEntry } from "@/components/analytics/RevenueBreakdownDonut";
+import { GoalBarChart, type GoalDataPoint } from "@/components/analytics/GoalBarChart";
+import { MrrChart, type ServicePlan } from "@/components/analytics/MrrChart";
 import { SalesPipelineCard, type PipelineStage } from "@/components/sales-dashboard/SalesPipelineCard";
 import { ForecastCard } from "@/components/sales-dashboard/ForecastCard";
 
@@ -26,7 +28,9 @@ type Job = {
   status: string;
   total: number;
   created_at: string;
-  clients: { name: string } | null;
+  service_type: string | null;
+  assigned_member_id: string | null;
+  clients: { name: string; lead_source: string | null } | null;
   payments: { status: string }[];
 };
 
@@ -166,9 +170,9 @@ function fmtCurrency(v: number, currency = "USD") {
 
 function KpiMiniCard({ label, value }: { label: string; value: string }) {
   return (
-    <Card className="rounded-2xl p-4 flex flex-col gap-1">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className="text-xl font-extrabold tracking-tight">{value}</span>
+    <Card className="rounded-2xl p-3 flex flex-col gap-1">
+      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-lg font-extrabold tracking-tight">{value}</span>
     </Card>
   );
 }
@@ -177,12 +181,14 @@ function KpiMiniCard({ label, value }: { label: string; value: string }) {
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const [loading, setLoading]         = useState(true);
-  const [currency, setCurrency]       = useState("USD");
-  const [jobs, setJobs]               = useState<Job[]>([]);
-  const [quotes, setQuotes]           = useState<Quote[]>([]);
-  const [teamMembers, setTeamMembers] = useState<Member[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [currency, setCurrency]           = useState("USD");
+  const [jobs, setJobs]                   = useState<Job[]>([]);
+  const [quotes, setQuotes]               = useState<Quote[]>([]);
+  const [teamMembers, setTeamMembers]     = useState<Member[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [plans, setPlans]                 = useState<ServicePlan[]>([]);
+  const [goal, setGoal]                   = useState(0);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>(() => ({
     preset: "month",
@@ -197,10 +203,10 @@ export default function AnalyticsPage() {
       const { data: bizData } = await supabase.from("businesses").select("currency").eq("id", businessId).single();
       setCurrency(bizData?.currency ?? "USD");
 
-      const [jobsRes, quotesRes, membersRes, expensesRes] = await Promise.all([
+      const [jobsRes, quotesRes, membersRes, expensesRes, plansRes] = await Promise.all([
         supabase
           .from("jobs")
-          .select("id, status, total, created_at, clients(name), payments(status)")
+          .select("id, status, total, created_at, service_type, assigned_member_id, clients(name, lead_source), payments(status)")
           .eq("business_id", businessId),
         supabase
           .from("quotes")
@@ -215,6 +221,10 @@ export default function AnalyticsPage() {
           .from("expenses")
           .select("amount")
           .eq("business_id", businessId),
+        supabase
+          .from("service_plans")
+          .select("frequency, price, status")
+          .eq("business_id", businessId),
       ]);
 
       setJobs((jobsRes.data as unknown as Job[]) ?? []);
@@ -222,6 +232,12 @@ export default function AnalyticsPage() {
       setTeamMembers((membersRes.data as Member[]) ?? []);
       const expTotal = ((expensesRes.data ?? []) as { amount: number }[]).reduce((s, e) => s + e.amount, 0);
       setTotalExpenses(expTotal);
+      // service_plans table may not exist yet — handle gracefully
+      if (!plansRes.error) setPlans((plansRes.data as ServicePlan[]) ?? []);
+
+      const savedGoal = localStorage.getItem("hb_monthly_revenue_goal");
+      if (savedGoal) setGoal(Number(savedGoal));
+
       setLoading(false);
     }
     load();
@@ -312,21 +328,62 @@ export default function AnalyticsPage() {
 
   // ── Top clients ────────────────────────────────────────────────────────────
 
-  const topClients = useMemo((): ClientData[] => {
+  // ── Top reps by revenue from assigned jobs ────────────────────────────────
+
+  const repRevenue = useMemo((): RepRevenue[] => {
+    const memberMap = Object.fromEntries(teamMembers.map((m) => [m.id, m.name]));
     const map: Record<string, { name: string; revenue: number }> = {};
     for (const j of paidJobs) {
-      const name = j.clients?.name ?? "Unknown";
+      if (!j.assigned_member_id) continue;
+      const name = memberMap[j.assigned_member_id] ?? "Unknown";
       if (!map[name]) map[name] = { name, revenue: 0 };
       map[name].revenue += j.total;
     }
-    return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+  }, [paidJobs, teamMembers]);
+
+  // ── Revenue by service type ────────────────────────────────────────────────
+
+  const revenueByService = useMemo((): BreakdownEntry[] => {
+    const map: Record<string, number> = {};
+    for (const j of paidJobs) {
+      const key = j.service_type ?? "Unspecified";
+      map[key] = (map[key] ?? 0) + j.total;
+    }
+    return Object.entries(map)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
   }, [paidJobs]);
 
-  // ── Team performance ───────────────────────────────────────────────────────
+  // ── Revenue by lead source ─────────────────────────────────────────────────
 
-  const teamPerf = useMemo((): TeamMemberData[] => {
-    return teamMembers.map((m) => ({ name: m.name, revenue: 0, role: m.role ?? "team member" }));
-  }, [teamMembers]);
+  const revenueBySource = useMemo((): BreakdownEntry[] => {
+    const map: Record<string, number> = {};
+    for (const j of paidJobs) {
+      const key = j.clients?.lead_source ?? "Unspecified";
+      map[key] = (map[key] ?? 0) + j.total;
+    }
+    return Object.entries(map)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [paidJobs]);
+
+  // ── Goal series (last 6 months, always from all jobs not filtered) ─────────
+
+  const goalSeries = useMemo((): GoalDataPoint[] => {
+    const now = new Date();
+    const points: GoalDataPoint[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d     = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end   = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+      const actual = jobs
+        .filter((j) => isPaid(j) && inRange(j.created_at, start, end))
+        .reduce((s, j) => s + j.total, 0);
+      points.push({ month: MONTH_LABELS[d.getMonth()], actual });
+    }
+    return points;
+  }, [jobs]);
 
   // ── Period label ───────────────────────────────────────────────────────────
 
@@ -335,12 +392,12 @@ export default function AnalyticsPage() {
   const hasAnyData = jobs.length > 0 || quotes.length > 0;
 
   return (
-    <div className="flex flex-col gap-6 px-4 lg:px-8 py-6 max-w-xl mx-auto lg:max-w-none pb-32 lg:pb-8">
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-28 lg:pb-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Revenue, pipeline, and performance</p>
+          <h1 className="text-xl font-extrabold tracking-tight">Analytics</h1>
+          <p className="text-xs text-muted-foreground">Revenue, pipeline, and performance</p>
         </div>
         <button
           onClick={() => router.push("/reports/payroll")}
@@ -380,12 +437,12 @@ export default function AnalyticsPage() {
           />
 
           {/* 2–7 · Two-column grid on desktop */}
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
 
             {/* Left column */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               {/* KPI mini-cards */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <KpiMiniCard label="Deals Closed" value={dealsClosed.toString()} />
                 <KpiMiniCard label="Avg Deal" value={fmtCurrency(avgDealSize, currency)} />
                 <KpiMiniCard label="Conversion" value={conversionRate > 0 ? `${conversionRate.toFixed(0)}%` : "—"} />
@@ -394,12 +451,12 @@ export default function AnalyticsPage() {
               {/* Sales Pipeline */}
               <SalesPipelineCard stages={pipelineStages} />
 
-              {/* Top clients */}
-              <TopClientsChart clients={topClients} />
+              {/* Top sales reps */}
+              <TopRepsDonut reps={repRevenue} currency={currency} />
             </div>
 
             {/* Right column */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               {/* Forecast */}
               <ForecastCard
                 pipelineValue={forecastData.pipelineValue}
@@ -409,23 +466,23 @@ export default function AnalyticsPage() {
 
               {/* Outstanding + Net Profit */}
               {(outstanding > 0 || totalExpenses > 0) && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   {outstanding > 0 && (
                     <Card
                       onClick={() => router.push("/payments")}
-                      className="p-4 rounded-2xl border-[var(--color-status-in-progress)]/20 bg-status-in-progress/10 shadow-sm flex flex-col gap-1 cursor-pointer hover:opacity-90 transition-opacity"
+                      className="p-3 rounded-2xl border-[var(--color-status-in-progress)]/20 bg-status-in-progress/10 shadow-sm flex flex-col gap-1 cursor-pointer hover:opacity-90 transition-opacity"
                     >
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-status-in-progress)]">Outstanding</span>
-                      <span className="text-xl font-extrabold text-[var(--color-status-in-progress)] tracking-tight">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-status-in-progress)]">Outstanding</span>
+                      <span className="text-lg font-extrabold text-[var(--color-status-in-progress)] tracking-tight">
                         {formatCurrencyRounded(outstanding, currency)}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">uncollected · tap to collect</span>
+                      <span className="text-[9px] text-muted-foreground">uncollected · tap to collect</span>
                     </Card>
                   )}
                   {totalExpenses > 0 && (
-                    <Card className="p-4 rounded-2xl shadow-sm flex flex-col gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Net Profit</span>
-                      <span className={`text-xl font-extrabold tracking-tight ${netProfit >= 0 ? "text-[var(--color-status-completed)]" : "text-destructive"}`}>
+                    <Card className="p-3 rounded-2xl shadow-sm flex flex-col gap-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Net Profit</span>
+                      <span className={`text-lg font-extrabold tracking-tight ${netProfit >= 0 ? "text-[var(--color-status-completed)]" : "text-destructive"}`}>
                         {formatCurrencyRounded(netProfit, currency)}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
@@ -436,11 +493,25 @@ export default function AnalyticsPage() {
                 </div>
               )}
 
-              {/* Team performance */}
-              {teamPerf.length > 0 && <TeamPerformanceChart members={teamPerf} />}
+              {/* Revenue breakdown donut */}
+              <RevenueBreakdownDonut
+                byService={revenueByService}
+                bySource={revenueBySource}
+                currency={currency}
+              />
             </div>
 
           </div>
+
+          {/* ── Full-width charts below the two-column grid ── */}
+          <GoalBarChart
+            series={goalSeries}
+            goal={goal}
+            onGoalChange={setGoal}
+            currency={currency}
+          />
+
+          <MrrChart plans={plans} currency={currency} />
         </>
       )}
     </div>

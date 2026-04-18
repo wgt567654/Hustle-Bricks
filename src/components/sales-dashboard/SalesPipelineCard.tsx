@@ -22,74 +22,64 @@ export function SalesPipelineCard({ stages }: Props) {
 
   return (
     <Card className="rounded-2xl overflow-hidden">
-      <div className="p-4 flex items-center justify-between border-b">
-        <div className="flex items-center gap-2">
-          <span
-            className="material-symbols-outlined text-[20px]"
-            style={{ color: "var(--color-primary)", fontVariationSettings: "'FILL' 1" }}
-          >
-            funnel
+      <div className="p-4 border-b border-border/50 flex items-center justify-between">
+        <div>
+          <p className="font-bold text-sm text-foreground">Sales Pipeline</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Quotes by stage</p>
+        </div>
+        {totalCount > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {totalCount} deal{totalCount !== 1 ? "s" : ""} · {fmt(totalValue)}
           </span>
-          <h3 className="text-sm font-extrabold">Sales Pipeline</h3>
-        </div>
-        <span className="text-xs text-muted-foreground">
-          {totalCount} deal{totalCount !== 1 ? "s" : ""} · {fmt(totalValue)} total
-        </span>
+        )}
       </div>
 
-      {/* Proportional bar */}
-      {totalValue > 0 && (
-        <div className="flex h-1.5">
-          {stages
-            .filter((s) => s.value > 0)
-            .map((stage) => (
-              <div
-                key={stage.label}
-                style={{
-                  width: `${(stage.value / totalValue) * 100}%`,
-                  background: stage.color,
-                }}
-              />
-            ))}
-        </div>
-      )}
-
-      {/* Stage columns */}
-      <div className="grid grid-cols-4 divide-x">
-        {stages.map((stage) => (
-          <div key={stage.label} className="p-3 flex flex-col gap-1">
-            {/* Color dot + label */}
-            <div className="flex items-center gap-1.5">
-              <div
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ background: stage.color }}
-              />
-              <span className="text-[11px] font-semibold text-muted-foreground truncate">
-                {stage.label}
-              </span>
-            </div>
-
-            {/* Count */}
-            <p className="text-lg font-extrabold leading-none">{stage.count}</p>
-
-            {/* Value */}
-            <p className="text-[11px] text-muted-foreground">{fmt(stage.value)}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Empty state */}
-      {totalCount === 0 && (
+      {totalCount === 0 ? (
         <div className="p-6 flex flex-col items-center gap-2 text-center">
           <span
-            className="material-symbols-outlined text-[32px] text-muted-foreground/40"
+            className="material-symbols-outlined text-[32px] text-muted-foreground/30"
             style={{ fontVariationSettings: "'FILL' 0" }}
           >
             funnel
           </span>
           <p className="text-sm text-muted-foreground">No quotes in the pipeline yet</p>
-          <p className="text-xs text-muted-foreground">Create quotes to track your sales stages</p>
+          <p className="text-xs text-muted-foreground/60">Create quotes to track your sales stages</p>
         </div>
+      ) : (
+        <>
+          {/* Proportional bar */}
+          {totalValue > 0 && (
+            <div className="flex h-1">
+              {stages
+                .filter((s) => s.value > 0)
+                .map((stage) => (
+                  <div
+                    key={stage.label}
+                    style={{
+                      width: `${(stage.value / totalValue) * 100}%`,
+                      background: stage.color,
+                    }}
+                  />
+                ))}
+            </div>
+          )}
+
+          {/* Stage columns */}
+          <div className="grid grid-cols-4 divide-x divide-border/40">
+            {stages.map((stage) => (
+              <div key={stage.label} className="p-3 flex flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: stage.color }} />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                    {stage.label}
+                  </span>
+                </div>
+                <p className="text-lg font-extrabold leading-none tracking-tight">{stage.count}</p>
+                <p className="text-[11px] text-muted-foreground">{fmt(stage.value)}</p>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </Card>
   );

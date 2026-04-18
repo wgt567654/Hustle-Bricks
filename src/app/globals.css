@@ -38,7 +38,7 @@
   --input: oklch(0.961 0.004 248);
   --ring: oklch(0.511 0.230 277);
 
-  --radius: 0.875rem;                            /* 14px */
+  --radius: 0.625rem;                            /* 10px */
 
   /* Semantic status tokens */
   --color-status-scheduled:   oklch(0.511 0.230 277);
@@ -196,7 +196,7 @@
     @apply bg-background text-foreground font-sans antialiased;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    line-height: 1.65;
+    line-height: 1.5;
   }
   h1, h2 { font-family: var(--font-display); letter-spacing: -0.025em; }
   h3, h4 { font-family: var(--font-display); letter-spacing: -0.015em; }
