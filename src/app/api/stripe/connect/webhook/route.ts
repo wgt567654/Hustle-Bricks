@@ -66,26 +66,24 @@ export async function POST(request: NextRequest) {
 
       if (!sub) break;
 
-      // Record payment — idempotent check on stripe_payment_id
-      const stripePaymentId = invoice.payment_intent as string | null;
-      if (stripePaymentId) {
-        const { data: existing } = await supabase
-          .from("payments")
-          .select("id")
-          .eq("stripe_payment_id", stripePaymentId)
-          .maybeSingle();
+      // Record payment — idempotent check on invoice id (payment_intent removed in Stripe SDK v20)
+      const stripePaymentId = invoice.id;
+      const { data: existing } = await supabase
+        .from("payments")
+        .select("id")
+        .eq("stripe_payment_id", stripePaymentId)
+        .maybeSingle();
 
-        if (!existing) {
-          await supabase.from("payments").insert({
-            business_id: sub.business_id,
-            status: "paid",
-            method: "card",
-            amount: invoice.amount_paid / 100,
-            stripe_payment_id: stripePaymentId,
-            paid_at: new Date(invoice.status_transitions?.paid_at ?? Date.now() / 1000 * 1000).toISOString(),
-            notes: `Recurring billing — ${invoice.lines?.data?.[0]?.description ?? "subscription"}`,
-          });
-        }
+      if (!existing) {
+        await supabase.from("payments").insert({
+          business_id: sub.business_id,
+          status: "paid",
+          method: "card",
+          amount: invoice.amount_paid / 100,
+          stripe_payment_id: stripePaymentId,
+          paid_at: new Date((invoice.status_transitions?.paid_at ?? Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+          notes: `Recurring billing — ${invoice.lines?.data?.[0]?.description ?? "subscription"}`,
+        });
       }
 
       // Update next billing date
