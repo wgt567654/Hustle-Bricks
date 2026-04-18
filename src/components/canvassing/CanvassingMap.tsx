@@ -214,6 +214,61 @@ function MapClickHandler({ onMapClick, skipRef, enabled }: {
   return null;
 }
 
+// Replaces Leaflet's debounced scroll zoom with a frame-by-frame smooth zoom
+// (Google Maps style) and disables drag inertia directly on the internal draggable.
+function SmoothMapController() {
+  const map = useMap();
+
+  useEffect(() => {
+    // ── Fix drag: disable inertia on the internal Draggable instance ──────────
+    map.options.inertia = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const draggable = (map as any).dragging?._draggable;
+    if (draggable) draggable.options.inertia = false;
+
+    // ── Replace scroll zoom with smooth rAF-based zoom ────────────────────────
+    map.scrollWheelZoom.disable();
+
+    let targetZoom: number | null = null;
+    let rafId: number | null = null;
+
+    const tick = () => {
+      if (targetZoom === null) { rafId = null; return; }
+      const current = map.getZoom();
+      const diff = targetZoom - current;
+      if (Math.abs(diff) < 0.004) {
+        map.setZoom(targetZoom, { animate: false });
+        targetZoom = null;
+        rafId = null;
+        return;
+      }
+      map.setZoom(current + diff * 0.25, { animate: false });
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (targetZoom === null) targetZoom = map.getZoom();
+      targetZoom = Math.max(
+        map.getMinZoom(),
+        Math.min(map.getMaxZoom(), targetZoom - e.deltaY / 300)
+      );
+      if (!rafId) rafId = requestAnimationFrame(tick);
+    };
+
+    const container = map.getContainer();
+    container.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener("wheel", onWheel);
+      if (rafId) cancelAnimationFrame(rafId);
+      map.scrollWheelZoom.enable();
+    };
+  }, [map]);
+
+  return null;
+}
+
 function FlyToController({ target }: { target: { coords: [number, number]; zoom: number } | null }) {
   const map = useMap();
   const prevRef = useRef<{ coords: [number, number]; zoom: number } | null>(null);
@@ -1119,10 +1174,9 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
           zoomSnap={0}
-          wheelPxPerZoomLevel={10}
-          inertia={false}
         >
           <TileLayer url={tile.url} attribution={tile.attribution} keepBuffer={4} />
+          <SmoothMapController />
           <MapClickHandler onMapClick={handleMapClick} skipRef={skipClickRef} enabled={viewMode === "canvass"} />
           <FlyToController target={flyTarget} />
 
