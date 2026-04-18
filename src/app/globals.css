@@ -292,14 +292,6 @@
     opacity: 0.85;
   }
 
-  /* Leaflet map — GPU-accelerate panning and zoom layers */
-  .leaflet-map-pane,
-  .leaflet-tile-container,
-  .leaflet-zoom-animated {
-    will-change: transform;
-    transform: translateZ(0);
-  }
-
   /* Panel slide-in animations */
   .animate-in-down {
     animation: slideInDown 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
