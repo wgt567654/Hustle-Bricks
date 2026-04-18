@@ -792,6 +792,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
     mapRef.current = map;
 
     map.on("load", () => {
+      map.resize();
       // Add empty route line source + layer
       map.addSource("route", {
         type: "geojson",
@@ -1241,23 +1242,22 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
     completed:   jobPins.filter((p) => p.job.status === "completed").length,
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-sm text-muted-foreground">Loading map…</p>
-      </div>
-    );
-  }
-
   const glassStyle = { background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" } as const;
   const chipActive   = { background: "rgba(255,255,255,0.95)", color: "#111" } as const;
   const chipInactive = { background: "rgba(0,0,0,0.40)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", color: "rgba(255,255,255,0.85)" } as const;
 
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ touchAction: "none" }}>
+    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", overflow: "hidden", touchAction: "none" }}>
 
-      {/* ── MapLibre container ── */}
-      <div ref={mapContainerRef} className="absolute inset-0" />
+      {/* ── MapLibre container — always in DOM so the init effect can attach ── */}
+      <div ref={mapContainerRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+
+      {/* ── Loading overlay ── */}
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
+          <p className="text-sm text-muted-foreground">Loading map…</p>
+        </div>
+      )}
 
       {/* ── Floating overlays ── */}
       <div className="absolute inset-0 pointer-events-none">
