@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
   );
 
   // Create the Subscription — send_invoice so Stripe emails the client
-  const subscription = await stripe.subscriptions.create(
+  const subscription = (await stripe.subscriptions.create(
     {
       customer: stripeCustomer.id,
       items: [{ price: price.id }],
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       metadata: { business_id: businessId, client_id: clientId },
     },
     { stripeAccount: connectAccountId }
-  );
+  )) as unknown as Stripe.Subscription;
 
   const nextBillingDate = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000).toISOString()
