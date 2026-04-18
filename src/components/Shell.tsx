@@ -349,7 +349,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── FLOATING icon buttons (settings + notifications) — mobile only ── */}
-      <div className="fixed top-2.5 right-2.5 z-[450] flex items-center gap-1.5 lg:hidden">
+      <div className="fixed right-2.5 z-[450] flex items-center gap-1.5 lg:hidden" style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}>
         <button
           onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
           className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
@@ -537,7 +537,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 pb-24 lg:pb-0 lg:ml-[60px]">{children}</main>
+      <main className="flex-1 lg:pb-0 lg:ml-[60px]" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
 
       {/* ── MORE BOTTOM SHEET ── */}
       {moreOpen && (
@@ -604,7 +604,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── BOTTOM NAVIGATION — floating pill, mobile only ── */}
       {!isMapPage && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 lg:hidden" style={{ width: "calc(100% - 32px)", maxWidth: 480 }}>
+        <div className="fixed left-1/2 -translate-x-1/2 z-40 lg:hidden" style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))", width: "calc(100% - 32px)", maxWidth: 480 }}>
           <div
             className="flex items-center justify-around px-2 py-2 rounded-[24px] shadow-2xl"
             style={{
