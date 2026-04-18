@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { nearestNeighborTSP, buildGoogleMapsRouteUrls } from "@/lib/routeOptimizer";
+import { nearestNeighborTSP } from "@/lib/routeOptimizer";
 import { STATUS_HEX } from "@/lib/status-colors";
-import { Badge } from "@/components/ui/badge";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,59 +94,81 @@ const CANVASS_LABELS: Record<CanvassingStatus, string> = {
   booked:      "Booked",
 };
 
-const JOB_STATUS_LABELS: Record<JobStatus, string> = {
-  scheduled:   "Scheduled",
-  in_progress: "In Progress",
-  completed:   "Completed",
-  cancelled:   "Cancelled",
-};
+// ─── MapLibre style builder ───────────────────────────────────────────────────
 
-const TILE_LAYERS = {
-  satellite: {
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Tiles &copy; Esri",
-  },
-  street: {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  },
-};
+function buildMapStyle(layer: "satellite" | "street"): maplibregl.StyleSpecification {
+  const tiles = layer === "satellite"
+    ? ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"]
+    : [
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ];
+  return {
+    version: 8,
+    sources: {
+      "base-tiles": {
+        type: "raster",
+        tiles,
+        tileSize: 256,
+        attribution: layer === "satellite"
+          ? "Tiles &copy; Esri"
+          : "&copy; OpenStreetMap contributors",
+        maxzoom: 19,
+      },
+    },
+    layers: [
+      { id: "background", type: "background", paint: { "background-color": "#1a1a2e" } },
+      { id: "base-layer", type: "raster", source: "base-tiles" },
+    ],
+  };
+}
 
+function emptyLineGeoJSON(): maplibregl.GeoJSONSourceSpecification["data"] {
+  return { type: "Feature", geometry: { type: "LineString", coordinates: [] }, properties: {} };
+}
+
+// ─── Marker DOM element factories ─────────────────────────────────────────────
+
+function makeCanvassMarkerEl(color: string, opacity = 1): HTMLElement {
+  const el = document.createElement("div");
+  el.style.cssText = `width:18px;height:18px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35);opacity:${opacity};cursor:pointer;`;
+  return el;
+}
+
+function makeJobMarkerEl(color: string): HTMLElement {
+  const el = document.createElement("div");
+  el.style.cssText = `width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer;`;
+  return el;
+}
+
+function makeNumberedMarkerEl(n: number, color: string): HTMLElement {
+  const el = document.createElement("div");
+  el.style.cssText = `width:26px;height:26px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;font-family:system-ui,sans-serif;cursor:pointer;`;
+  el.textContent = String(n);
+  return el;
+}
+
+function makeStartMarkerEl(color: string): HTMLElement {
+  const el = document.createElement("div");
+  el.style.cssText = `width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:13px;color:white;font-family:system-ui,sans-serif;`;
+  el.textContent = "S";
+  return el;
+}
+
+function makeLocationMarkerEl(): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText = "position:relative;width:24px;height:24px;";
+  const pulse = document.createElement("div");
+  pulse.className = "canvass-pulse";
+  pulse.style.cssText = "position:absolute;inset:-6px;border-radius:50%;background:#3B82F6;opacity:0.25;";
+  const dot = document.createElement("div");
+  dot.style.cssText = "position:absolute;inset:3px;border-radius:50%;background:#3B82F6;border:2.5px solid white;box-shadow:0 2px 8px rgba(59,130,246,.6);";
+  wrapper.appendChild(pulse);
+  wrapper.appendChild(dot);
+  return wrapper;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function makeCanvassMarker(color: string, opacity = 1) {
-  return L.divIcon({
-    html: `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35);opacity:${opacity}"></div>`,
-    className: "", iconSize: [18, 18], iconAnchor: [9, 9],
-  });
-}
-
-function makeJobMarker(color: string) {
-  return L.divIcon({
-    html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35)"></div>`,
-    className: "", iconSize: [16, 16], iconAnchor: [8, 8],
-  });
-}
-
-function makeNumberedMarker(n: number, color: string) {
-  return L.divIcon({
-    html: `<div style="width:26px;height:26px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;font-family:system-ui,sans-serif">${n}</div>`,
-    className: "", iconSize: [26, 26], iconAnchor: [13, 13],
-  });
-}
-
-function makeLocationMarker() {
-  return L.divIcon({
-    html: `
-      <div style="position:relative;width:24px;height:24px">
-        <div class="canvass-pulse" style="position:absolute;inset:-6px;border-radius:50%;background:#3B82F6;opacity:0.25"></div>
-        <div style="position:absolute;inset:3px;border-radius:50%;background:#3B82F6;border:2.5px solid white;box-shadow:0 2px 8px rgba(59,130,246,.6)"></div>
-      </div>
-    `,
-    className: "", iconSize: [24, 24], iconAnchor: [12, 12],
-  });
-}
 
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {
@@ -157,7 +177,6 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
       { headers: { "User-Agent": "HustleBricks/1.0 (service scheduling app)" } }
     );
     const data = await res.json();
-    // Build a clean "123 Main St, City, ST 12345" address from structured parts
     const a = data.address as Record<string, string> | undefined;
     if (a) {
       const houseNumber = a.house_number ?? "";
@@ -196,36 +215,6 @@ function normalizeProperty(raw: Record<string, unknown>): CanvassingProperty {
   };
 }
 
-
-// ─── Inner map components ─────────────────────────────────────────────────────
-
-function MapClickHandler({ onMapClick, skipRef, enabled }: {
-  onMapClick: (lat: number, lng: number) => void;
-  skipRef: React.RefObject<boolean>;
-  enabled: boolean;
-}) {
-  useMapEvents({
-    click(e) {
-      if (!enabled) return;
-      if (skipRef.current) { skipRef.current = false; return; }
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
-function FlyToController({ target }: { target: { coords: [number, number]; zoom: number } | null }) {
-  const map = useMap();
-  const prevRef = useRef<{ coords: [number, number]; zoom: number } | null>(null);
-  useEffect(() => {
-    if (target && target !== prevRef.current) {
-      prevRef.current = target;
-      map.flyTo(target.coords, target.zoom, { animate: true, duration: 0.8 });
-    }
-  }, [target, map]);
-  return null;
-}
-
 // ─── Quick Action Sheet ───────────────────────────────────────────────────────
 
 function formatVisitDate(dateStr: string): string {
@@ -255,35 +244,28 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
 
-  // Booking form state — contact
   const [bookName, setBookName] = useState("");
   const [bookPhone, setBookPhone] = useState("");
   const [bookPhoneAlt, setBookPhoneAlt] = useState("");
   const [bookEmail, setBookEmail] = useState("");
   const [bookAddress, setBookAddress] = useState(property.address ?? "");
-  // Booking form state — appointment
   const [bookPreferredDate, setBookPreferredDate] = useState("");
   const [bookPreferredTime, setBookPreferredTime] = useState("");
   const [bookedHours, setBookedHours] = useState<Set<number>>(new Set());
   const [slotsLoading, setSlotsLoading] = useState(false);
-  // Booking form state — notes
   const [bookRapportNotes, setBookRapportNotes] = useState("");
   const [bookServiceNotes, setBookServiceNotes] = useState("");
-  // Booking form state — custom fields
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const [cfLoading, setCfLoading] = useState(false);
   const cfFetchedRef = useRef(false);
-  // Booking form state — photos
   const [bookPhotos, setBookPhotos] = useState<File[]>([]);
   const [bookPhotoUrls, setBookPhotoUrls] = useState<string[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  // Address edit state
   const [editAddress, setEditAddress] = useState(property.address ?? "");
   const [savingAddress, setSavingAddress] = useState(false);
 
-  // Load custom fields when book mode opens (once per sheet open)
   useEffect(() => {
     if (mode !== "book" || !businessId || cfFetchedRef.current) return;
     cfFetchedRef.current = true;
@@ -300,11 +282,10 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
       });
   }, [mode, businessId]);
 
-  // Load booked hours when preferred date changes
   useEffect(() => {
     if (!bookPreferredDate || !businessId) { setBookedHours(new Set()); return; }
     setSlotsLoading(true);
-    setBookPreferredTime(""); // reset time when date changes
+    setBookPreferredTime("");
     const supabase = createClient();
     const dayStart = new Date(bookPreferredDate + "T00:00:00").toISOString();
     const dayEnd   = new Date(bookPreferredDate + "T23:59:59").toISOString();
@@ -327,7 +308,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookPreferredDate, businessId]);
 
-  // Revoke object URLs on unmount
   useEffect(() => {
     return () => { bookPhotoUrls.forEach((u) => URL.revokeObjectURL(u)); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -389,7 +369,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
     let leadId: string | null = null;
 
     if (businessId) {
-      // Build custom_field_values jsonb
       const cfValues: Record<string, string | number | boolean> = {};
       for (const cf of customFields) {
         const raw = customFieldValues[cf.id] ?? "";
@@ -416,7 +395,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
 
       leadId = (lead as { id: string } | null)?.id ?? null;
 
-      // Upload photos if any
       if (leadId && bookPhotos.length > 0) {
         for (const photo of bookPhotos) {
           const ext = photo.name.split(".").pop() ?? "jpg";
@@ -424,11 +402,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
           const { data: uploaded } = await supabase.storage.from("lead-photos").upload(path, photo, { upsert: false });
           if (uploaded) {
             const { data: { publicUrl } } = supabase.storage.from("lead-photos").getPublicUrl(path);
-            await supabase.from("lead_photos").insert({
-              lead_id: leadId,
-              business_id: businessId,
-              url: publicUrl,
-            });
+            await supabase.from("lead_photos").insert({ lead_id: leadId, business_id: businessId, url: publicUrl });
           }
         }
       }
@@ -440,7 +414,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
   }
 
   const displayStatus = property.status !== "not_visited" ? property.status : null;
-
   const inputCls = "w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40";
   const labelCls = "text-[10px] font-bold uppercase tracking-widest text-muted-foreground";
 
@@ -504,8 +477,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
                   Remove Pin
                 </button>
               )}
-
-              {/* ── Visit history ── */}
               {visits.length > 0 && (
                 <div className="mt-1 pt-4 border-t border-border/40">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2.5">Visit History</p>
@@ -560,13 +531,8 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
           {mode === "edit-address" && (
             <div className="flex flex-col gap-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Edit Address</p>
-              <textarea
-                value={editAddress}
-                onChange={(e) => setEditAddress(e.target.value)}
-                autoFocus
-                rows={2}
-                className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40 resize-none"
-              />
+              <textarea value={editAddress} onChange={(e) => setEditAddress(e.target.value)} autoFocus rows={2}
+                className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40 resize-none" />
               <div className="flex gap-2 mt-1">
                 <button onClick={() => setMode("actions")} disabled={savingAddress}
                   className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
@@ -581,8 +547,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
           )}
           {mode === "book" && (
             <div className="flex flex-col gap-4">
-
-              {/* ── Section 1: Contact ── */}
               <div className="flex flex-col gap-2">
                 <p className={labelCls}>Contact</p>
                 <input type="text" placeholder="Name *" value={bookName} onChange={(e) => setBookName(e.target.value)} autoFocus className={inputCls} />
@@ -593,8 +557,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
                 <input type="email" placeholder="Email" value={bookEmail} onChange={(e) => setBookEmail(e.target.value)} className={inputCls} />
                 <input type="text" placeholder="Address" value={bookAddress} onChange={(e) => setBookAddress(e.target.value)} className={inputCls} />
               </div>
-
-              {/* ── Section 2: Appointment ── */}
               <div className="flex flex-col gap-2">
                 <p className={labelCls}>Appointment</p>
                 <input type="date" value={bookPreferredDate} onChange={(e) => setBookPreferredDate(e.target.value)} className={inputCls} />
@@ -627,11 +589,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
                   <p className="text-xs text-muted-foreground/60">Pick a date to see available times</p>
                 )}
               </div>
-
-              {/* ── Section 3: Custom fields ── */}
-              {cfLoading && (
-                <p className="text-xs text-muted-foreground">Loading fields…</p>
-              )}
+              {cfLoading && <p className="text-xs text-muted-foreground">Loading fields…</p>}
               {!cfLoading && customFields.length > 0 && (
                 <div className="flex flex-col gap-2">
                   <p className={labelCls}>Additional Info</p>
@@ -658,8 +616,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
                         </div>
                       )}
                       {cf.field_type === "select" && (
-                        <select value={customFieldValues[cf.id] ?? ""} onChange={(e) => setCustomFieldValues((p) => ({ ...p, [cf.id]: e.target.value }))}
-                          className={inputCls}>
+                        <select value={customFieldValues[cf.id] ?? ""} onChange={(e) => setCustomFieldValues((p) => ({ ...p, [cf.id]: e.target.value }))} className={inputCls}>
                           <option value="">Select…</option>
                           {(cf.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
@@ -668,22 +625,14 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
                   ))}
                 </div>
               )}
-
-              {/* ── Section 4: Rapport Notes ── */}
               <div className="flex flex-col gap-2">
                 <p className={labelCls}>Rapport Notes</p>
-                <textarea placeholder="Customer's profession, pets, years in home…" value={bookRapportNotes} onChange={(e) => setBookRapportNotes(e.target.value)} rows={2}
-                  className={`${inputCls} resize-none`} />
+                <textarea placeholder="Customer's profession, pets, years in home…" value={bookRapportNotes} onChange={(e) => setBookRapportNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
               </div>
-
-              {/* ── Section 5: Service Notes ── */}
               <div className="flex flex-col gap-2">
                 <p className={labelCls}>Service Notes</p>
-                <textarea placeholder="Gate code, watch flower beds, 3 dogs…" value={bookServiceNotes} onChange={(e) => setBookServiceNotes(e.target.value)} rows={2}
-                  className={`${inputCls} resize-none`} />
+                <textarea placeholder="Gate code, watch flower beds, 3 dogs…" value={bookServiceNotes} onChange={(e) => setBookServiceNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
               </div>
-
-              {/* ── Section 6: Photos ── */}
               <div className="flex flex-col gap-2">
                 <p className={labelCls}>Photos</p>
                 <div className="flex gap-2">
@@ -706,8 +655,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
                 </div>
                 <input ref={photoInputRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={handlePhotoSelect} />
               </div>
-
-              {/* ── Submit ── */}
               <div className="flex gap-2 pt-1 pb-4">
                 <button onClick={() => setMode("actions")} disabled={saving}
                   className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
@@ -754,7 +701,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
 export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: { onBookNow: (address: string) => void; captureLeadOnBook?: boolean }) {
   const router = useRouter();
 
-  // ── View mode (outer tab) ────────────────────────────────────────────────
+  // ── View mode ────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<ViewMode>("canvass");
 
   // ── Canvassing state ─────────────────────────────────────────────────────
@@ -788,15 +735,32 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
   const [jobRouteError, setJobRouteError]         = useState("");
   const [noAddressCount, setNoAddressCount]       = useState(0);
 
-  // ── Shared map state ─────────────────────────────────────────────────────
-  const [center, setCenter]             = useState<[number, number]>([39.5, -98.35]);
-  const [zoom, setZoom]                 = useState(4);
+  // ── Map state ─────────────────────────────────────────────────────────────
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
-  const [flyTarget, setFlyTarget]       = useState<{ coords: [number, number]; zoom: number } | null>(null);
   const [mapLayer, setMapLayer]         = useState<"satellite" | "street">("satellite");
+  const [mapLoaded, setMapLoaded]       = useState(false);
 
-  const skipClickRef = useRef(false);
-  const watchIdRef   = useRef<number | null>(null);
+  // ── Map refs ──────────────────────────────────────────────────────────────
+  const mapContainerRef    = useRef<HTMLDivElement>(null);
+  const mapRef             = useRef<maplibregl.Map | null>(null);
+  const canvassMarkersRef  = useRef<maplibregl.Marker[]>([]);
+  const jobMarkersRef      = useRef<maplibregl.Marker[]>([]);
+  const locationMarkerRef  = useRef<maplibregl.Marker | null>(null);
+  const startMarkerRef     = useRef<maplibregl.Marker | null>(null);
+  const skipClickRef       = useRef(false);
+  const watchIdRef         = useRef<number | null>(null);
+
+  // Refs to keep closures up-to-date without re-registering map event handlers
+  const viewModeRef        = useRef(viewMode);
+  const jobRouteStopsRef   = useRef(jobRouteStops);
+  const routeStartCoordsRef = useRef(routeStartCoords);
+
+  useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
+  useEffect(() => { jobRouteStopsRef.current = jobRouteStops; }, [jobRouteStops]);
+  useEffect(() => { routeStartCoordsRef.current = routeStartCoords; }, [routeStartCoords]);
+
+  // Ref to keep handleMapClick fresh inside the map click handler
+  const handleMapClickRef = useRef<(lat: number, lng: number) => void>(() => {});
 
   // Pulse animation CSS
   useEffect(() => {
@@ -811,6 +775,59 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
     `;
     if (!document.getElementById("canvass-pulse-style")) document.head.appendChild(style);
     return () => document.getElementById("canvass-pulse-style")?.remove();
+  }, []);
+
+  // ── Map initialization ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: buildMapStyle("satellite"),
+      center: [-98.35, 39.5],
+      zoom: 4,
+      attributionControl: false,
+    });
+
+    mapRef.current = map;
+
+    map.on("load", () => {
+      // Add empty route line source + layer
+      map.addSource("route", {
+        type: "geojson",
+        data: emptyLineGeoJSON(),
+      });
+      map.addLayer({
+        id: "route-layer",
+        type: "line",
+        source: "route",
+        paint: {
+          "line-color": "#007AFF",
+          "line-width": 3,
+          "line-opacity": 0.75,
+          "line-dasharray": [2, 1],
+        },
+      });
+      setMapLoaded(true);
+    });
+
+    // Click handler — uses refs so it never needs to be re-registered
+    map.on("click", (e) => {
+      if (viewModeRef.current !== "canvass") return;
+      if (skipClickRef.current) { skipClickRef.current = false; return; }
+      handleMapClickRef.current(e.lngLat.lat, e.lngLat.lng);
+    });
+
+    return () => {
+      canvassMarkersRef.current.forEach((m) => m.remove());
+      jobMarkersRef.current.forEach((m) => m.remove());
+      locationMarkerRef.current?.remove();
+      startMarkerRef.current?.remove();
+      map.remove();
+      mapRef.current = null;
+      setMapLoaded(false);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Init: canvassing data + GPS ──────────────────────────────────────────
@@ -850,8 +867,12 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
         );
       });
 
-      if (geoCoords) { setUserPosition(geoCoords); setCenter(geoCoords); setZoom(17); }
-      else if (propList.length > 0) { setCenter([propList[0].lat, propList[0].lng]); setZoom(15); }
+      if (geoCoords) {
+        setUserPosition(geoCoords);
+        mapRef.current?.flyTo({ center: [geoCoords[1], geoCoords[0]], zoom: 17, duration: 1200 });
+      } else if (propList.length > 0) {
+        mapRef.current?.flyTo({ center: [propList[0].lng, propList[0].lat], zoom: 15, duration: 1200 });
+      }
 
       setLoading(false);
 
@@ -866,7 +887,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
     return () => { if (watchIdRef.current !== null) navigator.geolocation?.clearWatch(watchIdRef.current); };
   }, []);
 
-  // ── Lazy load jobs data (first time Jobs tab is opened) ──────────────────
+  // ── Lazy load jobs data ───────────────────────────────────────────────────
   useEffect(() => {
     if (viewMode !== "jobs" || jobsLoaded || !businessId) return;
 
@@ -890,7 +911,6 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
       ]);
 
       setTeamMembers((members as TeamMember[]) ?? []);
-
       const jobList = (jobs as unknown as MapJob[]) ?? [];
       setAllJobs(jobList);
 
@@ -909,7 +929,9 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
         setJobProgress(i + 1);
         if (coords) {
           newPins.push({ job, lat: coords[0], lng: coords[1] });
-          if (newPins.length === 1) { setCenter(coords); setZoom(12); }
+          if (newPins.length === 1) {
+            mapRef.current?.flyTo({ center: [coords[1], coords[0]], zoom: 12, duration: 800 });
+          }
         }
         setJobPins([...newPins]);
         if (i < withAddress.length - 1) await sleep(1100);
@@ -937,7 +959,10 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
     setCreating(false);
   }, [businessId, creating]);
 
-  // ── Load visit history when a pin is selected ───────────────────────────
+  // Keep the map click handler ref current
+  useEffect(() => { handleMapClickRef.current = handleMapClick; }, [handleMapClick]);
+
+  // ── Load visit history ────────────────────────────────────────────────────
   useEffect(() => {
     if (!selected) { setVisits([]); return; }
     const supabase = createClient();
@@ -961,7 +986,6 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
       const prop = normalizeProperty(updated as Record<string, unknown>);
       setProperties((prev) => prev.map((p) => (p.id === id ? prop : p)));
     }
-    // Log this visit to history
     if (businessId && updates.status) {
       const { data: visit } = await supabase.from("canvassing_visits").insert({
         property_id: id,
@@ -975,14 +999,12 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
     }
   }
 
-  // ── Remove canvassing pin ────────────────────────────────────────────────
   async function handleRemoveProperty(id: string) {
     const supabase = createClient();
     await supabase.from("canvassing_properties").delete().eq("id", id);
     setProperties((prev) => prev.filter((p) => p.id !== id));
   }
 
-  // ── Update canvassing property address ───────────────────────────────────
   async function handleAddressUpdate(id: string, address: string) {
     const supabase = createClient();
     const { data: updated } = await supabase.from("canvassing_properties")
@@ -994,7 +1016,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
     }
   }
 
-  // ── Job route planning ───────────────────────────────────────────────────
+  // ── Job route planning ────────────────────────────────────────────────────
   async function handlePlanJobRoute() {
     if (!routeEmployee || !routeDate) return;
     setJobRoutePlanning(true);
@@ -1044,8 +1066,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
       if (coords) {
         startPin = { lat: coords[0], lng: coords[1] };
         setRouteStartCoords(coords);
-        setCenter(coords);
-        setZoom(11);
+        mapRef.current?.flyTo({ center: [coords[1], coords[0]], zoom: 11, duration: 800 });
       } else {
         setJobRouteError("Could not find the start address — check the spelling and try again.");
         setJobRoutePlanning(false);
@@ -1080,21 +1101,145 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
   }
 
   function recenterOnUser() {
-    if (!userPosition) return;
-    setFlyTarget({ coords: userPosition, zoom: 17 });
+    if (!userPosition || !mapRef.current) return;
+    mapRef.current.flyTo({ center: [userPosition[1], userPosition[0]], zoom: 17, duration: 800 });
   }
 
-  // ── Derived ──────────────────────────────────────────────────────────────
+  // ── Tile layer switching ──────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
 
-  const filteredJobs = jobFilterStatus === "all" ? jobPins : jobPins.filter((p) => p.job.status === jobFilterStatus);
+    map.setStyle(buildMapStyle(mapLayer));
+
+    // Re-add route line after style resets
+    map.once("style.load", () => {
+      map.addSource("route", { type: "geojson", data: emptyLineGeoJSON() });
+      map.addLayer({
+        id: "route-layer",
+        type: "line",
+        source: "route",
+        paint: { "line-color": "#007AFF", "line-width": 3, "line-opacity": 0.75, "line-dasharray": [2, 1] },
+      });
+      // Re-apply current route data from refs
+      const stops = jobRouteStopsRef.current;
+      const startCoords = routeStartCoordsRef.current;
+      if (viewModeRef.current === "jobs" && stops.length > 0) {
+        const coordinates = [
+          ...(startCoords ? [[startCoords[1], startCoords[0]]] : []),
+          ...stops.map((s) => [s.lng, s.lat]),
+        ];
+        (map.getSource("route") as maplibregl.GeoJSONSource).setData({
+          type: "Feature", geometry: { type: "LineString", coordinates }, properties: {},
+        });
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapLayer]);
+
+  // ── Route line update ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    const updateLine = () => {
+      const source = map.getSource("route") as maplibregl.GeoJSONSource | undefined;
+      if (!source) return;
+      const coordinates = viewMode === "jobs" && jobRouteStops.length > 0 ? [
+        ...(routeStartCoords ? [[routeStartCoords[1], routeStartCoords[0]]] : []),
+        ...jobRouteStops.map((s) => [s.lng, s.lat]),
+      ] : [];
+      source.setData({ type: "Feature", geometry: { type: "LineString", coordinates }, properties: {} });
+    };
+
+    if (map.isStyleLoaded()) {
+      updateLine();
+    } else {
+      map.once("style.load", updateLine);
+    }
+  }, [mapLoaded, jobRouteStops, routeStartCoords, viewMode]);
+
+  // ── Canvassing property markers ───────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    canvassMarkersRef.current.forEach((m) => m.remove());
+    canvassMarkersRef.current = [];
+
+    if (viewMode !== "canvass") return;
+
+    properties.forEach((prop) => {
+      const el = makeCanvassMarkerEl(CANVASS_COLORS[prop.status]);
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        skipClickRef.current = true;
+        setSelected(prop);
+      });
+      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([prop.lng, prop.lat])
+        .addTo(map);
+      canvassMarkersRef.current.push(marker);
+    });
+  }, [mapLoaded, properties, viewMode]);
+
+  // ── Job markers ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    jobMarkersRef.current.forEach((m) => m.remove());
+    jobMarkersRef.current = [];
+    startMarkerRef.current?.remove();
+    startMarkerRef.current = null;
+
+    if (viewMode !== "jobs") return;
+
+    const filteredJobs = jobFilterStatus === "all" ? jobPins : jobPins.filter((p) => p.job.status === jobFilterStatus);
+
+    filteredJobs.forEach((pin) => {
+      const routeIdx = jobRouteStops.findIndex((s) => s.job.id === pin.job.id);
+      const color = STATUS_HEX[pin.job.status] ?? STATUS_HEX.scheduled;
+      const el = routeIdx >= 0 ? makeNumberedMarkerEl(routeIdx + 1, color) : makeJobMarkerEl(color);
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        router.push(`/jobs/${pin.job.id}`);
+      });
+      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([pin.lng, pin.lat])
+        .addTo(map);
+      jobMarkersRef.current.push(marker);
+    });
+
+    if (routeStartCoords) {
+      const el = makeStartMarkerEl(STATUS_HEX.completed);
+      startMarkerRef.current = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([routeStartCoords[1], routeStartCoords[0]])
+        .addTo(map);
+    }
+  }, [mapLoaded, jobPins, jobFilterStatus, jobRouteStops, routeStartCoords, viewMode, router]);
+
+  // ── GPS location marker ───────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || !userPosition) return;
+
+    if (!locationMarkerRef.current) {
+      const el = makeLocationMarkerEl();
+      locationMarkerRef.current = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([userPosition[1], userPosition[0]])
+        .addTo(map);
+    } else {
+      locationMarkerRef.current.setLngLat([userPosition[1], userPosition[0]]);
+    }
+  }, [mapLoaded, userPosition]);
+
+  // ── Derived ───────────────────────────────────────────────────────────────
   const jobCounts = {
     scheduled:   jobPins.filter((p) => p.job.status === "scheduled").length,
     in_progress: jobPins.filter((p) => p.job.status === "in_progress").length,
     completed:   jobPins.filter((p) => p.job.status === "completed").length,
   };
-
-  const jobRouteStopIds = new Set(jobRouteStops.map((s) => s.job.id));
-  const tile = TILE_LAYERS[mapLayer];
 
   if (loading) {
     return (
@@ -1111,77 +1256,15 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ touchAction: "none" }}>
 
-      {/* ── Map (full screen) ── */}
-      <div className="absolute inset-0">
-        <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }} zoomControl={false}>
-          <TileLayer url={tile.url} attribution={tile.attribution} />
-          <MapClickHandler onMapClick={handleMapClick} skipRef={skipClickRef} enabled={viewMode === "canvass"} />
-          <FlyToController target={flyTarget} />
+      {/* ── MapLibre container ── */}
+      <div ref={mapContainerRef} className="absolute inset-0" />
 
-          {/* Job route polyline */}
-          {viewMode === "jobs" && jobRouteStops.length > 0 && (
-            <Polyline
-              positions={[
-                ...(routeStartCoords ? [routeStartCoords] : []),
-                ...jobRouteStops.map((s) => [s.lat, s.lng] as [number, number]),
-              ]}
-              pathOptions={{ color: "#007AFF", weight: 3, opacity: 0.75, dashArray: "8 5" }}
-            />
-          )}
+      {/* ── Floating overlays ── */}
+      <div className="absolute inset-0 pointer-events-none">
 
-          {/* Start position marker (job route) */}
-          {viewMode === "jobs" && routeStartCoords && (
-            <Marker
-              position={routeStartCoords}
-              icon={L.divIcon({
-                html: `<div style="width:28px;height:28px;border-radius:50%;background:${STATUS_HEX.completed};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:13px;color:white;font-family:system-ui,sans-serif">S</div>`,
-                className: "", iconSize: [28, 28], iconAnchor: [14, 14],
-              })}
-            />
-          )}
-
-          {/* Live location dot */}
-          {userPosition && (
-            <Marker position={userPosition} icon={makeLocationMarker()} interactive={false} zIndexOffset={-500} />
-          )}
-
-          {/* Canvassing property pins */}
-          {viewMode === "canvass" && properties.map((prop) => (
-            <Marker key={prop.id} position={[prop.lat, prop.lng]} icon={makeCanvassMarker(CANVASS_COLORS[prop.status])}
-              eventHandlers={{
-                click: (e) => {
-                  e.originalEvent.stopPropagation();
-                  skipClickRef.current = true;
-                  setSelected(properties.find((p) => p.id === prop.id) ?? prop);
-                },
-              }}
-            />
-          ))}
-
-          {/* Job pins */}
-          {viewMode === "jobs" && filteredJobs.map((pin) => {
-            const routeIdx = jobRouteStops.findIndex((s) => s.job.id === pin.job.id);
-            const color = STATUS_HEX[pin.job.status] ?? STATUS_HEX.scheduled;
-            const icon = routeIdx >= 0
-              ? makeNumberedMarker(routeIdx + 1, color)
-              : makeJobMarker(color);
-            return (
-              <Marker key={pin.job.id} position={[pin.lat, pin.lng]} icon={icon}
-                zIndexOffset={jobRouteStopIds.has(pin.job.id) ? 1000 : 0}
-                eventHandlers={{
-                  click: (e) => {
-                    e.originalEvent.stopPropagation();
-                    router.push(`/jobs/${pin.job.id}`);
-                  },
-                }}
-              />
-            );
-          })}
-        </MapContainer>
-
-        {/* Follow-ups / Analytics — top right (canvass pin mode only) */}
+        {/* Follow-ups / Analytics — desktop top right */}
         {viewMode === "canvass" && (
-          <div className="absolute top-3 right-3 z-[500] hidden lg:flex flex-row gap-1.5">
+          <div className="absolute top-3 right-3 z-[500] hidden lg:flex flex-row gap-1.5 pointer-events-auto">
             <Link href="/canvassing/follow-ups"
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
               style={{ ...glassStyle, color: "#FCD34D" }}>
@@ -1197,10 +1280,10 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
           </div>
         )}
 
-        {/* ── Floating top bar ── */}
+        {/* Floating top bar */}
         <div className="absolute top-3 left-3 right-3 z-[400] flex flex-col gap-2 pointer-events-none">
 
-          {/* Outer view mode toggle: Canvass | Jobs */}
+          {/* View mode toggle */}
           <div className="flex justify-center pointer-events-auto">
             <div className="flex rounded-2xl overflow-hidden" style={glassStyle}>
               <button onClick={() => setViewMode("canvass")}
@@ -1216,7 +1299,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
             </div>
           </div>
 
-          {/* ── CANVASS MODE overlay ── */}
+          {/* Canvass mode overlay */}
           {viewMode === "canvass" && (
             <div className="flex lg:hidden items-center justify-end gap-1.5 pointer-events-auto">
               <Link href="/canvassing/follow-ups"
@@ -1234,7 +1317,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
             </div>
           )}
 
-          {/* ── JOBS MODE overlay ── */}
+          {/* Jobs mode overlay */}
           {viewMode === "jobs" && (
             <>
               <div className="flex items-center justify-between gap-2">
@@ -1255,8 +1338,6 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
                   </div>
                 )}
               </div>
-
-              {/* Job status filter chips */}
               <div className="flex gap-1.5 overflow-x-auto scrollbar-none pointer-events-auto">
                 {([
                   { label: "All", value: "all" as const },
@@ -1276,7 +1357,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
         </div>
 
         {/* Satellite / Street toggle */}
-        <div className="absolute bottom-20 lg:bottom-6 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20">
+        <div className="absolute bottom-20 lg:bottom-6 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20 pointer-events-auto">
           <button onClick={() => setMapLayer("satellite")}
             className={`px-2.5 py-1 text-xs font-bold transition-colors ${mapLayer === "satellite" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}>
             Satellite
@@ -1289,18 +1370,15 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
 
         {/* My location button */}
         <button onClick={recenterOnUser} disabled={!userPosition}
-          className="absolute bottom-20 lg:bottom-6 right-3 z-[400] size-9 flex items-center justify-center rounded-full bg-background shadow-lg border border-border active:scale-90 transition-all disabled:opacity-40">
+          className="absolute bottom-20 lg:bottom-6 right-3 z-[400] size-9 flex items-center justify-center rounded-full bg-background shadow-lg border border-border active:scale-90 transition-all disabled:opacity-40 pointer-events-auto">
           <span className="material-symbols-outlined text-[18px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>my_location</span>
         </button>
       </div>
-
 
       {/* ── Job route planner panel ── */}
       {viewMode === "jobs" && (
         <div className="absolute bottom-0 left-0 right-0 z-[500] bg-background border-t border-border shadow-2xl"
           style={{ maxHeight: jobRouteStops.length > 0 ? "55vh" : "auto" }}>
-
-          {/* Route planner controls */}
           {teamMembers.length > 0 && (
             <div className="px-4 pt-3 pb-3 flex flex-col gap-2">
               <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Job Route Planner</p>
@@ -1329,8 +1407,6 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
               )}
             </div>
           )}
-
-          {/* Route stops list */}
           {jobRouteStops.length > 0 && (
             <>
               <div className="px-4 py-2.5 flex items-center justify-between sticky top-0 bg-background border-t border-border z-10">
@@ -1377,51 +1453,49 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
         </div>
       )}
 
-      {/* ── Floating bottom nav (owner mobile only) ── */}
-      {!captureLeadOnBook && <div className="lg:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
-        style={{ width: "calc(100% - 32px)", maxWidth: 420 }}>
-        <div className="flex items-center justify-around px-4 py-2 rounded-[24px] shadow-2xl"
-          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)" }}>
-          {([
-            { href: "/jobs",            label: "Jobs",      icon: "work"           },
-            { href: "/analytics",       label: "Analytics", icon: "leaderboard"    },
-            { href: "/canvassing",      label: "Map",       icon: "map"            },
-            { href: "/calendar",        label: "Schedule",  icon: "calendar_month" },
-          ] as const).map(({ href, label, icon }) => {
-            const active = href === "/canvassing";
-            return (
-              <Link key={href} href={href} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-                <span className="material-symbols-outlined text-[20px]"
-                  style={{ color: active ? "white" : "rgba(255,255,255,0.6)", fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
-                  {icon}
-                </span>
-                <span className="text-[9px] font-semibold leading-none" style={{ color: active ? "white" : "rgba(255,255,255,0.5)" }}>{label}</span>
-              </Link>
-            );
-          })}
+      {/* ── Floating bottom nav ── */}
+      {!captureLeadOnBook && (
+        <div className="lg:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
+          style={{ width: "calc(100% - 32px)", maxWidth: 420 }}>
+          <div className="flex items-center justify-around px-4 py-2 rounded-[24px] shadow-2xl"
+            style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)" }}>
+            {([
+              { href: "/jobs",       label: "Jobs",      icon: "work"           },
+              { href: "/analytics",  label: "Analytics", icon: "leaderboard"    },
+              { href: "/canvassing", label: "Map",       icon: "map"            },
+              { href: "/calendar",   label: "Schedule",  icon: "calendar_month" },
+            ] as const).map(({ href, label, icon }) => {
+              const active = href === "/canvassing";
+              return (
+                <Link key={href} href={href} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                  <span className="material-symbols-outlined text-[20px]"
+                    style={{ color: active ? "white" : "rgba(255,255,255,0.6)", fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
+                    {icon}
+                  </span>
+                  <span className="text-[9px] font-semibold leading-none" style={{ color: active ? "white" : "rgba(255,255,255,0.5)" }}>{label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
-      </div>}
+      )}
 
       {/* ── Desktop back button ── */}
       <button
         onClick={() => router.back()}
         className="hidden lg:flex absolute top-4 left-4 z-[500] items-center gap-2 px-3 py-2 rounded-xl pointer-events-auto transition-opacity hover:opacity-90"
-        style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)", color: "white" }}
-      >
+        style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)", color: "white" }}>
         <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 0" }}>arrow_back</span>
         <span className="text-sm font-medium">Back</span>
       </button>
 
-      {/* ── Quick Action Sheet (canvass pin mode only) ── */}
+      {/* ── Quick Action Sheet ── */}
       {selected && viewMode === "canvass" && (
         <QuickActionSheet
           property={selected}
           onClose={() => setSelected(null)}
           onStatusUpdate={async (updates) => { await handleStatusUpdate(selected.id, updates); }}
-          onBookNow={() => {
-            onBookNow(selected.address ?? "");
-            setSelected(null);
-          }}
+          onBookNow={() => { onBookNow(selected.address ?? ""); setSelected(null); }}
           onRemove={async () => { await handleRemoveProperty(selected.id); setSelected(null); }}
           onAddressUpdate={async (address) => { await handleAddressUpdate(selected.id, address); }}
           businessId={businessId ?? undefined}
