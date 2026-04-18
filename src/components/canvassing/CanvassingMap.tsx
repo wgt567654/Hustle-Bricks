@@ -478,21 +478,21 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
             <div className="flex flex-col gap-2.5">
               <div className="grid grid-cols-2 gap-2.5">
                 <button onClick={() => handleSimpleStatus("no_answer")} disabled={saving}
-                  className="py-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   No Answer
                 </button>
                 <button onClick={() => handleSimpleStatus("no")} disabled={saving}
-                  className="py-4 rounded-2xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="py-3 rounded-2xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   Not Interested
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2.5">
                 <button onClick={() => setMode("interested")} disabled={saving}
-                  className="py-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="py-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   Interested
                 </button>
                 <button onClick={handleBookNow} disabled={saving}
-                  className="py-4 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50"
+                  className="py-3 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50"
                   style={{ boxShadow: "0 4px 14px rgba(34,197,94,.4)" }}>
                   {saving ? "Saving…" : "Book Now →"}
                 </button>
@@ -545,13 +545,13 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
               </div>
               <div className="flex gap-2 mt-1">
                 <button onClick={() => setMode("actions")} disabled={removing}
-                  className="flex-1 py-3.5 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   Cancel
                 </button>
                 <button
                   onClick={async () => { setRemoving(true); await onRemove!(); }}
                   disabled={removing}
-                  className="flex-[2] py-3.5 rounded-2xl bg-destructive text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="flex-[2] py-3 rounded-2xl bg-destructive text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   {removing ? "Removing…" : "Remove Pin"}
                 </button>
               </div>
@@ -569,11 +569,11 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
               />
               <div className="flex gap-2 mt-1">
                 <button onClick={() => setMode("actions")} disabled={savingAddress}
-                  className="flex-1 py-3.5 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   Cancel
                 </button>
                 <button onClick={handleAddressSave} disabled={savingAddress || !editAddress.trim()}
-                  className="flex-[2] py-3.5 rounded-2xl bg-primary text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="flex-[2] py-3 rounded-2xl bg-primary text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   {savingAddress ? "Saving…" : "Save Address"}
                 </button>
               </div>
@@ -710,11 +710,11 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
               {/* ── Submit ── */}
               <div className="flex gap-2 pt-1 pb-4">
                 <button onClick={() => setMode("actions")} disabled={saving}
-                  className="flex-1 py-3.5 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   Back
                 </button>
                 <button onClick={handleBookSubmit} disabled={saving || !bookName.trim()}
-                  className="flex-[2] py-3.5 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50"
+                  className="flex-[2] py-3 rounded-2xl bg-green-500 text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50"
                   style={{ boxShadow: "0 4px 14px rgba(34,197,94,.4)" }}>
                   {saving ? "Saving…" : "Confirm Booking →"}
                 </button>
@@ -733,11 +733,11 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
               </div>
               <div className="flex gap-2 mt-1">
                 <button onClick={() => setMode("actions")} disabled={saving}
-                  className="flex-1 py-3.5 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   Back
                 </button>
                 <button onClick={handleInterestedSave} disabled={saving}
-                  className="flex-[2] py-3.5 rounded-2xl bg-blue-500 text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
+                  className="flex-[2] py-3 rounded-2xl bg-blue-500 text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
                   {saving ? "Saving…" : "Save"}
                 </button>
               </div>
@@ -1204,12 +1204,12 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
           <div className="flex justify-center pointer-events-auto">
             <div className="flex rounded-2xl overflow-hidden" style={glassStyle}>
               <button onClick={() => setViewMode("canvass")}
-                className="px-5 py-2 text-xs font-extrabold transition-all active:scale-95"
+                className="px-4 py-1.5 text-xs font-extrabold transition-all active:scale-95"
                 style={viewMode === "canvass" ? { background: "white", color: "#111" } : { color: "rgba(255,255,255,0.7)" }}>
                 Canvass
               </button>
               <button onClick={() => setViewMode("jobs")}
-                className="px-5 py-2 text-xs font-extrabold transition-all active:scale-95"
+                className="px-4 py-1.5 text-xs font-extrabold transition-all active:scale-95"
                 style={viewMode === "jobs" ? { background: "#007AFF", color: "white" } : { color: "rgba(255,255,255,0.7)" }}>
                 Jobs
               </button>
@@ -1276,21 +1276,21 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
         </div>
 
         {/* Satellite / Street toggle */}
-        <div className="absolute bottom-24 lg:bottom-6 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20">
+        <div className="absolute bottom-20 lg:bottom-6 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20">
           <button onClick={() => setMapLayer("satellite")}
-            className={`px-3 py-1.5 text-xs font-bold transition-colors ${mapLayer === "satellite" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}>
+            className={`px-2.5 py-1 text-xs font-bold transition-colors ${mapLayer === "satellite" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}>
             Satellite
           </button>
           <button onClick={() => setMapLayer("street")}
-            className={`px-3 py-1.5 text-xs font-bold transition-colors ${mapLayer === "street" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}>
+            className={`px-2.5 py-1 text-xs font-bold transition-colors ${mapLayer === "street" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}>
             Street
           </button>
         </div>
 
         {/* My location button */}
         <button onClick={recenterOnUser} disabled={!userPosition}
-          className="absolute bottom-24 lg:bottom-6 right-3 z-[400] size-10 flex items-center justify-center rounded-full bg-background shadow-lg border border-border active:scale-90 transition-all disabled:opacity-40">
-          <span className="material-symbols-outlined text-[20px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>my_location</span>
+          className="absolute bottom-20 lg:bottom-6 right-3 z-[400] size-9 flex items-center justify-center rounded-full bg-background shadow-lg border border-border active:scale-90 transition-all disabled:opacity-40">
+          <span className="material-symbols-outlined text-[18px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>my_location</span>
         </button>
       </div>
 
@@ -1378,9 +1378,9 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
       )}
 
       {/* ── Floating bottom nav (owner mobile only) ── */}
-      {!captureLeadOnBook && <div className="lg:hidden absolute bottom-5 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
+      {!captureLeadOnBook && <div className="lg:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
         style={{ width: "calc(100% - 32px)", maxWidth: 420 }}>
-        <div className="flex items-center justify-around px-4 py-3 rounded-[28px] shadow-2xl"
+        <div className="flex items-center justify-around px-4 py-2 rounded-[24px] shadow-2xl"
           style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)" }}>
           {([
             { href: "/jobs",            label: "Jobs",      icon: "work"           },
@@ -1391,7 +1391,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
             const active = href === "/canvassing";
             return (
               <Link key={href} href={href} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
-                <span className="material-symbols-outlined text-[22px]"
+                <span className="material-symbols-outlined text-[20px]"
                   style={{ color: active ? "white" : "rgba(255,255,255,0.6)", fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>
                   {icon}
                 </span>
