@@ -52,9 +52,8 @@ export async function POST(request: NextRequest) {
 
     case "invoice.payment_succeeded": {
       const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId = typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription?.id;
+      const subRef = invoice.parent?.subscription_details?.subscription;
+      const subscriptionId = typeof subRef === "string" ? subRef : (subRef as Stripe.Subscription | undefined)?.id;
 
       if (!subscriptionId) break;
 
@@ -105,9 +104,8 @@ export async function POST(request: NextRequest) {
 
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId = typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription?.id;
+      const subRef = invoice.parent?.subscription_details?.subscription;
+      const subscriptionId = typeof subRef === "string" ? subRef : (subRef as Stripe.Subscription | undefined)?.id;
 
       if (!subscriptionId) break;
 
