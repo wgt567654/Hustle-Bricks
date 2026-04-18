@@ -1113,8 +1113,20 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
 
       {/* ── Map (full screen) ── */}
       <div className="absolute inset-0">
-        <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }} zoomControl={false}>
-          <TileLayer url={tile.url} attribution={tile.attribution} />
+        <MapContainer
+          center={center}
+          zoom={zoom}
+          style={{ height: "100%", width: "100%" }}
+          zoomControl={false}
+          zoomSnap={0}
+          zoomDelta={0.5}
+          wheelPxPerZoomLevel={80}
+          markerZoomAnimation={true}
+          inertia={true}
+          inertiaDeceleration={2000}
+          inertiaMaxSpeed={1200}
+        >
+          <TileLayer url={tile.url} attribution={tile.attribution} keepBuffer={4} />
           <MapClickHandler onMapClick={handleMapClick} skipRef={skipClickRef} enabled={viewMode === "canvass"} />
           <FlyToController target={flyTarget} />
 
