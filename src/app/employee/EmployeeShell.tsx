@@ -137,7 +137,7 @@ export default function EmployeeShell({
       </header>
 
       {/* ── MAIN CONTENT ── */}
-      <main className={`flex-1 ${isMapPage ? "pb-0" : "pb-24 lg:pb-8 lg:ml-[60px]"}`}>{children}</main>
+      <main className={`flex-1 ${isMapPage ? "pb-0" : "lg:pb-8 lg:ml-[60px]"}`} style={isMapPage ? undefined : { paddingBottom: "calc(3.75rem + 1.25rem + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
 
       {/* ── BOTTOM NAV ── */}
       <nav className={`fixed bottom-0 left-0 w-full z-40 chrome lg:hidden${isMapPage ? " hidden" : ""}`}>
@@ -163,7 +163,7 @@ export default function EmployeeShell({
             );
           })}
         </div>
-        <div className="h-5" />
+        <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
       </nav>
     </div>
   );

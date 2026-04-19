@@ -263,7 +263,7 @@ export default function LeadsPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 px-4 lg:px-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 px-4 lg:px-8">
           {filtered.map((lead) => {
             const stage = STAGES.find((s) => s.value === lead.stage)!;
             const apptDate = lead.preferred_date

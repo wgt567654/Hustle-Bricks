@@ -124,7 +124,7 @@ export default function JobsPage() {
 
 
   return (
-    <div className="flex flex-col gap-3 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-36 lg:pb-8">
+    <div className="flex flex-col gap-3 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-4 lg:pb-8">
       {/* Greeting + compact stats */}
       <div className="flex flex-col gap-2.5">
         <div className="flex flex-col gap-0.5">
@@ -206,7 +206,7 @@ export default function JobsPage() {
       </div>
 
       {/* Jobs list */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {loading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
 
         {!loading && filtered.length === 0 && (

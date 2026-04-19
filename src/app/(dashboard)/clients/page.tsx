@@ -142,7 +142,7 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-32 lg:pb-8">
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-4 lg:pb-8">
       <div className="flex flex-col gap-0.5 mb-1">
         <h1 className="text-xl font-extrabold tracking-tight text-foreground">Clients</h1>
         <p className="text-xs text-muted-foreground">Your customer base and CRM.</p>
@@ -181,7 +181,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Client list */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {loading && (
           <p className="text-sm text-muted-foreground text-center py-8">Loading clients…</p>
         )}
@@ -265,8 +265,8 @@ export default function ClientsPage() {
       {/* Floating add button */}
       <button
         onClick={() => { setShowModal(true); setError(null); setForm(EMPTY_FORM); }}
-        className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white press"
-        style={{ boxShadow: "0 4px 20px rgba(0,122,255,0.4), 0 1px 4px rgba(0,122,255,0.3)" }}
+        className="fixed right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white press"
+        style={{ bottom: "calc(6rem + env(safe-area-inset-bottom, 0px))", boxShadow: "0 4px 20px rgba(0,122,255,0.4), 0 1px 4px rgba(0,122,255,0.3)" }}
       >
         <span className="material-symbols-outlined text-[28px]">person_add</span>
       </button>
