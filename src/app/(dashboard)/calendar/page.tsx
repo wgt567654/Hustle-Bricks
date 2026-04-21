@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +118,50 @@ function makeGoogleCalendarUrl(job: Job) {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(start)}/${fmt(end)}`;
 }
 
+/**
+ * Assigns side-by-side column positions to overlapping jobs so they render like Google Calendar.
+ * Returns a map of jobId → { top, height, leftPct, widthPct }.
+ * Jobs have no end time so a 60-minute default duration is assumed for overlap detection.
+ */
+function layoutJobs(jobs: Job[], hourHeight: number): Map<string, { top: number; height: number; leftPct: number; widthPct: number }> {
+  const DEFAULT_DURATION = 60;
+  const items = jobs
+    .filter((j) => j.scheduled_at)
+    .map((j) => {
+      const d = new Date(j.scheduled_at!);
+      const startMin = d.getHours() * 60 + d.getMinutes();
+      return { job: j, startMin, endMin: startMin + DEFAULT_DURATION };
+    })
+    .sort((a, b) => a.startMin - b.startMin);
+
+  // Greedy column assignment: each job gets the earliest free column
+  const assignedCols: number[] = [];
+  const colEnds: number[] = [];
+  for (const item of items) {
+    let col = colEnds.findIndex((end) => end <= item.startMin);
+    if (col === -1) col = colEnds.length;
+    assignedCols.push(col);
+    colEnds[col] = item.endMin;
+  }
+
+  const result = new Map<string, { top: number; height: number; leftPct: number; widthPct: number }>();
+  for (let i = 0; i < items.length; i++) {
+    const { job, startMin, endMin } = items[i];
+    // Collect all column indices of jobs that overlap with this one
+    const overlapCols = items
+      .map((o, j) => (o.startMin < endMin && o.endMin > startMin ? assignedCols[j] : -1))
+      .filter((c) => c >= 0);
+    const totalCols = Math.max(...overlapCols) + 1;
+    result.set(job.id, {
+      top: startMin * (hourHeight / 60),
+      height: Math.max(DEFAULT_DURATION * (hourHeight / 60), 44),
+      leftPct: (assignedCols[i] / totalCols) * 100,
+      widthPct: 100 / totalCols,
+    });
+  }
+  return result;
+}
+
 /** Generate hourly time slots between start and end (e.g. "08:00" to "17:00") */
 function generateTimeSlots(startTime: string, endTime: string): string[] {
   const [startH] = startTime.split(":").map(Number);
@@ -164,10 +208,15 @@ export default function CalendarPage() {
   }>({ unavailable_days: [], day_hours: {} });
   const [savingSettings, setSavingSettings] = useState(false);
   const [unavailMiniDate, setUnavailMiniDate] = useState(new Date());
+  const [unavailDateInput, setUnavailDateInput] = useState("");
   const [tab, setTab] = useState<"calendar" | "unavailability" | "availability">("calendar");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [dayViewMode, setDayViewMode] = useState(false);
   const [savingAvail, setSavingAvail] = useState(false);
+  const timeGridRef = useRef<HTMLDivElement>(null);
+  const datePickerRef = useRef<HTMLInputElement>(null);
+  const HOUR_HEIGHT = 64;
 
   // Google Calendar state
   const [gcalConnected, setGcalConnected] = useState(false);
@@ -275,6 +324,13 @@ export default function CalendarPage() {
     load();
   }, []);
 
+  // Scroll day view to 6 AM when it opens or the selected day changes
+  useEffect(() => {
+    if (dayViewMode && timeGridRef.current) {
+      timeGridRef.current.scrollTop = 6 * HOUR_HEIGHT;
+    }
+  }, [dayViewMode, selectedDay, HOUR_HEIGHT]);
+
   const calendarDays = useMemo(() => getCalendarDays(year, month), [year, month]);
 
   const jobsByDay = useMemo(() => {
@@ -293,10 +349,12 @@ export default function CalendarPage() {
   function prevMonth() {
     setCurrentDate(new Date(year, month - 1, 1));
     setSelectedDay(null);
+    setDayViewMode(false);
   }
   function nextMonth() {
     setCurrentDate(new Date(year, month + 1, 1));
     setSelectedDay(null);
+    setDayViewMode(false);
   }
 
   function exportICS() {
@@ -455,9 +513,9 @@ export default function CalendarPage() {
     setProcessingBooking(null);
   }
 
-  function openScheduleModal(dateStr: string) {
+  function openScheduleModal(dateStr: string, preTime?: string) {
     setScheduleDate(dateStr);
-    setScheduleTime(null);
+    setScheduleTime(preTime ?? null);
     setScheduleClientId("");
     setScheduleDescription("");
     setScheduleTotal("");
@@ -563,6 +621,7 @@ export default function CalendarPage() {
   }, [scheduleDate, availability]);
 
   const selectedDayJobs = selectedDay ? (jobsByDay[selectedDay] ?? []) : [];
+  const dayJobLayout = useMemo(() => layoutJobs(selectedDayJobs, HOUR_HEIGHT), [selectedDayJobs, HOUR_HEIGHT]);
 
   return (
     <div className="flex flex-col gap-0 max-w-xl mx-auto lg:max-w-none">
@@ -604,8 +663,8 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* ── CALENDAR TAB ── */}
-      {tab === "calendar" && (
+      {/* ── CALENDAR TAB — MONTH VIEW ── */}
+      {tab === "calendar" && !dayViewMode && (
         <div className="flex flex-col gap-0 pb-40">
           {/* Month nav */}
           <div className="flex items-center justify-between px-4 lg:px-8 mb-3">
@@ -719,8 +778,8 @@ export default function CalendarPage() {
               return (
                 <button
                   key={key}
-                  onClick={() => { setSelectedDay(key); openScheduleModal(key); }}
-                  className={`relative flex flex-col items-center pt-1.5 pb-1 min-h-[52px] transition-colors ${
+                  onClick={() => { setSelectedDay(key); setDayViewMode(true); }}
+                  className={`relative flex flex-col items-center pt-1.5 pb-1 min-h-[52px] lg:min-h-[110px] transition-colors ${
                     isBlocked
                       ? "bg-red-50/60"
                       : isSelected
@@ -744,11 +803,11 @@ export default function CalendarPage() {
                   {isBlocked ? (
                     <span className="text-[8px] font-bold text-red-400 uppercase tracking-wide leading-none">closed</span>
                   ) : (
-                    <div className="flex flex-col gap-0.5 w-full px-1">
+                    <div className="flex flex-col gap-0.5 w-full px-1 mt-1">
                       {dayJobs.slice(0, 3).map((job) => (
                         <div
                           key={job.id}
-                          className="w-full h-1.5 rounded-full"
+                          className="w-full h-1.5 lg:h-5 lg:rounded-md rounded-full"
                           style={{ backgroundColor: STATUS_COLORS[job.status] }}
                         />
                       ))}
@@ -763,112 +822,6 @@ export default function CalendarPage() {
               );
             })}
           </div>
-
-          {/* Selected day panel */}
-          {selectedDay && (
-            <div className="px-4 lg:px-8 mt-5 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                    {new Date(selectedDay + "T12:00:00").toLocaleDateString([], {
-                      weekday: "long", month: "long", day: "numeric",
-                    })}
-                  </h3>
-                  {unavailDates.has(selectedDay) ? (
-                    <Badge variant="secondary" className="bg-red-100 text-red-600 border-0 text-xs">Unavailable</Badge>
-                  ) : selectedDayJobs.length > 0 ? (
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-xs">
-                      {selectedDayJobs.length} job{selectedDayJobs.length !== 1 ? "s" : ""}
-                    </Badge>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => toggleUnavailDate(selectedDay)}
-                    disabled={togglingDate}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                      unavailDates.has(selectedDay)
-                        ? "bg-red-100 text-red-600 hover:bg-red-200"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">
-                      {unavailDates.has(selectedDay) ? "lock_open" : "block"}
-                    </span>
-                    {unavailDates.has(selectedDay) ? "Available" : "Unavailable"}
-                  </button>
-                  {!unavailDates.has(selectedDay) && (
-                    <button
-                      onClick={() => openScheduleModal(selectedDay)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">add</span>
-                      Schedule
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {selectedDayJobs.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8 text-center bg-card rounded-2xl border border-border/50">
-                  <span className="material-symbols-outlined text-[40px] text-muted-foreground/30">event_available</span>
-                  <p className="text-sm font-medium text-muted-foreground">No jobs scheduled</p>
-                  <button
-                    onClick={() => openScheduleModal(selectedDay)}
-                    className="mt-1 flex items-center gap-1 text-sm font-bold text-primary hover:underline"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">add_circle</span>
-                    Schedule a job for this day
-                  </button>
-                </div>
-              ) : (
-                selectedDayJobs.map((job) => {
-                  const title = job.job_line_items[0]?.description ?? "Job";
-                  const time = job.scheduled_at
-                    ? new Date(job.scheduled_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-                    : "—";
-                  const gcalUrl = makeGoogleCalendarUrl(job);
-
-                  return (
-                    <Card key={job.id} className="overflow-hidden rounded-2xl border-border shadow-sm">
-                      <div className="h-1 w-full" style={{ backgroundColor: STATUS_COLORS[job.status] }} />
-                      <div className="p-4 flex items-center gap-3">
-                        <div
-                          className="flex size-10 shrink-0 items-center justify-center rounded-xl text-white"
-                          style={{ backgroundColor: STATUS_COLORS[job.status] }}
-                        >
-                          <span className="material-symbols-outlined text-[18px]">home_repair_service</span>
-                        </div>
-                        <div
-                          className="flex flex-1 flex-col min-w-0 cursor-pointer"
-                          onClick={() => router.push(`/jobs/${job.id}`)}
-                        >
-                          <span className="font-bold text-foreground leading-tight truncate">{title}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {job.clients?.name ?? "Unknown"} · {time}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-extrabold text-foreground text-sm">${job.total.toFixed(2)}</span>
-                          {gcalUrl && (
-                            <a
-                              href={gcalUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                              title="Add to Google Calendar"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">event_add</span>
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })
-              )}
-            </div>
-          )}
 
           {/* Legend */}
           <div className="px-4 lg:px-8 mt-6 flex items-center gap-4 flex-wrap">
@@ -1078,6 +1031,53 @@ export default function CalendarPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Block holidays, vacations, or any one-off dates.</p>
             </div>
             <div className="p-4 flex flex-col gap-3">
+              {/* Quick date picker — click anywhere on the bar to open */}
+              <div className="flex gap-2">
+                <div
+                  className="flex-1 flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5 hover:bg-muted/40 transition-colors cursor-pointer select-none"
+                  onClick={() => {
+                    const el = datePickerRef.current;
+                    if (!el) return;
+                    if (typeof (el as HTMLInputElement & { showPicker?: () => void }).showPicker === "function") {
+                      (el as HTMLInputElement & { showPicker: () => void }).showPicker();
+                    } else {
+                      el.focus();
+                      el.click();
+                    }
+                  }}
+                >
+                  <span className={`text-sm font-medium ${unavailDateInput ? "text-foreground" : "text-muted-foreground"}`}>
+                    {unavailDateInput
+                      ? new Date(unavailDateInput + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric" })
+                      : "Pick a date to block…"}
+                  </span>
+                  <span className="material-symbols-outlined text-[18px] text-muted-foreground ml-2">expand_more</span>
+                  <input
+                    ref={datePickerRef}
+                    type="date"
+                    value={unavailDateInput}
+                    className="sr-only"
+                    onChange={(e) => {
+                      setUnavailDateInput(e.target.value);
+                      if (!e.target.value) return;
+                      const d = new Date(e.target.value + "T12:00:00");
+                      setUnavailMiniDate(new Date(d.getFullYear(), d.getMonth(), 1));
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!unavailDateInput) return;
+                    await toggleUnavailDate(unavailDateInput);
+                    setUnavailDateInput("");
+                  }}
+                  disabled={!unavailDateInput || togglingDate}
+                  className="px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-40 transition-colors shrink-0"
+                >
+                  Block
+                </button>
+              </div>
+
               {/* Mini month nav */}
               <div className="flex items-center justify-between">
                 <button
@@ -1299,6 +1299,170 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
         </div>
       )}
 
+      {/* ── CALENDAR TAB — DAY VIEW ── */}
+      {tab === "calendar" && dayViewMode && selectedDay && (
+        <div className="flex flex-col border-t border-border/30">
+          {/* Day header */}
+          <div className="flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-border/50 shrink-0">
+            <button
+              onClick={() => setDayViewMode(false)}
+              className="flex size-9 items-center justify-center rounded-full bg-card border border-border text-foreground hover:bg-muted/50 transition-colors shrink-0"
+            >
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            </button>
+            <div className="flex flex-col flex-1 min-w-0">
+              {/* Shorter format on mobile, full on desktop */}
+              <h2 className="text-base font-extrabold tracking-tight text-foreground leading-tight truncate">
+                <span className="lg:hidden">
+                  {new Date(selectedDay + "T12:00:00").toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
+                </span>
+                <span className="hidden lg:inline">
+                  {new Date(selectedDay + "T12:00:00").toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+                </span>
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {selectedDayJobs.length > 0
+                  ? `${selectedDayJobs.length} job${selectedDayJobs.length !== 1 ? "s" : ""} scheduled`
+                  : unavailDates.has(selectedDay) ? "Unavailable" : "Tap a time to add a job"}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => {
+                  const d = new Date(selectedDay + "T12:00:00");
+                  d.setDate(d.getDate() - 1);
+                  const newKey = dateKey(d);
+                  setSelectedDay(newKey);
+                  if (d.getMonth() !== month) setCurrentDate(new Date(d.getFullYear(), d.getMonth(), 1));
+                }}
+                className="flex size-8 items-center justify-center rounded-full bg-card border border-border text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              <button
+                onClick={() => {
+                  const d = new Date(selectedDay + "T12:00:00");
+                  d.setDate(d.getDate() + 1);
+                  const newKey = dateKey(d);
+                  setSelectedDay(newKey);
+                  if (d.getMonth() !== month) setCurrentDate(new Date(d.getFullYear(), d.getMonth(), 1));
+                }}
+                className="flex size-8 items-center justify-center rounded-full bg-card border border-border text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+              {!unavailDates.has(selectedDay) && (
+                <button
+                  onClick={() => openScheduleModal(selectedDay)}
+                  className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 active:scale-[0.98] transition-all"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  <span className="hidden sm:inline">Add Job</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Scrollable time grid — dvh avoids mobile browser chrome issues */}
+          <div
+            ref={timeGridRef}
+            className="overflow-y-auto pb-20 lg:pb-4"
+            style={{ height: "calc(100dvh - 200px)" }}
+          >
+            <div className="relative flex" style={{ height: `${24 * HOUR_HEIGHT}px` }}>
+              {/* Hour labels */}
+              <div className="w-14 lg:w-16 shrink-0 select-none">
+                {Array.from({ length: 24 }, (_, h) => {
+                  const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+                  return (
+                    <div
+                      key={h}
+                      className="flex items-start justify-end pr-2 pt-1"
+                      style={{ height: `${HOUR_HEIGHT}px` }}
+                    >
+                      <span className="text-[10px] font-bold text-muted-foreground leading-none">{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Grid column */}
+              <div className="flex-1 relative border-l border-border/40">
+                {/* Clickable hour rows */}
+                {Array.from({ length: 24 }, (_, h) => (
+                  <div
+                    key={h}
+                    className={`border-b border-border/20 transition-colors ${
+                      unavailDates.has(selectedDay) ? "cursor-default" : "cursor-pointer hover:bg-primary/5 active:bg-primary/10"
+                    }`}
+                    style={{ height: `${HOUR_HEIGHT}px` }}
+                    onClick={() => {
+                      if (unavailDates.has(selectedDay)) return;
+                      openScheduleModal(selectedDay, `${String(h).padStart(2, "0")}:00`);
+                    }}
+                  />
+                ))}
+
+                {/* Job blocks — side-by-side when overlapping */}
+                {selectedDayJobs.map((job) => {
+                  if (!job.scheduled_at) return null;
+                  const layout = dayJobLayout.get(job.id);
+                  if (!layout) return null;
+                  const { top, height: blockHeight, leftPct, widthPct } = layout;
+                  const start = new Date(job.scheduled_at);
+                  const title = job.job_line_items[0]?.description ?? "Job";
+                  const GAP = 3; // px gap between side-by-side blocks
+                  return (
+                    <div
+                      key={job.id}
+                      className="absolute rounded-xl overflow-hidden shadow-sm cursor-pointer hover:brightness-95 active:scale-[0.99] transition-all z-10 min-w-[60px]"
+                      style={{
+                        top: `${top}px`,
+                        height: `${blockHeight}px`,
+                        left: `calc(${leftPct}% + ${GAP}px)`,
+                        width: `calc(${widthPct}% - ${GAP * 2}px)`,
+                        backgroundColor: STATUS_COLORS[job.status],
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/jobs/${job.id}`);
+                      }}
+                    >
+                      <div className="px-2.5 py-1.5 h-full flex flex-col justify-center gap-0.5">
+                        <span className="text-white font-extrabold text-xs leading-tight truncate">{title}</span>
+                        {job.clients?.name && blockHeight >= 52 && (
+                          <span className="text-white/80 text-[10px] leading-tight truncate">{job.clients.name}</span>
+                        )}
+                        {blockHeight >= 60 && (
+                          <span className="text-white/70 text-[10px] font-semibold">
+                            {start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · ${job.total.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Current time indicator (today only) */}
+                {selectedDay === today && (() => {
+                  const now = new Date();
+                  const nowTop = (now.getHours() * 60 + now.getMinutes()) * (HOUR_HEIGHT / 60);
+                  return (
+                    <div
+                      className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                      style={{ top: `${nowTop}px` }}
+                    >
+                      <div className="size-2.5 rounded-full bg-red-500 shrink-0 -ml-1.5" />
+                      <div className="flex-1 h-px bg-red-500" />
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── SCHEDULE MODAL ── */}
       {scheduleOpen && scheduleDate && (
         <>
@@ -1370,12 +1534,11 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {scheduleTimeSlots.map((slot) => {
-                    const isBooked = (jobsByDay[scheduleDate!] ?? []).some((job) => {
+                    const [slotH] = slot.split(":").map(Number);
+                    const jobCount = (jobsByDay[scheduleDate!] ?? []).filter((job) => {
                       if (!job.scheduled_at) return false;
-                      const jobHour = new Date(job.scheduled_at).getHours();
-                      const [slotH] = slot.split(":").map(Number);
-                      return jobHour === slotH;
-                    });
+                      return new Date(job.scheduled_at).getHours() === slotH;
+                    }).length;
                     return (
                       <button
                         key={slot}
@@ -1383,13 +1546,17 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                         className={`relative py-3 rounded-xl text-sm font-bold transition-all active:scale-95 flex flex-col items-center gap-0.5 ${
                           scheduleTime === slot
                             ? "bg-primary text-white shadow-sm"
-                            : isBooked
-                            ? "icon-orange  border border-[var(--color-status-in-progress)]/20 hover:opacity-90"
+                            : jobCount > 0
+                            ? "icon-orange border border-[var(--color-status-in-progress)]/20 hover:opacity-90"
                             : "bg-muted/50 text-foreground border border-border hover:bg-muted"
                         }`}
                       >
                         {formatSlotLabel(slot)}
-                        {isBooked && <span className="text-[9px] font-bold opacity-80">booked</span>}
+                        {jobCount > 0 && (
+                          <span className="text-[9px] font-bold opacity-80">
+                            {jobCount} job{jobCount > 1 ? "s" : ""}
+                          </span>
+                        )}
                       </button>
                     );
                   })}

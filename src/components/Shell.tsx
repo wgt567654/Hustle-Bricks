@@ -352,11 +352,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       {/* ── STICKY TOP BAR — mobile only, non-map pages ── */}
       {!isMapPage && (
         <header
-          className="sticky top-0 z-[450] lg:hidden border-b border-border/40"
+          className="sticky top-0 z-[450] lg:hidden border-b border-border/40 bg-background/[0.92] backdrop-blur-[16px] backdrop-saturate-[1.4]"
           style={{
             paddingTop: "env(safe-area-inset-top, 0px)",
-            background: isDark ? "oklch(0.14 0 0 / 0.92)" : "oklch(1 0 0 / 0.92)",
-            backdropFilter: "blur(16px) saturate(1.4)",
             WebkitBackdropFilter: "blur(16px) saturate(1.4)",
           }}
         >
@@ -569,12 +567,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           onClick={() => setMoreOpen(false)}
         >
           <div
-            className="absolute bottom-0 left-0 w-full rounded-t-[28px] overflow-hidden"
+            className="absolute bottom-0 left-0 w-full rounded-t-[28px] overflow-hidden bg-background/[0.92] backdrop-blur-[24px] backdrop-saturate-[1.6] border-t border-border"
             style={{
-              background: isDark ? "oklch(0.18 0 0 / 0.92)" : "oklch(1 0 0 / 0.92)",
-              backdropFilter: "blur(24px) saturate(1.6)",
               WebkitBackdropFilter: "blur(24px) saturate(1.6)",
-              borderTop: isDark ? "1px solid oklch(1 0 0 / 0.10)" : "1px solid oklch(0 0 0 / 0.07)",
               boxShadow: "0 -8px 32px rgba(0,0,0,0.10)",
             }}
             onClick={(e) => e.stopPropagation()}
@@ -628,12 +623,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       {!isMapPage && (
         <div className="fixed z-40 lg:hidden" style={{ bottom: "calc(0.375rem + env(safe-area-inset-bottom, 0px))", left: 6, right: 6 }}>
           <div
-            className="flex items-center justify-around px-2 py-2 rounded-[24px] shadow-2xl"
+            className="flex items-center justify-around px-2 py-2 rounded-[24px] shadow-2xl bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border border-border"
             style={{
-              background: isDark ? "oklch(0.18 0 0 / 0.90)" : "oklch(1 0 0 / 0.88)",
-              backdropFilter: "blur(24px) saturate(1.6)",
               WebkitBackdropFilter: "blur(24px) saturate(1.6)",
-              border: isDark ? "1px solid oklch(1 0 0 / 0.10)" : "1px solid oklch(0 0 0 / 0.07)",
               boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
             }}
           >
