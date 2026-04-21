@@ -137,13 +137,13 @@ export default function JobsPage() {
         {/* Stats chips */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-card border border-border/60 shadow-sm shrink-0">
-              <span className="material-symbols-outlined text-[13px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-card border border-border/60 shadow-sm min-w-0 shrink">
+              <span className="material-symbols-outlined text-[13px] text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
                 trending_up
               </span>
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">This week</span>
-                <span className="text-xs font-extrabold text-foreground leading-tight">
+                <span className="text-xs font-extrabold text-foreground leading-tight truncate">
                   {statsLoaded ? formatCurrencyRounded(weekEarnings, currency) : "—"}
                 </span>
               </div>
@@ -151,7 +151,7 @@ export default function JobsPage() {
 
             <div
               onClick={() => outstandingCount > 0 && router.push("/payments")}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border/60 shadow-sm shrink-0 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border/60 shadow-sm min-w-0 shrink ${
                 outstandingCount > 0
                   ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40 cursor-pointer"
                   : "bg-card"
@@ -166,9 +166,9 @@ export default function JobsPage() {
               >
                 {outstandingCount > 0 ? "pending_actions" : "check_circle"}
               </span>
-              <div className="flex flex-col">
-                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide leading-none">Outstanding</span>
-                <span className={`text-xs font-extrabold leading-tight ${outstandingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide leading-none truncate">Outstanding</span>
+                <span className={`text-xs font-extrabold leading-tight truncate ${outstandingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
                   {!statsLoaded ? "—" : outstandingCount > 0 ? formatCurrencyRounded(outstandingAmount, currency) : "✓ Clear"}
                 </span>
               </div>
