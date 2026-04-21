@@ -266,7 +266,7 @@ export default function ClientsPage() {
       <button
         onClick={() => { setShowModal(true); setError(null); setForm(EMPTY_FORM); }}
         className="fixed right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-white press"
-        style={{ bottom: "calc(6rem + env(safe-area-inset-bottom, 0px))", boxShadow: "0 4px 20px rgba(0,122,255,0.4), 0 1px 4px rgba(0,122,255,0.3)" }}
+        style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))", boxShadow: "0 4px 20px rgba(0,122,255,0.4), 0 1px 4px rgba(0,122,255,0.3)" }}
       >
         <span className="material-symbols-outlined text-[28px]">person_add</span>
       </button>
