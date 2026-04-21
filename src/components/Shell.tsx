@@ -185,7 +185,8 @@ async function fetchNotifications(): Promise<Notification[]> {
 export default function Shell({ children, role = "owner" }: { children: React.ReactNode; role?: string }) {
   const pathname    = usePathname();
   const router      = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const [open,          setOpen]          = useState(false);
   const [settingsOpen,  setSettingsOpen]  = useState(false);
   const [moreOpen,      setMoreOpen]      = useState(false);
@@ -549,10 +550,10 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           <div
             className="absolute bottom-0 left-0 w-full rounded-t-[28px] overflow-hidden"
             style={{
-              background: "oklch(1 0 0 / 0.92)",
+              background: isDark ? "oklch(0.18 0 0 / 0.92)" : "oklch(1 0 0 / 0.92)",
               backdropFilter: "blur(24px) saturate(1.6)",
               WebkitBackdropFilter: "blur(24px) saturate(1.6)",
-              borderTop: "1px solid oklch(0 0 0 / 0.07)",
+              borderTop: isDark ? "1px solid oklch(1 0 0 / 0.10)" : "1px solid oklch(0 0 0 / 0.07)",
               boxShadow: "0 -8px 32px rgba(0,0,0,0.10)",
             }}
             onClick={(e) => e.stopPropagation()}
@@ -608,10 +609,10 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           <div
             className="flex items-center justify-around px-2 py-2 rounded-[24px] shadow-2xl"
             style={{
-              background: "oklch(1 0 0 / 0.88)",
+              background: isDark ? "oklch(0.18 0 0 / 0.90)" : "oklch(1 0 0 / 0.88)",
               backdropFilter: "blur(24px) saturate(1.6)",
               WebkitBackdropFilter: "blur(24px) saturate(1.6)",
-              border: "1px solid oklch(0 0 0 / 0.07)",
+              border: isDark ? "1px solid oklch(1 0 0 / 0.10)" : "1px solid oklch(0 0 0 / 0.07)",
               boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
             }}
           >
