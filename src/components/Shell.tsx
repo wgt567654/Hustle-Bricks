@@ -349,58 +349,79 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
         </div>
       )}
 
-      {/* ── FLOATING icon buttons (settings + notifications) — mobile only ── */}
-      <div className="fixed right-2.5 z-[450] flex items-center gap-1.5 lg:hidden" style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}>
-        <button
-          onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
-          className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+      {/* ── STICKY TOP BAR — mobile only, non-map pages ── */}
+      {!isMapPage && (
+        <header
+          className="sticky top-0 z-[450] lg:hidden border-b border-border/40"
           style={{
-            background: isMapPage ? "rgba(0,0,0,0.45)" : "var(--card)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            border: isMapPage ? "none" : "1px solid var(--border)",
-            boxShadow: isMapPage ? "none" : "0 2px 8px rgba(0,0,0,0.08)",
+            paddingTop: "env(safe-area-inset-top, 0px)",
+            background: isDark ? "oklch(0.14 0 0 / 0.92)" : "oklch(1 0 0 / 0.92)",
+            backdropFilter: "blur(16px) saturate(1.4)",
+            WebkitBackdropFilter: "blur(16px) saturate(1.4)",
           }}
         >
-          <span
-            className="material-symbols-outlined text-[17px]"
-            style={{
-              color: isMapPage ? "white" : "var(--muted-foreground)",
-              fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0",
-            }}
+          <div className="flex items-center justify-end px-2 h-11">
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
+                className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 active:scale-90 transition-all"
+              >
+                <span
+                  className="material-symbols-outlined text-[17px]"
+                  style={{ fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  settings
+                </span>
+              </button>
+              <button
+                onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
+                className="relative flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 active:scale-90 transition-all"
+              >
+                <span
+                  className="material-symbols-outlined text-[17px]"
+                  style={{ fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  notifications
+                </span>
+                {(!open || !loaded) && (
+                  <span className="absolute top-1.5 right-1.5 size-[6px] rounded-full bg-[var(--color-status-in-progress)]" />
+                )}
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* ── FLOATING icon buttons — map page only ── */}
+      {isMapPage && (
+        <div className="fixed right-2.5 z-[450] flex items-center gap-1.5 lg:hidden" style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}>
+          <button
+            onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
+            className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
           >
-            settings
-          </span>
-        </button>
-        <button
-          onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
-          className="relative flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
-          style={{
-            background: isMapPage ? "rgba(0,0,0,0.45)" : "var(--card)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            border: isMapPage ? "none" : "1px solid var(--border)",
-            boxShadow: isMapPage ? "none" : "0 2px 8px rgba(0,0,0,0.08)",
-          }}
-        >
-          <span
-            className="material-symbols-outlined text-[17px]"
-            style={{
-              color: isMapPage ? "white" : "var(--muted-foreground)",
-              fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0",
-            }}
+            <span className="material-symbols-outlined text-[17px] text-white" style={{ fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0" }}>
+              settings
+            </span>
+          </button>
+          <button
+            onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
+            className="relative flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
           >
-            notifications
-          </span>
-          {(!open || !loaded) && (
-            <span className="absolute top-1 right-1 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" style={{ boxShadow: "0 0 0 1.5px transparent" }} />
-          )}
-        </button>
-      </div>
+            <span className="material-symbols-outlined text-[17px] text-white" style={{ fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0" }}>
+              notifications
+            </span>
+            {(!open || !loaded) && (
+              <span className="absolute top-1 right-1 size-[6px] rounded-full bg-[var(--color-status-in-progress)]" />
+            )}
+          </button>
+        </div>
+      )}
 
       {/* ── SETTINGS PANEL ── */}
       {settingsOpen && (
-        <div className="fixed inset-0 z-40 lg:left-[60px]" style={{ top: 52 }}>
+        <div className="fixed inset-0 z-40 lg:left-[60px]" style={{ top: "calc(2.75rem + env(safe-area-inset-top, 0px))" }}>
           <div className="absolute inset-0" onClick={() => setSettingsOpen(false)} />
           <div className="absolute right-3 top-2 w-72 max-w-[calc(100vw-24px)] lg:right-auto lg:left-3 lg:top-auto lg:bottom-14">
             <div
@@ -466,7 +487,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── NOTIFICATION DRAWER ── */}
       {open && (
-        <div className="fixed inset-0 z-40 lg:left-[60px]" style={{ top: 52 }}>
+        <div className="fixed inset-0 z-40 lg:left-[60px]" style={{ top: "calc(2.75rem + env(safe-area-inset-top, 0px))" }}>
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
           <div className="absolute right-3 top-2 w-80 max-w-[calc(100vw-24px)] lg:right-auto lg:left-3 lg:top-3">
             <div
