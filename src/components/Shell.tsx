@@ -621,9 +621,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── BOTTOM NAVIGATION — floating pill, mobile only ── */}
       {!isMapPage && (
-        <div className="fixed z-40 lg:hidden" style={{ bottom: 16, left: 6, right: 6 }}>
+        <div className="fixed z-40 lg:hidden left-1/2 -translate-x-1/2" style={{ bottom: 16, width: "calc(100% - 32px)", maxWidth: 420 }}>
           <div
-            className="flex items-center justify-around px-2 py-2 rounded-[24px] bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border border-border"
+            className="flex items-center justify-around px-2 py-3 rounded-[24px] bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border border-border"
             style={{
               WebkitBackdropFilter: "blur(24px) saturate(1.6)",
             }}
