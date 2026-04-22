@@ -1457,7 +1457,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
       {!captureLeadOnBook && (
         <div className="lg:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto"
           style={{ width: "calc(100% - 32px)", maxWidth: 420 }}>
-          <div className="flex items-center justify-around px-4 py-2 rounded-[24px] shadow-2xl"
+          <div className="flex items-center justify-around px-4 py-3 rounded-[24px] shadow-2xl"
             style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)" }}>
             {([
               { href: "/jobs",       label: "Jobs",      icon: "work"           },
