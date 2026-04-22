@@ -623,10 +623,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       {!isMapPage && (
         <div className="fixed z-40 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 6px)", left: 6, right: 6 }}>
           <div
-            className="flex items-center justify-around px-2 py-2 rounded-[24px] shadow-2xl bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border border-border"
+            className="flex items-center justify-around px-2 py-2 rounded-[24px] bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border border-border"
             style={{
               WebkitBackdropFilter: "blur(24px) saturate(1.6)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
             }}
           >
             {visibleNav.map(({ href, label, icon, exact }) => {
