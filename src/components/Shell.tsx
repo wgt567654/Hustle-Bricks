@@ -621,7 +621,13 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── BOTTOM NAVIGATION — floating pill, mobile only ── */}
       {!isMapPage && (
-        <div className="fixed z-40 lg:hidden" style={{ bottom: 0, left: 6, right: 6, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        <>
+        {/* Safe-area fill — makes the pill appear flush in standalone PWA mode */}
+        <div
+          className="fixed z-39 lg:hidden pointer-events-none"
+          style={{ bottom: 0, left: 0, right: 0, height: "env(safe-area-inset-bottom, 0px)", background: "var(--background)" }}
+        />
+        <div className="fixed z-40 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 6px)", left: 6, right: 6 }}>
           <div
             className="flex items-center justify-around px-2 py-2 rounded-[24px] shadow-2xl bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border border-border"
             style={{
@@ -681,6 +687,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
             </button>
           </div>
         </div>
+        </>
       )}
     </div>
   );
