@@ -193,13 +193,8 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading,       setLoading]       = useState(false);
   const [loaded,        setLoaded]        = useState(false);
-  const [isStandalone,  setIsStandalone]  = useState(false);
   const drawerRef   = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setIsStandalone(window.matchMedia("(display-mode: standalone)").matches);
-  }, []);
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;
@@ -626,7 +621,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── BOTTOM NAVIGATION — floating pill, mobile only ── */}
       {!isMapPage && (
-        <div className="fixed z-40 lg:hidden left-1/2 -translate-x-1/2" style={{ bottom: isStandalone ? 16 : "env(safe-area-inset-bottom, 0px)", width: "calc(100% - 32px)", maxWidth: 420 }}>
+        <div className="fixed z-40 lg:hidden left-1/2 -translate-x-1/2" style={{ bottom: 16, width: "calc(100% - 32px)", maxWidth: 420 }}>
           <div
             className="flex items-center justify-around px-2 py-3 rounded-[24px] bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border border-border"
             style={{
