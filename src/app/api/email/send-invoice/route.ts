@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
     subject,
     html,
   };
-  if (replyTo) sendOptions.reply_to = replyTo;
+  if (replyTo) sendOptions.replyTo = replyTo;
 
   const { error: sendError } = await resend.emails.send(sendOptions);
 
