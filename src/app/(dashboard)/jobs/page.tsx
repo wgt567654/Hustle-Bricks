@@ -261,7 +261,7 @@ export default function JobsPage() {
 
                 <div className="flex items-center justify-end">
                   {job.status === "in_progress" && <Badge variant="secondary" className={`${STATUS_CLASS.in_progress} border-0`}>In Progress</Badge>}
-                  {job.status === "scheduled" && <Badge variant="secondary" className={`${STATUS_CLASS.scheduled} border-0`}>Scheduled</Badge>}
+                  {job.status === "scheduled" && <Badge variant="secondary" className={`${STATUS_CLASS.scheduled} border-0`}>Booked</Badge>}
                   {job.status === "completed" && <Badge variant="secondary" className={`${STATUS_CLASS.completed} border-0`}>Completed ✓</Badge>}
                   {job.status === "cancelled" && <Badge variant="secondary" className={`${STATUS_CLASS.cancelled} border-0`}>Cancelled</Badge>}
                 </div>

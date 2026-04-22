@@ -162,13 +162,17 @@ function layoutJobs(jobs: Job[], hourHeight: number): Map<string, { top: number;
   return result;
 }
 
-/** Generate hourly time slots between start and end (e.g. "08:00" to "17:00") */
-function generateTimeSlots(startTime: string, endTime: string): string[] {
-  const [startH] = startTime.split(":").map(Number);
-  const [endH] = endTime.split(":").map(Number);
+/** Generate time slots between start and end at the given interval in minutes */
+function generateTimeSlots(startTime: string, endTime: string, intervalMin = 60): string[] {
+  const [startH, startM = 0] = startTime.split(":").map(Number);
+  const [endH, endM = 0] = endTime.split(":").map(Number);
+  const startTotal = startH * 60 + startM;
+  const endTotal = endH * 60 + endM;
   const slots: string[] = [];
-  for (let h = startH; h < endH; h++) {
-    slots.push(`${String(h).padStart(2, "0")}:00`);
+  for (let min = startTotal; min < endTotal; min += intervalMin) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
   }
   return slots;
 }
@@ -235,6 +239,7 @@ export default function CalendarPage() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleAssignedIds, setScheduleAssignedIds] = useState<string[]>([]);
   const [scheduleSuccessJob, setScheduleSuccessJob] = useState<{ id: string; assignedMembers: TeamMember[] } | null>(null);
+  const [scheduleSlotInterval, setScheduleSlotInterval] = useState<15 | 30 | 60>(30);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -521,6 +526,7 @@ export default function CalendarPage() {
     setScheduleTotal("");
     setScheduleAssignedIds([]);
     setScheduleSuccessJob(null);
+    setScheduleSlotInterval(30);
     setScheduleOpen(true);
   }
 
@@ -606,19 +612,17 @@ export default function CalendarPage() {
     const dayAvail = availability.filter((a) => a.day_of_week === dayOfWeek);
 
     if (dayAvail.length === 0) {
-      // Default 8am–6pm if no availability data
-      return generateTimeSlots("08:00", "18:00");
+      return generateTimeSlots("08:00", "18:00", scheduleSlotInterval);
     }
 
-    // Union of all available windows for this day
     const allSlots = new Set<string>();
     for (const a of dayAvail) {
-      for (const slot of generateTimeSlots(a.start_time, a.end_time)) {
+      for (const slot of generateTimeSlots(a.start_time, a.end_time, scheduleSlotInterval)) {
         allSlots.add(slot);
       }
     }
     return Array.from(allSlots).sort();
-  }, [scheduleDate, availability]);
+  }, [scheduleDate, availability, scheduleSlotInterval]);
 
   const selectedDayJobs = selectedDay ? (jobsByDay[selectedDay] ?? []) : [];
   const dayJobLayout = useMemo(() => layoutJobs(selectedDayJobs, HOUR_HEIGHT), [selectedDayJobs, HOUR_HEIGHT]);
@@ -1524,26 +1528,49 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
 
               {/* Time slot picker */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Pick a Time
-                  {scheduleTimeSlots.length > 0 && !availTableMissing && availability.filter(
-                    (a) => a.day_of_week === new Date(scheduleDate + "T12:00:00").getDay()
-                  ).length > 0 && (
-                    <span className="ml-1.5 text-[var(--color-status-completed)] normal-case font-normal">· based on team availability</span>
-                  )}
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Pick a Time
+                    {scheduleTimeSlots.length > 0 && !availTableMissing && availability.filter(
+                      (a) => a.day_of_week === new Date(scheduleDate + "T12:00:00").getDay()
+                    ).length > 0 && (
+                      <span className="ml-1.5 text-[var(--color-status-completed)] normal-case font-normal">· based on team availability</span>
+                    )}
+                  </label>
+                  {/* Interval toggle */}
+                  <div className="flex rounded-lg border border-border overflow-hidden text-[10px] font-bold shrink-0">
+                    {([60, 30, 15] as const).map((iv) => (
+                      <button
+                        key={iv}
+                        type="button"
+                        onClick={() => { setScheduleSlotInterval(iv); setScheduleTime(null); }}
+                        className={`px-2 py-1 transition-colors ${
+                          scheduleSlotInterval === iv
+                            ? "bg-primary text-white"
+                            : "bg-card text-muted-foreground hover:bg-muted/50"
+                        }`}
+                      >
+                        {iv}m
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-4 gap-2">
                   {scheduleTimeSlots.map((slot) => {
-                    const [slotH] = slot.split(":").map(Number);
+                    const [slotH, slotM] = slot.split(":").map(Number);
+                    const slotStart = slotH * 60 + slotM;
+                    const slotEnd = slotStart + scheduleSlotInterval;
                     const jobCount = (jobsByDay[scheduleDate!] ?? []).filter((job) => {
                       if (!job.scheduled_at) return false;
-                      return new Date(job.scheduled_at).getHours() === slotH;
+                      const d = new Date(job.scheduled_at);
+                      const jobMin = d.getHours() * 60 + d.getMinutes();
+                      return jobMin >= slotStart && jobMin < slotEnd;
                     }).length;
                     return (
                       <button
                         key={slot}
                         onClick={() => setScheduleTime(slot === scheduleTime ? null : slot)}
-                        className={`relative py-3 rounded-xl text-sm font-bold transition-all active:scale-95 flex flex-col items-center gap-0.5 ${
+                        className={`relative py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex flex-col items-center gap-0.5 ${
                           scheduleTime === slot
                             ? "bg-primary text-white shadow-sm"
                             : jobCount > 0

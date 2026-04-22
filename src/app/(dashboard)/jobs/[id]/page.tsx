@@ -128,6 +128,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [notFound, setNotFound] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [currency, setCurrency] = useState("USD");
+  const [businessName, setBusinessName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
 
   // Payment modal
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -184,8 +186,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         setLoading(false);
         return;
       }
-      const { data: bizData } = await supabase.from("businesses").select("currency").eq("id", bizId).single();
+      const { data: bizData } = await supabase.from("businesses").select("currency, name").eq("id", bizId).single();
       if (bizData?.currency) setCurrency(bizData.currency);
+      if (bizData?.name) setBusinessName(bizData.name);
+      const fullName = user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "";
+      setOwnerName(fullName);
 
       setBusinessId(bizId);
 
@@ -412,19 +417,34 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   async function sendInvoiceEmail() {
     if (!job?.clients?.email) return;
     setEmailSending(true);
-    await fetch("/api/email/send-invoice", {
+    const res = await fetch("/api/email/send-invoice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jobId: job.id }),
     });
     setEmailSending(false);
-    setEmailSent(true);
-    setTimeout(() => setEmailSent(false), 3000);
+    if (res.ok) {
+      setEmailSent(true);
+      setTimeout(() => setEmailSent(false), 3000);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(`Failed to send email: ${data.error ?? "Unknown error"}`);
+    }
   }
 
   function sendInvoice() {
     if (!job?.clients?.phone) return;
-    const body = `Hi ${job.clients.name}! Your invoice for ${formatCurrency(job.total, currency)} is ready. Reply to confirm or call to pay. - HustleBricks`;
+    const clientName = job.clients.name;
+    const from = ownerName ? `${ownerName} from ${businessName}` : businessName;
+    let body: string;
+    if (job.scheduled_at) {
+      const d = new Date(job.scheduled_at);
+      const date = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+      const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      body = `Hey ${clientName}, this is ${from}.\n\nThanks again for confirming your quote! We've got you officially scheduled for ${date} at ${time}. We're looking forward to taking care of this for you!\n\nIf anything comes up or you have any questions before your appointment, feel free to reach out. Otherwise, we'll see you soon.`;
+    } else {
+      body = `Hey ${clientName}, this is ${from}.\n\nThanks again for confirming your quote with us! We're looking forward to getting your service scheduled. Please let us know which of the available time slots works best for you, or feel free to suggest a time that fits your schedule.\n\nLet me know if you have any questions, I'm happy to help!`;
+    }
     window.location.href = `sms:${job.clients.phone}?body=${encodeURIComponent(body)}`;
     setInvoiceSent(true);
     setTimeout(() => setInvoiceSent(false), 3000);
@@ -488,7 +508,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       : null;
 
   return (
-    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-28 lg:pb-8">
+    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-52 lg:pb-48">
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
@@ -549,7 +569,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 <button
                   onClick={sendInvoice}
                   className={`flex size-8 items-center justify-center rounded-full transition-colors ${invoiceSent ? "icon-green " : "bg-primary/10 text-primary hover:bg-primary/20"}`}
-                  title={invoiceSent ? "Invoice opened!" : "Send invoice via SMS"}
+                  title={invoiceSent ? "Message opened!" : "Send confirmation SMS"}
                 >
                   <span className="material-symbols-outlined text-[16px]">{invoiceSent ? "check" : "sms"}</span>
                 </button>
@@ -599,10 +619,19 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
               <span className="material-symbols-outlined text-[20px]">schedule</span>
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70 mb-0.5">Scheduled</span>
               <span className="text-sm font-bold text-foreground">{formatScheduled(job.scheduled_at)}</span>
             </div>
+            {!job.scheduled_at && (job.status === "scheduled" || job.status === "in_progress") && (
+              <button
+                onClick={openEditModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 active:scale-95 transition-all shrink-0"
+              >
+                <span className="material-symbols-outlined text-[14px]">add</span>
+                Schedule
+              </button>
+            )}
           </div>
 
         </div>
