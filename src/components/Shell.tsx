@@ -557,7 +557,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 lg:pb-0 lg:ml-[60px]" style={{ paddingBottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
+      <main className="flex-1 lg:pb-0 lg:ml-[60px]" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
 
       {/* ── MORE BOTTOM SHEET ── */}
       {moreOpen && (
@@ -621,7 +621,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── BOTTOM NAVIGATION — floating pill, mobile only ── */}
       {!isMapPage && (
-        <div className="fixed z-40 lg:hidden" style={{ bottom: "env(safe-area-inset-bottom, 0px)", left: 6, right: 6 }}>
+        <div className="fixed z-40 lg:hidden" style={{ bottom: 0, left: 6, right: 6, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
           <div
             className="flex items-center justify-around px-2 py-2 rounded-[24px] shadow-2xl bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border border-border"
             style={{
