@@ -1,9 +1,25 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 
 const DISMISS_THRESHOLD = 120;
 
 export function useSwipeToDismiss(onDismiss: () => void) {
+  // Lock body scroll for iOS Safari — fixed position prevents scroll bleed-through
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   const startYRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
   const dragYRef = useRef(0);
