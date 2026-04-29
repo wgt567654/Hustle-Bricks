@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { SERVICE_TYPES, MessageType, DEFAULT_TEMPLATES, interpolateTemplate as _interpolate } from "@/lib/messageTemplates";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -86,6 +87,20 @@ export default function SettingsPage() {
   const [cfSaving, setCfSaving] = useState(false);
   const [cfDeleting, setCfDeleting] = useState<string | null>(null);
 
+  // Message templates
+  const [tmplService, setTmplService] = useState<string>(
+    () => (typeof window !== "undefined" && localStorage.getItem("tmplService")) || "Air Duct Cleaning"
+  );
+  const [tmplPostQuote, setTmplPostQuote] = useState("");
+  const [tmplConfirmation, setTmplConfirmation] = useState("");
+  const [tmplReminder, setTmplReminder] = useState("");
+  const [tmplSaving, setTmplSaving] = useState(false);
+  const [tmplSaved, setTmplSaved] = useState(false);
+  const [tmplLoading, setTmplLoading] = useState(false);
+  const [tmplSearch, setTmplSearch] = useState("");
+  const [tmplDropdownOpen, setTmplDropdownOpen] = useState(false);
+  const [ownerName, setOwnerName] = useState("");
+
   // Share form
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedIframe, setCopiedIframe] = useState(false);
@@ -97,10 +112,11 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserEmail(user.email ?? null);
+      setOwnerName((user.user_metadata?.full_name as string | undefined) ?? user.email?.split("@")[0] ?? "");
 
       const { data: business, error: businessError } = await supabase
         .from("businesses")
-        .select("id, name, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, tax_rate, commission_rate, sms_reminders_enabled, smart_scheduling_enabled, employee_access_code, stripe_connect_account_id, stripe_connect_status, stripe_connect_type, stripe_subscription_id, subscription_status, plan")
+        .select("*")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: true })
         .limit(1)
@@ -174,6 +190,12 @@ export default function SettingsPage() {
     }
     load();
   }, []);
+
+  // Load templates whenever service or businessId changes
+  useEffect(() => {
+    if (businessId) loadTemplatesForService(tmplService);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId, tmplService]);
 
   // Read connect return state from URL on mount
   useEffect(() => {
@@ -309,13 +331,67 @@ export default function SettingsPage() {
   }
 
   async function toggleAutomation(key: "sms_reminders_enabled" | "smart_scheduling_enabled", current: boolean) {
+    if (key === "sms_reminders_enabled") setSmsReminders(!current);
+    else setSmartScheduling(!current);
     if (!businessId) return;
     setSavingAutomation(key);
     const supabase = createClient();
-    await supabase.from("businesses").update({ [key]: !current }).eq("id", businessId);
-    if (key === "sms_reminders_enabled") setSmsReminders(!current);
-    else setSmartScheduling(!current);
+    const { error } = await supabase.from("businesses").update({ [key]: !current }).eq("id", businessId);
+    if (error) {
+      if (key === "sms_reminders_enabled") setSmsReminders(current);
+      else setSmartScheduling(current);
+    }
     setSavingAutomation(null);
+  }
+
+  function fillKnownVars(body: string) {
+    return body
+      .replace(/\{ownerName\}/g, ownerName || "{ownerName}")
+      .replace(/\{bizName\}/g, businessName || "{bizName}");
+  }
+
+  async function loadTemplatesForService(serviceType: string) {
+    if (!businessId) return;
+    setTmplLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("message_templates")
+      .select("message_type, body")
+      .eq("business_id", businessId)
+      .eq("service_type", serviceType);
+    const saved = Object.fromEntries((data ?? []).map((r: { message_type: string; body: string }) => [r.message_type, r.body]));
+    const defaults = DEFAULT_TEMPLATES[serviceType as keyof typeof DEFAULT_TEMPLATES] ?? DEFAULT_TEMPLATES["Other"];
+    setTmplPostQuote(fillKnownVars(saved["post_quote"] ?? defaults.post_quote));
+    setTmplConfirmation(fillKnownVars(saved["confirmation"] ?? defaults.confirmation));
+    setTmplReminder(fillKnownVars(saved["reminder"] ?? defaults.reminder));
+    setTmplLoading(false);
+  }
+
+  async function saveTemplates() {
+    if (!businessId) return;
+    setTmplSaving(true);
+    const supabase = createClient();
+    const rows: { business_id: string; service_type: string; message_type: MessageType; body: string }[] = [
+      { business_id: businessId, service_type: tmplService, message_type: "post_quote", body: tmplPostQuote },
+      { business_id: businessId, service_type: tmplService, message_type: "confirmation", body: tmplConfirmation },
+      { business_id: businessId, service_type: tmplService, message_type: "reminder", body: tmplReminder },
+    ];
+    await supabase.from("message_templates").upsert(rows, { onConflict: "business_id,service_type,message_type" });
+    setTmplSaving(false);
+    setTmplSaved(true);
+    setTimeout(() => setTmplSaved(false), 2000);
+  }
+
+  async function resetTemplates() {
+    if (!businessId) return;
+    const supabase = createClient();
+    await supabase.from("message_templates").delete()
+      .eq("business_id", businessId)
+      .eq("service_type", tmplService);
+    const defaults = DEFAULT_TEMPLATES[tmplService as keyof typeof DEFAULT_TEMPLATES] ?? DEFAULT_TEMPLATES["Other"];
+    setTmplPostQuote(fillKnownVars(defaults.post_quote));
+    setTmplConfirmation(fillKnownVars(defaults.confirmation));
+    setTmplReminder(fillKnownVars(defaults.reminder));
   }
 
   async function saveScheduling() {
@@ -994,6 +1070,100 @@ export default function SettingsPage() {
           </Card>
         </section>
 
+        {/* Message Templates */}
+        <section className="flex flex-col gap-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Message Templates</h3>
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <div className="p-4 flex flex-col gap-4">
+              <p className="text-xs text-muted-foreground">
+                Customize the SMS messages sent to clients for each service type. These pre-fill automatically when you tap the SMS button on a job.
+              </p>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-muted-foreground">Service Type</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={tmplDropdownOpen ? tmplSearch : tmplService}
+                    placeholder="Search service type…"
+                    onFocus={() => { setTmplDropdownOpen(true); setTmplSearch(""); }}
+                    onBlur={() => setTimeout(() => setTmplDropdownOpen(false), 150)}
+                    onChange={(e) => setTmplSearch(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
+                  />
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[16px] text-muted-foreground pointer-events-none">
+                    {tmplDropdownOpen ? "search" : "expand_more"}
+                  </span>
+                  {tmplDropdownOpen && (() => {
+                    const query = tmplSearch.toLowerCase();
+                    const filtered = [...SERVICE_TYPES].sort().filter((s) => s.toLowerCase().includes(query));
+                    return filtered.length > 0 ? (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-xl border border-border bg-card shadow-lg overflow-hidden max-h-52 overflow-y-auto">
+                        {filtered.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onMouseDown={() => {
+                              setTmplService(s);
+                              localStorage.setItem("tmplService", s);
+                              setTmplDropdownOpen(false);
+                              setTmplSearch("");
+                            }}
+                            className={`w-full text-left px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted/60 ${s === tmplService ? "text-primary bg-primary/5" : "text-foreground"}`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              </div>
+              {tmplLoading ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Loading…</p>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {(
+                    [
+                      { key: "post_quote" as const, label: "Post-Quote (Scheduling)", value: tmplPostQuote, set: setTmplPostQuote },
+                      { key: "confirmation" as const, label: "Confirmation (Scheduled)", value: tmplConfirmation, set: setTmplConfirmation },
+                      { key: "reminder" as const, label: "24-Hour Reminder", value: tmplReminder, set: setTmplReminder },
+                    ] satisfies { key: MessageType; label: string; value: string; set: (v: string) => void }[]
+                  ).map((item) => (
+                    <div key={item.key} className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-muted-foreground">{item.label}</label>
+                      <p className="text-[10px] text-muted-foreground/60 leading-tight">
+                        Tokens: {"{clientName}"}
+                        {item.key !== "post_quote" ? `, {"{date}"}, {"{time}"}` : ""}
+                      </p>
+                      <textarea
+                        value={item.value}
+                        onChange={(e) => item.set(e.target.value)}
+                        rows={5}
+                        className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40 resize-none leading-relaxed"
+                      />
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={resetTemplates}
+                      className="flex-1 py-2.5 rounded-xl border border-border text-muted-foreground text-sm font-bold hover:bg-muted/50 transition-colors"
+                    >
+                      Reset to Default
+                    </button>
+                    <button
+                      onClick={saveTemplates}
+                      disabled={tmplSaving}
+                      className="flex-[2] py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      {tmplSaved ? "Saved ✓" : tmplSaving ? "Saving…" : "Save Templates"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </section>
+
         {/* Scheduling Availability */}
         {(() => {
           const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1054,8 +1224,8 @@ export default function SettingsPage() {
                   <div className="mt-2 pt-4 border-t border-border/50 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Crew Size</p>
-                        <p className="text-xs text-muted-foreground">How many employees are needed per job</p>
+                        <p className="text-sm font-semibold text-foreground">Default Crew Size</p>
+                        <p className="text-xs text-muted-foreground">Fallback used for booking availability — individual jobs can have a different crew</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button

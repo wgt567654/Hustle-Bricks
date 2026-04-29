@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
 import { STATUS_HEX } from "@/lib/status-colors";
+import { nearestNeighborTSP, buildGoogleMapsRouteUrls } from "@/lib/routeOptimizer";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -15,7 +17,7 @@ type Job = {
   status: JobStatus;
   total: number;
   scheduled_at: string | null;
-  clients: { name: string } | null;
+  clients: { name: string; address?: string | null } | null;
   job_line_items: { description: string }[];
 };
 
@@ -222,6 +224,11 @@ export default function CalendarPage() {
   const datePickerRef = useRef<HTMLInputElement>(null);
   const HOUR_HEIGHT = 64;
 
+  // Smart scheduling
+  const [smartSchedulingEnabled, setSmartSchedulingEnabled] = useState(true);
+  const [optimizingRoute, setOptimizingRoute] = useState(false);
+  const [routeMapUrls, setRouteMapUrls] = useState<string[]>([]);
+
   // Google Calendar state
   const [gcalConnected, setGcalConnected] = useState(false);
   const [gcalLoading, setGcalLoading] = useState(false);
@@ -240,6 +247,7 @@ export default function CalendarPage() {
   const [scheduleAssignedIds, setScheduleAssignedIds] = useState<string[]>([]);
   const [scheduleSuccessJob, setScheduleSuccessJob] = useState<{ id: string; assignedMembers: TeamMember[] } | null>(null);
   const [scheduleSlotInterval, setScheduleSlotInterval] = useState<15 | 30 | 60>(30);
+  const [defaultCrewSize, setDefaultCrewSize] = useState(1);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -254,16 +262,22 @@ export default function CalendarPage() {
       if (!bizId) return;
       setBusinessId(bizId);
 
+      // Fetch smart scheduling setting
+      supabase.from("businesses").select("smart_scheduling_enabled").eq("id", bizId).single()
+        .then(({ data }) => {
+          if (data) setSmartSchedulingEnabled((data as unknown as { smart_scheduling_enabled: boolean }).smart_scheduling_enabled ?? true);
+        });
+
       // Fetch Google Calendar connection status
       fetch("/api/google-calendar/status")
         .then((r) => r.json())
         .then((d) => { setGcalConnected(d.connected); setGcalLoading(false); })
         .catch(() => setGcalLoading(false));
 
-      const [{ data: jobsData }, { data: teamData }, availResult, { data: clientsData }, bookingResult, { data: blockedData }, { data: settingsData }] = await Promise.all([
+      const [{ data: jobsData }, { data: teamData }, availResult, { data: clientsData }, bookingResult, { data: blockedData }, { data: settingsData }, { data: crewSettingsData }] = await Promise.all([
         supabase
           .from("jobs")
-          .select("id, status, total, scheduled_at, clients(name), job_line_items(description)")
+          .select("id, status, total, scheduled_at, clients(name, address), job_line_items(description)")
           .eq("business_id", bizId)
           .not("scheduled_at", "is", null)
           .order("scheduled_at"),
@@ -297,6 +311,11 @@ export default function CalendarPage() {
           .select("unavailable_days, day_hours")
           .eq("business_id", bizId)
           .maybeSingle(),
+        supabase
+          .from("business_crew_settings")
+          .select("crew_size")
+          .eq("business_id", bizId)
+          .maybeSingle(),
       ]);
 
       setJobs((jobsData as unknown as Job[]) ?? []);
@@ -324,6 +343,9 @@ export default function CalendarPage() {
           day_hours: settingsData.day_hours ?? {},
         });
       }
+      if (crewSettingsData) {
+        setDefaultCrewSize((crewSettingsData as unknown as { crew_size: number }).crew_size ?? 1);
+      }
       setLoading(false);
     }
     load();
@@ -334,6 +356,7 @@ export default function CalendarPage() {
     if (dayViewMode && timeGridRef.current) {
       timeGridRef.current.scrollTop = 6 * HOUR_HEIGHT;
     }
+    setRouteMapUrls([]);
   }, [dayViewMode, selectedDay, HOUR_HEIGHT]);
 
   const calendarDays = useMemo(() => getCalendarDays(year, month), [year, month]);
@@ -552,6 +575,7 @@ export default function CalendarPage() {
         total: parseFloat(scheduleTotal) || 0,
         notes: null,
         assigned_member_id: primaryMemberId,
+        crew_size: scheduleAssignedIds.length || defaultCrewSize,
       })
       .select("id")
       .single();
@@ -605,6 +629,67 @@ export default function CalendarPage() {
     }
   }
 
+  async function optimizeRoute() {
+    if (!selectedDay || !businessId) return;
+    const jobsWithAddress = selectedDayJobs.filter((j) => j.clients?.address);
+    if (jobsWithAddress.length < 2) return;
+
+    setOptimizingRoute(true);
+    setRouteMapUrls([]);
+
+    type GeoJob = Job & { lat: number; lng: number };
+    const geocoded: GeoJob[] = [];
+
+    for (const job of jobsWithAddress) {
+      const address = job.clients!.address!;
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
+          { headers: { "User-Agent": "HustleBricks/1.0" } }
+        );
+        const data = await res.json();
+        if (data[0]) {
+          geocoded.push({ ...job, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+        }
+      } catch {
+        // skip jobs that fail to geocode
+      }
+      if (jobsWithAddress.indexOf(job) < jobsWithAddress.length - 1) {
+        await new Promise((r) => setTimeout(r, 1100));
+      }
+    }
+
+    if (geocoded.length < 2) {
+      setOptimizingRoute(false);
+      return;
+    }
+
+    const ordered = nearestNeighborTSP(geocoded);
+
+    // Save route_order to DB
+    const supabase = createClient();
+    await Promise.all(
+      ordered.map((job, idx) =>
+        supabase.from("jobs").update({ route_order: idx + 1 } as Record<string, unknown>).eq("id", job.id)
+      )
+    );
+
+    // Reorder displayed jobs for the selected day
+    const orderedIds = new Set(ordered.map((j) => j.id));
+    const ungeocoded = selectedDayJobs.filter((j) => !orderedIds.has(j.id));
+    const reordered = [...ordered, ...ungeocoded];
+    setJobs((prev) => {
+      const otherDays = prev.filter((j) => !j.scheduled_at || j.scheduled_at.slice(0, 10) !== selectedDay);
+      return [...otherDays, ...reordered].sort((a, b) =>
+        (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? "")
+      );
+    });
+
+    const urls = buildGoogleMapsRouteUrls(ordered.map((j) => j.clients!.address!));
+    setRouteMapUrls(urls);
+    setOptimizingRoute(false);
+  }
+
   // Time slots for the selected schedule date
   const scheduleTimeSlots = useMemo(() => {
     if (!scheduleDate) return [];
@@ -626,6 +711,8 @@ export default function CalendarPage() {
 
   const selectedDayJobs = selectedDay ? (jobsByDay[selectedDay] ?? []) : [];
   const dayJobLayout = useMemo(() => layoutJobs(selectedDayJobs, HOUR_HEIGHT), [selectedDayJobs, HOUR_HEIGHT]);
+
+  const swipeSchedule = useSwipeToDismiss(() => setScheduleOpen(false));
 
   return (
     <div className="flex flex-col gap-0 max-w-xl mx-auto lg:max-w-none">
@@ -1364,8 +1451,38 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                   <span className="hidden sm:inline">Add Job</span>
                 </button>
               )}
+              {smartSchedulingEnabled && selectedDayJobs.filter((j) => j.clients?.address).length >= 2 && (
+                <button
+                  onClick={optimizeRoute}
+                  disabled={optimizingRoute}
+                  className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-card border border-border text-foreground text-sm font-bold hover:bg-muted/50 active:scale-[0.98] disabled:opacity-50 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[18px]">{optimizingRoute ? "progress_activity" : "route"}</span>
+                  <span className="hidden sm:inline">{optimizingRoute ? "Optimizing…" : "Optimize"}</span>
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Route map links after optimization */}
+          {routeMapUrls.length > 0 && (
+            <div className="flex items-center gap-2 px-4 lg:px-8 py-2 border-b border-border/30 bg-green-50 dark:bg-green-950/20">
+              <span className="material-symbols-outlined text-[16px] text-green-700 dark:text-green-400 shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <span className="text-xs font-bold text-green-800 dark:text-green-300 flex-1">Route optimized!</span>
+              {routeMapUrls.map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-green-600 text-white text-xs font-bold hover:bg-green-700 active:scale-95 transition-all shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[13px]">map</span>
+                  {routeMapUrls.length > 1 ? `Leg ${i + 1}` : "Open in Maps"}
+                </a>
+              ))}
+            </div>
+          )}
 
           {/* Scrollable time grid — dvh avoids mobile browser chrome issues */}
           <div
@@ -1476,14 +1593,16 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
             onClick={() => setScheduleOpen(false)}
           />
           {/* Bottom sheet */}
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[85vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[85vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeSchedule.sheetStyle}>
+            {/* Drag zone: handle + header */}
+            <div {...swipeSchedule.dragHandleProps} className="shrink-0">
             {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 shrink-0">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">New Job</p>
                 <h2 className="text-lg font-extrabold text-foreground leading-tight">
@@ -1499,6 +1618,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
+            </div>{/* end drag zone */}
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">

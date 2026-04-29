@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +9,20 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
 import { formatCurrency } from "@/lib/currency";
+import { getDefaultTemplate, interpolateTemplate } from "@/lib/messageTemplates";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
 type RecurrenceFrequency = "weekly" | "biweekly" | "monthly" | "custom" | null;
+
+type TeamMember = {
+  id: string;
+  name: string;
+  email: string | null;
+};
+
+type AvailabilityStatus = "available" | "busy" | "off" | "unknown";
+
 
 type Expense = {
   id: string;
@@ -58,6 +69,9 @@ type Job = {
   quote_id: string | null;
   before_photo_url: string | null;
   after_photo_url: string | null;
+  duration_mins: number | null;
+  assigned_member_id: string | null;
+  crew_size: number;
   clients: {
     name: string;
     phone: string | null;
@@ -70,6 +84,7 @@ type Job = {
     quantity: number;
     unit_price: number;
   }[];
+  job_crew: { team_member_id: string; team_members: { id: string; name: string } | null }[];
 };
 
 const PAYMENT_METHODS = [
@@ -130,6 +145,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [currency, setCurrency] = useState("USD");
   const [businessName, setBusinessName] = useState("");
   const [ownerName, setOwnerName] = useState("");
+  const [smsRemindersEnabled, setSmsRemindersEnabled] = useState(false);
 
   // Payment modal
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -170,6 +186,17 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [customDays, setCustomDays] = useState("7");
   const [recurringSaving, setRecurringSaving] = useState(false);
 
+  // Assign employees modal
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [assignedIds, setAssignedIds] = useState<string[]>([]);
+  const [memberAvailability, setMemberAvailability] = useState<Record<string, AvailabilityStatus>>({});
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [editDurationMins, setEditDurationMins] = useState<number | null>(null);
+  const [durationHours, setDurationHours] = useState(0);
+  const [durationMinutes, setDurationMinutes] = useState(0);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -186,9 +213,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         setLoading(false);
         return;
       }
-      const { data: bizData } = await supabase.from("businesses").select("currency, name").eq("id", bizId).single();
+      const { data: bizData } = await supabase.from("businesses").select("currency, name, sms_reminders_enabled").eq("id", bizId).single();
       if (bizData?.currency) setCurrency(bizData.currency);
       if (bizData?.name) setBusinessName(bizData.name);
+      setSmsRemindersEnabled((bizData as unknown as { sms_reminders_enabled: boolean } | null)?.sms_reminders_enabled ?? false);
       const fullName = user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "";
       setOwnerName(fullName);
 
@@ -197,7 +225,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       const [{ data, error }, { data: expData }] = await Promise.all([
         supabase
           .from("jobs")
-          .select("id, status, total, scheduled_at, completed_at, notes, service_type, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
+          .select("id, status, total, scheduled_at, completed_at, notes, service_type, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, duration_mins, assigned_member_id, crew_size, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price), job_crew(team_member_id, team_members(id, name))")
           .eq("id", id)
           .eq("business_id", bizId)
           .single(),
@@ -211,7 +239,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       if (error || !data) {
         setNotFound(true);
       } else {
-        setJob(data as unknown as Job);
+        const jobData = data as unknown as Job;
+        jobData.job_crew = jobData.job_crew ?? [];
+        jobData.crew_size = jobData.crew_size ?? 1;
+        setJob(jobData);
         setPayAmount(String((data as unknown as Job).total.toFixed(2)));
         setExpenses((expData as unknown as Expense[]) ?? []);
       }
@@ -432,19 +463,32 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     }
   }
 
-  function sendInvoice() {
-    if (!job?.clients?.phone) return;
+  async function sendInvoice() {
+    if (!job?.clients?.phone || !businessId) return;
     const clientName = job.clients.name;
-    const from = ownerName ? `${ownerName} from ${businessName}` : businessName;
-    let body: string;
+    const ownerNameVar = ownerName || businessName;
+    const svcType = job.service_type ?? "Other";
+    const messageType = job.scheduled_at ? "confirmation" : "post_quote";
+
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("message_templates")
+      .select("body")
+      .eq("business_id", businessId)
+      .eq("service_type", svcType)
+      .eq("message_type", messageType)
+      .maybeSingle();
+
+    const templateBody = (data as { body: string } | null)?.body ?? getDefaultTemplate(svcType, messageType);
+    const vars: Record<string, string> = { clientName, ownerName: ownerNameVar, bizName: businessName };
+
     if (job.scheduled_at) {
       const d = new Date(job.scheduled_at);
-      const date = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-      const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-      body = `Hey ${clientName}, this is ${from}.\n\nThanks again for confirming your quote! We've got you officially scheduled for ${date} at ${time}. We're looking forward to taking care of this for you!\n\nIf anything comes up or you have any questions before your appointment, feel free to reach out. Otherwise, we'll see you soon.`;
-    } else {
-      body = `Hey ${clientName}, this is ${from}.\n\nThanks again for confirming your quote with us! We're looking forward to getting your service scheduled. Please let us know which of the available time slots works best for you, or feel free to suggest a time that fits your schedule.\n\nLet me know if you have any questions, I'm happy to help!`;
+      vars.date = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+      vars.time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     }
+
+    const body = interpolateTemplate(templateBody, vars);
     window.location.href = `sms:${job.clients.phone}?body=${encodeURIComponent(body)}`;
     setInvoiceSent(true);
     setTimeout(() => setInvoiceSent(false), 3000);
@@ -480,6 +524,180 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     );
   }
 
+  async function computeAvailability(
+    members: TeamMember[],
+    durationMins: number | null,
+  ): Promise<Record<string, AvailabilityStatus>> {
+    if (!job?.scheduled_at || !durationMins) {
+      return Object.fromEntries(members.map((m) => [m.id, "unknown"]));
+    }
+
+    const jobStart = new Date(job.scheduled_at);
+    const jobEnd = new Date(jobStart.getTime() + durationMins * 60_000);
+    const dayOfWeek = jobStart.getDay();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const startHHMM = `${pad(jobStart.getHours())}:${pad(jobStart.getMinutes())}`;
+    const endHHMM = `${pad(jobEnd.getHours())}:${pad(jobEnd.getMinutes())}`;
+
+    const supabase = createClient();
+
+    const [{ data: avail }, { data: conflictJobs }] = await Promise.all([
+      supabase
+        .from("employee_availability")
+        .select("team_member_id, from_time, until_time")
+        .eq("business_id", businessId)
+        .eq("day_of_week", dayOfWeek),
+      supabase
+        .from("jobs")
+        .select("id, assigned_member_id, job_crew(team_member_id)")
+        .eq("business_id", businessId)
+        .neq("id", job.id)
+        .in("status", ["scheduled", "in_progress"])
+        .not("scheduled_at", "is", null)
+        .lt("scheduled_at", jobEnd.toISOString())
+        .gt("scheduled_at", jobStart.toISOString()),
+    ]);
+
+    const busyIds = new Set<string>();
+    for (const cj of conflictJobs ?? []) {
+      if (cj.assigned_member_id) busyIds.add(cj.assigned_member_id);
+      for (const crew of (cj.job_crew as { team_member_id: string }[]) ?? []) {
+        busyIds.add(crew.team_member_id);
+      }
+    }
+
+    const availMap = new Map((avail ?? []).map((a) => [a.team_member_id, a]));
+
+    return Object.fromEntries(
+      members.map((m) => {
+        if (busyIds.has(m.id)) return [m.id, "busy" as AvailabilityStatus];
+        const a = availMap.get(m.id);
+        if (!a) return [m.id, "off" as AvailabilityStatus];
+        if (a.from_time > startHHMM || a.until_time < endHHMM) return [m.id, "off" as AvailabilityStatus];
+        return [m.id, "available" as AvailabilityStatus];
+      })
+    );
+  }
+
+  function sortMembers(members: TeamMember[], avail: Record<string, AvailabilityStatus>): TeamMember[] {
+    const priority = (s: AvailabilityStatus) => {
+      if (s === "available") return 0;
+      if (s === "unknown") return 1;
+      return 2; // busy or off
+    };
+    return [...members].sort((a, b) => {
+      const pd = priority(avail[a.id] ?? "unknown") - priority(avail[b.id] ?? "unknown");
+      if (pd !== 0) return pd;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  async function openAssignModal() {
+    if (!job || !businessId) return;
+    const supabase = createClient();
+    const { data: members } = await supabase
+      .from("team_members")
+      .select("id, name, email")
+      .eq("business_id", businessId)
+      .eq("is_active", true)
+      .order("name");
+
+    const memberList = (members ?? []) as TeamMember[];
+
+    const currentIds = job.job_crew.map((jc) => jc.team_member_id);
+    setAssignedIds(currentIds);
+
+    const duration = job.duration_mins ?? null;
+    setEditDurationMins(duration);
+    setDurationHours(duration ? Math.floor(duration / 60) : 0);
+    setDurationMinutes(duration ? duration % 60 : 0);
+    setEmployeeSearch("");
+
+    const avail = await computeAvailability(memberList, duration);
+    setMemberAvailability(avail);
+    setTeamMembers(sortMembers(memberList, avail));
+
+    setAssignModalOpen(true);
+  }
+
+  async function handleDurationInputChange(hours: number, minutes: number) {
+    const total = hours * 60 + minutes;
+    const mins = total > 0 ? total : null;
+    setEditDurationMins(mins);
+    if (teamMembers.length > 0) {
+      const avail = await computeAvailability(teamMembers, mins);
+      setMemberAvailability(avail);
+      setTeamMembers((prev) => sortMembers(prev, avail));
+    }
+  }
+
+  async function saveAssignment() {
+    if (!job) return;
+
+    const hasUnavailable = assignedIds.some((id) => {
+      const s = memberAvailability[id];
+      return s === "busy" || s === "off";
+    });
+    if (hasUnavailable) {
+      const confirmed = window.confirm(
+        "One or more employees may not be available at this time. Assign anyway?"
+      );
+      if (!confirmed) return;
+    }
+
+    setAssignSaving(true);
+    const supabase = createClient();
+    const primaryId = assignedIds[0] ?? null;
+
+    await supabase.from("jobs").update({
+      assigned_member_id: primaryId,
+      crew_size: assignedIds.length || 1,
+      duration_mins: editDurationMins,
+    }).eq("id", job.id);
+
+    await supabase.from("job_crew").delete().eq("job_id", job.id);
+
+    if (assignedIds.length > 0) {
+      await supabase.from("job_crew").insert(
+        assignedIds.map((mid) => ({ job_id: job.id, team_member_id: mid }))
+      );
+    }
+
+    const newCrewEntries = teamMembers
+      .filter((m) => assignedIds.includes(m.id))
+      .map((m) => ({ team_member_id: m.id, team_members: { id: m.id, name: m.name } }));
+
+    setJob((j) =>
+      j
+        ? {
+            ...j,
+            assigned_member_id: primaryId,
+            crew_size: assignedIds.length || 1,
+            duration_mins: editDurationMins,
+            job_crew: newCrewEntries,
+          }
+        : j
+    );
+
+    if (primaryId) {
+      fetch("/api/email/job-assignment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      }).catch(() => {});
+    }
+
+    fetch("/api/google-calendar/sync-job", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: job.id }),
+    }).catch(() => {});
+
+    setAssignSaving(false);
+    setAssignModalOpen(false);
+    setEmployeeSearch("");
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -506,6 +724,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     job.recurrence_frequency && job.recurrence_interval_days && job.scheduled_at
       ? addDays(job.scheduled_at, job.recurrence_interval_days)
       : null;
+
+  const swipeEdit = useSwipeToDismiss(() => setEditModalOpen(false));
+  const swipeRecurring = useSwipeToDismiss(() => setRecurringSheetOpen(false));
+  const swipeAssign = useSwipeToDismiss(() => { setAssignModalOpen(false); setEmployeeSearch(""); });
+  const swipePay = useSwipeToDismiss(() => setPayModalOpen(false));
 
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-52 lg:pb-48">
@@ -535,6 +758,39 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </button>
         )}
       </div>
+
+      {/* 48hr SMS reminder prompt */}
+      {(() => {
+        if (!smsRemindersEnabled || !job.scheduled_at || !job.clients?.phone) return null;
+        const now = Date.now();
+        const scheduled = new Date(job.scheduled_at).getTime();
+        const hoursUntil = (scheduled - now) / (1000 * 60 * 60);
+        if (hoursUntil < 0 || hoursUntil > 48) return null;
+        const ownerFirst = ownerName.split(" ")[0] || businessName;
+        const d = new Date(job.scheduled_at);
+        const date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+        const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        const msg =
+          `Hi ${job.clients.name}, this is ${ownerFirst} from ${businessName}.\n\n` +
+          `Just a quick reminder that you're scheduled for service tomorrow on ${date} at ${time}. We're looking forward to taking care of this for you!\n\n` +
+          `If you need to make any changes or have any questions before your appointment, feel free to reach out. Otherwise, we'll see you tomorrow.`;
+        return (
+          <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3">
+            <span className="material-symbols-outlined text-[22px] text-primary shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>notifications_active</span>
+            <div className="flex flex-col flex-1 min-w-0">
+              <p className="text-sm font-bold text-foreground">Send a reminder to {job.clients.name}</p>
+              <p className="text-xs text-muted-foreground">This job is coming up — tap to pre-fill an SMS.</p>
+            </div>
+            <a
+              href={`sms:${job.clients.phone}?body=${encodeURIComponent(msg)}`}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold shrink-0 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[14px]">sms</span>
+              Send
+            </a>
+          </div>
+        );
+      })()}
 
       {/* Two-column body on desktop */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
@@ -644,6 +900,65 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </div>
         )}
       </Card>
+
+      {/* Crew card */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px]">group</span>
+            Crew
+          </h3>
+          <button
+            onClick={openAssignModal}
+            className="text-xs font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-opacity"
+          >
+            <span className="material-symbols-outlined text-[14px]">{job.job_crew.length > 0 ? "edit" : "add"}</span>
+            {job.job_crew.length > 0 ? "Edit" : "Assign"}
+          </button>
+        </div>
+        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          {job.job_crew.length === 0 ? (
+            <button
+              onClick={openAssignModal}
+              className="w-full p-4 flex items-center gap-3 text-muted-foreground hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+                <span className="material-symbols-outlined text-[20px]">person_add</span>
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-sm font-bold text-foreground">No employees assigned</span>
+                <span className="text-xs text-muted-foreground">Tap to assign crew to this job</span>
+              </div>
+            </button>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {job.job_crew.map((jc, i) => (
+                <div key={jc.team_member_id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-extrabold">
+                    {(jc.team_members?.name ?? "?").charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-bold text-foreground flex-1">{jc.team_members?.name ?? "Unknown"}</span>
+                  {i === 0 && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Lead</span>
+                  )}
+                </div>
+              ))}
+              {job.duration_mins && (
+                <div className="flex items-center gap-3 px-4 py-3 bg-muted/20">
+                  <span className="material-symbols-outlined text-[16px] text-muted-foreground">timer</span>
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {(() => {
+                      const h = Math.floor(job.duration_mins / 60);
+                      const m = job.duration_mins % 60;
+                      return [h > 0 ? `${h} hr${h > 1 ? "s" : ""}` : null, m > 0 ? `${m} min` : null].filter(Boolean).join(" ");
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      </section>
 
       {/* Line items */}
       <section>
@@ -980,14 +1295,16 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setEditModalOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeEdit.sheetStyle}>
+            {/* Drag zone: handle + header */}
+            <div {...swipeEdit.dragHandleProps} className="shrink-0">
             {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
             {/* Header */}
-            <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
+            <div className="px-5 pt-2 pb-4 border-b border-border/50">
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <span className="material-symbols-outlined text-[28px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1000,6 +1317,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
+            </div>{/* end drag zone */}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
@@ -1073,14 +1391,16 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setRecurringSheetOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeRecurring.sheetStyle}>
+            {/* Drag zone: handle + header */}
+            <div {...swipeRecurring.dragHandleProps} className="shrink-0">
             {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
             {/* Header */}
-            <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
+            <div className="px-5 pt-2 pb-4 border-b border-border/50">
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <span className="material-symbols-outlined text-[28px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1093,6 +1413,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
+            </div>{/* end drag zone */}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-5">
@@ -1161,13 +1482,201 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         </>
       )}
 
+      {/* ── ASSIGN EMPLOYEES MODAL ── */}
+      {assignModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={() => { setAssignModalOpen(false); setEmployeeSearch(""); }}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeAssign.sheetStyle}>
+            {/* Drag zone: handle + header */}
+            <div {...swipeAssign.dragHandleProps} className="shrink-0">
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+            </div>
+
+            {/* Header */}
+            <div className="px-5 pt-2 pb-4 border-b border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+                  <span className="material-symbols-outlined text-[28px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    group
+                  </span>
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-foreground leading-tight">Assign Employees</h2>
+                  <p className="text-sm text-muted-foreground">Select crew for this job</p>
+                </div>
+              </div>
+            </div>
+            </div>{/* end drag zone */}
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-5">
+
+              {/* Duration inputs */}
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Duration</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={durationHours}
+                      onChange={(e) => {
+                        const h = Math.max(0, parseInt(e.target.value) || 0);
+                        setDurationHours(h);
+                        handleDurationInputChange(h, durationMinutes);
+                      }}
+                      className="w-20 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-ring/30"
+                    />
+                    <span className="text-sm font-medium text-muted-foreground">hrs</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={durationMinutes}
+                      onChange={(e) => {
+                        const m = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                        setDurationMinutes(m);
+                        handleDurationInputChange(durationHours, m);
+                      }}
+                      className="w-20 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-bold text-foreground text-center focus:outline-none focus:ring-2 focus:ring-ring/30"
+                    />
+                    <span className="text-sm font-medium text-muted-foreground">min</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-border/50" />
+
+              {/* Availability context */}
+              {!editDurationMins ? (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border">
+                  <span className="material-symbols-outlined text-[18px] text-muted-foreground shrink-0">timer</span>
+                  <p className="text-xs text-muted-foreground font-medium">Enter a duration above to check availability</p>
+                </div>
+              ) : (
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Availability · {formatScheduled(job.scheduled_at)}
+                </p>
+              )}
+
+              {/* Search */}
+              {teamMembers.length > 0 && (
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-muted-foreground pointer-events-none">search</span>
+                  <input
+                    type="text"
+                    placeholder="Search employees…"
+                    value={employeeSearch}
+                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-card pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  />
+                  {employeeSearch && (
+                    <button
+                      onClick={() => setEmployeeSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Team member list */}
+              {teamMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No active team members found</p>
+              ) : (() => {
+                const filtered = teamMembers.filter((m) =>
+                  m.name.toLowerCase().includes(employeeSearch.toLowerCase())
+                );
+                if (filtered.length === 0) {
+                  return <p className="text-sm text-muted-foreground text-center py-4">No employees match "{employeeSearch}"</p>;
+                }
+                return (
+                  <div className="flex flex-col gap-2">
+                    {filtered.map((m) => {
+                      const isSelected = assignedIds.includes(m.id);
+                      const status = memberAvailability[m.id] ?? "unknown";
+                      const statusConfig = {
+                        available: { color: "text-[var(--color-status-completed)]", dot: "bg-[var(--color-status-completed)]", label: "Available" },
+                        busy: { color: "text-[var(--color-status-in-progress)]", dot: "bg-[var(--color-status-in-progress)]", label: "Busy" },
+                        off: { color: "text-muted-foreground", dot: "bg-muted-foreground/40", label: "Off" },
+                        unknown: { color: "", dot: "", label: "" },
+                      }[status];
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() =>
+                            setAssignedIds((prev) =>
+                              prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id]
+                            )
+                          }
+                          className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all active:scale-[0.98] ${
+                            isSelected
+                              ? "bg-primary/10 border-primary/30"
+                              : "bg-card border-border hover:bg-muted/30"
+                          }`}
+                        >
+                          <div className={`flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${isSelected ? "bg-primary text-white" : "bg-muted text-foreground"}`}>
+                            {isSelected
+                              ? <span className="material-symbols-outlined text-[18px]">check</span>
+                              : m.name.charAt(0).toUpperCase()
+                            }
+                          </div>
+                          <span className="text-sm font-bold text-foreground flex-1 text-left">{m.name}</span>
+                          {status !== "unknown" && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <div className={`size-2 rounded-full ${statusConfig.dot}`} />
+                              <span className={`text-xs font-bold ${statusConfig.color}`}>{statusConfig.label}</span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              <div className="h-2" />
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-border/50 shrink-0 bg-background flex flex-col gap-2">
+              <button
+                onClick={saveAssignment}
+                disabled={assignSaving}
+                className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                {assignSaving ? "Saving…" : `Save${assignedIds.length > 0 ? ` (${assignedIds.length} employee${assignedIds.length > 1 ? "s" : ""})` : ""}`}
+              </button>
+              <button
+                onClick={() => { setAssignModalOpen(false); setEmployeeSearch(""); }}
+                className="w-full py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ── COLLECT PAYMENT MODAL ── */}
       {payModalOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipePay.sheetStyle}>
+            {/* Drag zone: handle + header */}
+            <div {...swipePay.dragHandleProps} className="shrink-0">
             {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
@@ -1184,7 +1693,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             )}
 
             {/* Success header */}
-            <div className="px-5 pt-3 pb-4 border-b border-border/50 shrink-0">
+            <div className="px-5 pt-3 pb-4 border-b border-border/50">
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-status-completed/10">
                   <span className="material-symbols-outlined text-[28px] text-[var(--color-status-completed)]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1199,6 +1708,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
+            </div>{/* end drag zone */}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">

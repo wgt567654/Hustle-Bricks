@@ -38,6 +38,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/update-password") ||
     pathname.startsWith("/check-email") ||
+    pathname.startsWith("/employee-join") ||
+    pathname.startsWith("/employee-login") ||
+    pathname.startsWith("/employee-pending") ||
+    pathname.startsWith("/team-portal") ||
     pathname.startsWith("/api/google-calendar/callback");
 
   if (!user && !isPublicPath) {

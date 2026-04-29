@@ -18,6 +18,7 @@ import { TopRepsDonut, type RepRevenue } from "@/components/analytics/TopRepsDon
 import { RevenueBreakdownDonut, type BreakdownEntry } from "@/components/analytics/RevenueBreakdownDonut";
 import { GoalBarChart, type GoalDataPoint } from "@/components/analytics/GoalBarChart";
 import { MrrChart, type ServicePlan } from "@/components/analytics/MrrChart";
+import { CustomersOverTimeChart, type CustomerDataPoint } from "@/components/analytics/CustomersOverTimeChart";
 import { SalesPipelineCard, type PipelineStage } from "@/components/sales-dashboard/SalesPipelineCard";
 import { ForecastCard } from "@/components/sales-dashboard/ForecastCard";
 
@@ -159,6 +160,114 @@ function buildPeriodLabel(filter: DateFilter): string {
   const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   if (isNaN(filter.start.getTime()) || isNaN(filter.end.getTime())) return "Custom";
   return `${fmt(filter.start)} – ${fmt(filter.end)}`;
+}
+
+function buildCustomerSeries(allJobs: Job[], filter: DateFilter): CustomerDataPoint[] {
+  if (isNaN(filter.start.getTime()) || isNaN(filter.end.getTime())) return [];
+
+  const spanDays = Math.round((filter.end.getTime() - filter.start.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Earliest job date per client across ALL time
+  const clientFirstDate = new Map<string, Date>();
+  for (const j of allJobs) {
+    const key = j.clients?.name;
+    if (!key) continue;
+    const d = new Date(j.created_at);
+    const existing = clientFirstDate.get(key);
+    if (!existing || d < existing) clientFirstDate.set(key, d);
+  }
+
+  const inRangeJobs = allJobs.filter((j) => inRange(j.created_at, filter.start, filter.end));
+
+  function countBucket(bucketStart: Date, bucketEnd: Date): { firstTime: number; recurring: number } {
+    const seen = new Set<string>();
+    let firstTime = 0;
+    let recurring = 0;
+    for (const j of inRangeJobs) {
+      const key = j.clients?.name;
+      if (!key) continue;
+      const d = new Date(j.created_at);
+      if (d < bucketStart || d > bucketEnd || seen.has(key)) continue;
+      seen.add(key);
+      const first = clientFirstDate.get(key)!;
+      if (first >= bucketStart && first <= bucketEnd) firstTime++;
+      else recurring++;
+    }
+    return { firstTime, recurring };
+  }
+
+  if (filter.preset === "week") {
+    return DAY_LABELS.map((label, i) => {
+      const start = new Date(filter.start);
+      start.setDate(filter.start.getDate() + i);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setHours(23, 59, 59, 999);
+      return { label, ...countBucket(start, end) };
+    });
+  }
+
+  if (filter.preset === "month") {
+    const monthStart = new Date(filter.start.getFullYear(), filter.start.getMonth(), 1);
+    const result: CustomerDataPoint[] = [];
+    for (let w = 0; w < 5; w++) {
+      const weekStart = new Date(monthStart);
+      weekStart.setDate(1 + w * 7);
+      if (weekStart > filter.end) break;
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      result.push({ label: `Wk ${w + 1}`, ...countBucket(weekStart, weekEnd) });
+    }
+    return result;
+  }
+
+  if (filter.preset === "year") {
+    return MONTH_LABELS.map((label, i) => {
+      const start = new Date(filter.start.getFullYear(), i, 1);
+      const end = new Date(filter.start.getFullYear(), i + 1, 0, 23, 59, 59, 999);
+      return { label, ...countBucket(start, end) };
+    });
+  }
+
+  if (spanDays <= 14) {
+    const result: CustomerDataPoint[] = [];
+    for (let i = 0; i <= spanDays; i++) {
+      const d = new Date(filter.start);
+      d.setDate(filter.start.getDate() + i);
+      d.setHours(0, 0, 0, 0);
+      const end = new Date(d);
+      end.setHours(23, 59, 59, 999);
+      result.push({ label: `${d.getMonth() + 1}/${d.getDate()}`, ...countBucket(d, end) });
+    }
+    return result;
+  }
+
+  if (spanDays <= 90) {
+    const result: CustomerDataPoint[] = [];
+    let weekStart = new Date(filter.start);
+    let wNum = 1;
+    while (weekStart <= filter.end) {
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      result.push({ label: `Wk ${wNum}`, ...countBucket(weekStart, weekEnd) });
+      weekStart = new Date(weekEnd);
+      weekStart.setDate(weekEnd.getDate() + 1);
+      weekStart.setHours(0, 0, 0, 0);
+      wNum++;
+    }
+    return result;
+  }
+
+  const result: CustomerDataPoint[] = [];
+  let cur = new Date(filter.start.getFullYear(), filter.start.getMonth(), 1);
+  while (cur <= filter.end) {
+    const monthEnd = new Date(cur.getFullYear(), cur.getMonth() + 1, 0, 23, 59, 59, 999);
+    result.push({ label: MONTH_LABELS[cur.getMonth()], ...countBucket(cur, monthEnd) });
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+  return result;
 }
 
 function fmtCurrency(v: number, currency = "USD") {
@@ -389,6 +498,11 @@ export default function AnalyticsPage() {
 
   const periodLabel = useMemo(() => buildPeriodLabel(dateFilter), [dateFilter]);
 
+  const customerSeries = useMemo(
+    () => buildCustomerSeries(jobs, dateFilter),
+    [jobs, dateFilter],
+  );
+
   const hasAnyData = jobs.length > 0 || quotes.length > 0;
 
   return (
@@ -512,6 +626,8 @@ export default function AnalyticsPage() {
           />
 
           <MrrChart plans={plans} currency={currency} />
+
+          <CustomersOverTimeChart series={customerSeries} />
         </>
       )}
     </div>

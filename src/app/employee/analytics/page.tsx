@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { formatCurrencyRounded } from "@/lib/currency";
+import { CHART_COLORS } from "@/lib/status-colors";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,6 +83,65 @@ function fmtDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+type ChartBucket = { label: string; earnings: number; commission: number };
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function buildChartData(jobs: Job[], filter: TimeFilter, commissionRate: number): ChartBucket[] {
+  const completed = jobs.filter((j) => j.status === "completed" && j.scheduled_at);
+  const now = new Date();
+
+  if (filter === "week") {
+    const buckets: ChartBucket[] = DAY_LABELS.map((label) => ({ label, earnings: 0, commission: 0 }));
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    for (const job of completed) {
+      const d = new Date(job.scheduled_at!);
+      if (d >= weekStart && d <= now) {
+        const idx = d.getDay();
+        buckets[idx].earnings += job.total ?? 0;
+      }
+    }
+    buckets.forEach((b) => { b.commission = b.earnings * commissionRate / 100; });
+    return buckets;
+  }
+
+  if (filter === "month") {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const weekCount = Math.ceil(daysInMonth / 7);
+    const buckets: ChartBucket[] = Array.from({ length: weekCount }, (_, i) => ({
+      label: `Wk ${i + 1}`,
+      earnings: 0,
+      commission: 0,
+    }));
+    for (const job of completed) {
+      const d = new Date(job.scheduled_at!);
+      if (d >= monthStart && d <= now) {
+        const dayOfMonth = d.getDate() - 1;
+        const weekIdx = Math.min(Math.floor(dayOfMonth / 7), weekCount - 1);
+        buckets[weekIdx].earnings += job.total ?? 0;
+      }
+    }
+    buckets.forEach((b) => { b.commission = b.earnings * commissionRate / 100; });
+    return buckets;
+  }
+
+  // year or all — group by month
+  const buckets: ChartBucket[] = MONTH_LABELS.map((label) => ({ label, earnings: 0, commission: 0 }));
+  const yearStart = filter === "year" ? new Date(now.getFullYear(), 0, 1) : new Date(0);
+  for (const job of completed) {
+    const d = new Date(job.scheduled_at!);
+    if (d >= yearStart && d <= now) {
+      buckets[d.getMonth()].earnings += job.total ?? 0;
+    }
+  }
+  buckets.forEach((b) => { b.commission = b.earnings * commissionRate / 100; });
+  return filter === "year" ? buckets : buckets.filter((b) => b.earnings > 0);
+}
+
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
 function KpiCard({ icon, label, value, sub }: { icon: string; label: string; value: string; sub?: string }) {
@@ -109,6 +170,7 @@ export default function EmployeeAnalyticsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [commissionRate, setCommissionRate] = useState(5);
 
   useEffect(() => {
     async function load() {
@@ -119,11 +181,15 @@ export default function EmployeeAnalyticsPage() {
 
       const { data: member } = await supabase
         .from("team_members")
-        .select("id")
+        .select("id, businesses(commission_rate)")
         .eq("user_id", user.id)
         .eq("is_active", true)
         .single();
       if (!member) return;
+
+      const rawBiz = (member as unknown as { businesses: { commission_rate: number } | { commission_rate: number }[] | null }).businesses;
+      const biz = Array.isArray(rawBiz) ? rawBiz[0] ?? null : rawBiz;
+      if (biz?.commission_rate) setCommissionRate(Number(biz.commission_rate));
 
       const [{ data: jobsData }, { data: entriesData }, { data: paymentsData }] = await Promise.all([
         supabase
@@ -258,6 +324,64 @@ export default function EmployeeAnalyticsPage() {
               />
             )}
           </div>
+
+          {/* Charts */}
+          {(() => {
+            const chartData = buildChartData(filteredJobs, filter, commissionRate);
+            const tooltipStyle = {
+              background: "var(--card)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              fontSize: 12,
+              color: "var(--foreground)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+            };
+            return (
+              <>
+                <Card className="rounded-2xl overflow-hidden">
+                  <div className="p-4 border-b border-border/50">
+                    <p className="font-bold text-sm text-foreground">Earnings</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Revenue from your completed jobs</p>
+                  </div>
+                  <div className="p-4 h-44">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                        <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={40} />
+                        <Tooltip
+                          formatter={(v: unknown) => [formatCurrencyRounded(v as number), "Earnings"]}
+                          contentStyle={tooltipStyle}
+                          cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                        />
+                        <Bar dataKey="earnings" fill={CHART_COLORS.blue} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+
+                <Card className="rounded-2xl overflow-hidden">
+                  <div className="p-4 border-b border-border/50">
+                    <p className="font-bold text-sm text-foreground">Commission Earned</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{commissionRate}% of your earnings</p>
+                  </div>
+                  <div className="p-4 h-44">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                        <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={40} />
+                        <Tooltip
+                          formatter={(v: unknown) => [formatCurrencyRounded(v as number), "Commission"]}
+                          contentStyle={tooltipStyle}
+                          cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                        />
+                        <Bar dataKey="commission" fill={CHART_COLORS.green} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              </>
+            );
+          })()}
 
           {/* Avg job value */}
           {completedJobs.length > 0 && (

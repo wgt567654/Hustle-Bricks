@@ -1,11 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function getCalendarDays(year: number, month: number): Date[] {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDate = new Date(firstDay);
+  startDate.setDate(startDate.getDate() - firstDay.getDay());
+  const days: Date[] = [];
+  const current = new Date(startDate);
+  while (current <= lastDay || days.length % 7 !== 0) {
+    days.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return days;
+}
+
+function dateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 type Role = "admin" | "member" | "sales";
 
@@ -25,7 +48,11 @@ const ROLE_LABELS: Record<Role, string> = {
   sales: "Sales",
 };
 
-const HOURS = Array.from({ length: 14 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`); // 06:00–19:00
+const HOURS = Array.from({ length: 17 }, (_, i) => {
+  const h = i + 6;
+  const label = `${h > 12 ? h - 12 : h}:00 ${h >= 12 ? "PM" : "AM"}`;
+  return { value: `${String(h).padStart(2, "0")}:00`, label };
+});
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const CERT_OPTIONS = [
@@ -68,9 +95,16 @@ export default function TeamPage() {
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [editForm, setEditForm] = useState({ name: "", email: "", role: "member" as Role, certifications: [] as string[] });
   const [editSaving, setEditSaving] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [availabilityOpen, setAvailabilityOpen] = useState<Set<string>>(new Set());
   const [memberAvailability, setMemberAvailability] = useState<Record<string, Record<number, { from: string; until: string }>>>({});
   const [savingAvailability, setSavingAvailability] = useState<string | null>(null);
+  const [memberBlockedDates, setMemberBlockedDates] = useState<Record<string, Set<string>>>({});
+  const [memberMiniDate, setMemberMiniDate] = useState<Record<string, Date>>({});
+  const [memberDateInput, setMemberDateInput] = useState<Record<string, string>>({});
+  const [togglingDateFor, setTogglingDateFor] = useState<string | null>(null);
+  const datePickerRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   function copyPortalLink(id: string) {
     navigator.clipboard.writeText(`${window.location.origin}/team-portal/${id}`);
@@ -137,11 +171,11 @@ export default function TeamPage() {
         setWorkload(counts);
       }
 
-      // Fetch employee availability
-      const { data: availData } = await supabase
-        .from("employee_availability")
-        .select("team_member_id, day_of_week, from_time, until_time")
-        .eq("business_id", business.id);
+      // Fetch employee availability and blocked dates
+      const [{ data: availData }, { data: blockedData }] = await Promise.all([
+        supabase.from("employee_availability").select("team_member_id, day_of_week, from_time, until_time").eq("business_id", business.id),
+        supabase.from("employee_blocked_dates").select("team_member_id, blocked_date").eq("business_id", business.id),
+      ]);
 
       const availMap: Record<string, Record<number, { from: string; until: string }>> = {};
       for (const row of availData ?? []) {
@@ -149,6 +183,13 @@ export default function TeamPage() {
         availMap[row.team_member_id][row.day_of_week] = { from: row.from_time, until: row.until_time };
       }
       setMemberAvailability(availMap);
+
+      const blockedMap: Record<string, Set<string>> = {};
+      for (const row of blockedData ?? []) {
+        if (!blockedMap[row.team_member_id]) blockedMap[row.team_member_id] = new Set();
+        blockedMap[row.team_member_id].add(row.blocked_date);
+      }
+      setMemberBlockedDates(blockedMap);
 
       setLoading(false);
     }
@@ -292,6 +333,48 @@ export default function TeamPage() {
     setSavingAvailability(null);
   }
 
+  async function toggleMemberBlockedDate(memberId: string, dateStr: string) {
+    if (!businessId) return;
+    setTogglingDateFor(memberId);
+    const supabase = createClient();
+    const current = memberBlockedDates[memberId] ?? new Set<string>();
+    if (current.has(dateStr)) {
+      await supabase.from("employee_blocked_dates").delete().eq("team_member_id", memberId).eq("blocked_date", dateStr);
+      setMemberBlockedDates((prev) => {
+        const s = new Set(prev[memberId]);
+        s.delete(dateStr);
+        return { ...prev, [memberId]: s };
+      });
+    } else {
+      await supabase.from("employee_blocked_dates").insert({ team_member_id: memberId, business_id: businessId, blocked_date: dateStr });
+      setMemberBlockedDates((prev) => ({ ...prev, [memberId]: new Set([...(prev[memberId] ?? []), dateStr]) }));
+    }
+    setTogglingDateFor(null);
+  }
+
+  function applyMemberPreset(memberId: string, preset: "weekends-off" | "weekdays-off" | "all") {
+    setMemberAvailability((prev) => {
+      const existing = prev[memberId] ?? {};
+      if (preset === "weekends-off") {
+        const next = { ...existing };
+        delete next[0];
+        delete next[6];
+        return { ...prev, [memberId]: next };
+      }
+      if (preset === "weekdays-off") {
+        const next = { ...existing };
+        [1, 2, 3, 4, 5].forEach((d) => delete next[d]);
+        return { ...prev, [memberId]: next };
+      }
+      return {
+        ...prev,
+        [memberId]: Object.fromEntries(
+          [0, 1, 2, 3, 4, 5, 6].map((d) => [d, existing[d] ?? { from: "08:00", until: "17:00" }])
+        ),
+      };
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-32 lg:pb-8">
       <div className="flex flex-col gap-0.5 mb-1">
@@ -396,20 +479,34 @@ export default function TeamPage() {
                 <div className="flex flex-1 flex-col gap-1.5">
                   <div className="flex items-start justify-between">
                     <h3 className="font-bold text-lg text-foreground leading-tight">{member.name}</h3>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="relative">
                       <button
-                        onClick={() => openEdit(member)}
-                        className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === member.id ? null : member.id); }}
+                        className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       >
-                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                        <span className="material-symbols-outlined text-[18px]">more_horiz</span>
                       </button>
-                      <button
-                        onClick={() => handleRemove(member.id)}
-                        disabled={deletingId === member.id}
-                        className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">person_remove</span>
-                      </button>
+                      {openMenuId === member.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                          <div className="absolute right-0 top-8 z-20 w-36 rounded-xl border border-border bg-background shadow-lg py-1 overflow-hidden">
+                            <button
+                              onClick={() => { setOpenMenuId(null); openEdit(member); }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => { setOpenMenuId(null); setConfirmRemoveId(member.id); }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">person_remove</span>
+                              Remove
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -488,56 +585,229 @@ export default function TeamPage() {
 
               {/* Per-employee availability */}
               {availabilityOpen.has(member.id) && (
-                <div className="px-4 pb-4 pt-3 flex flex-col gap-3 border-t border-border/50">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Weekly Availability</p>
+                <div className="border-t border-border/50 flex flex-col">
+                  {/* Preset buttons */}
+                  <div className="flex gap-2 px-4 pt-3 pb-2">
+                    <button
+                      onClick={() => applyMemberPreset(member.id, "weekends-off")}
+                      className="flex-1 py-1.5 rounded-xl text-[11px] font-bold border bg-muted/40 text-foreground border-border hover:bg-muted transition-colors"
+                    >
+                      Weekends Off
+                    </button>
+                    <button
+                      onClick={() => applyMemberPreset(member.id, "weekdays-off")}
+                      className="flex-1 py-1.5 rounded-xl text-[11px] font-bold border bg-muted/40 text-foreground border-border hover:bg-muted transition-colors"
+                    >
+                      Weekdays Off
+                    </button>
+                    <button
+                      onClick={() => applyMemberPreset(member.id, "all")}
+                      className="flex-1 py-1.5 rounded-xl text-[11px] font-bold border bg-muted/40 text-foreground border-border hover:bg-muted transition-colors"
+                    >
+                      All Available
+                    </button>
+                  </div>
 
-                  {/* Day toggles — Mon first */}
-                  <div className="flex gap-1.5 flex-wrap">
-                    {[1,2,3,4,5,6,0].map((day) => {
+                  {/* Per-day toggle rows */}
+                  <div className="flex flex-col divide-y divide-border/30">
+                    {[0, 1, 2, 3, 4, 5, 6].map((day) => {
                       const isOn = !!(memberAvailability[member.id]?.[day]);
+                      const hours = memberAvailability[member.id]?.[day] ?? { from: "08:00", until: "17:00" };
                       return (
-                        <button
-                          key={day}
-                          onClick={() => toggleAvailDay(member.id, day)}
-                          className={`w-9 h-9 rounded-full text-xs font-bold transition-all active:scale-95 ${
-                            isOn ? "bg-primary text-white" : "bg-muted text-muted-foreground border border-border"
-                          }`}
-                        >
-                          {DAY_LABELS[day][0]}
-                        </button>
+                        <div key={day} className="flex items-center gap-3 px-4 py-2.5">
+                          {/* Toggle */}
+                          <button
+                            onClick={() => toggleAvailDay(member.id, day)}
+                            className={`relative shrink-0 w-10 h-5 rounded-full transition-colors focus:outline-none overflow-hidden ${
+                              isOn ? "bg-primary" : "bg-border"
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all duration-200 ${
+                                isOn ? "left-5" : "left-0.5"
+                              }`}
+                            />
+                          </button>
+
+                          {/* Day label */}
+                          <span className={`text-xs font-bold w-7 shrink-0 ${isOn ? "text-foreground" : "text-muted-foreground"}`}>
+                            {DAY_LABELS[day]}
+                          </span>
+
+                          {/* Hours or Unavailable */}
+                          {isOn ? (
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <select
+                                value={hours.from}
+                                onChange={(e) => setAvailHour(member.id, day, "from", e.target.value)}
+                                className="flex-1 rounded-lg border border-border bg-background px-1.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ring/30"
+                              >
+                                {HOURS.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+                              </select>
+                              <span className="text-muted-foreground text-xs shrink-0">→</span>
+                              <select
+                                value={hours.until}
+                                onChange={(e) => setAvailHour(member.id, day, "until", e.target.value)}
+                                className="flex-1 rounded-lg border border-border bg-background px-1.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ring/30"
+                              >
+                                {HOURS.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+                              </select>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic flex-1">Unavailable</span>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
 
-                  {/* From/until per enabled day */}
-                  {[1,2,3,4,5,6,0].filter((day) => memberAvailability[member.id]?.[day]).map((day) => (
-                    <div key={day} className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground w-8">{DAY_LABELS[day]}</span>
-                      <select
-                        value={memberAvailability[member.id][day].from}
-                        onChange={(e) => setAvailHour(member.id, day, "from", e.target.value)}
-                        className="flex-1 h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      >
-                        {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                      <span className="text-xs text-muted-foreground">to</span>
-                      <select
-                        value={memberAvailability[member.id][day].until}
-                        onChange={(e) => setAvailHour(member.id, day, "until", e.target.value)}
-                        className="flex-1 h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      >
-                        {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                    </div>
-                  ))}
+                  {/* Save */}
+                  <div className="px-4 py-3">
+                    <button
+                      onClick={() => saveMemberAvailability(member.id)}
+                      disabled={savingAvailability === member.id}
+                      className="w-full rounded-xl py-2.5 text-sm font-bold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-all active:scale-95"
+                    >
+                      {savingAvailability === member.id ? "Saving…" : "Save Availability"}
+                    </button>
+                  </div>
 
-                  <button
-                    onClick={() => saveMemberAvailability(member.id)}
-                    disabled={savingAvailability === member.id}
-                    className="w-full rounded-xl py-2.5 text-sm font-bold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-all active:scale-95"
-                  >
-                    {savingAvailability === member.id ? "Saving…" : "Save Availability"}
-                  </button>
+                  {/* Specific Dates */}
+                  <div className="border-t border-border/50 px-4 py-3 flex flex-col gap-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Specific Dates Off</p>
+
+                    {/* Date picker + Block button */}
+                    <div className="flex gap-2">
+                      <div
+                        className="flex-1 flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2 hover:bg-muted/40 transition-colors cursor-pointer select-none"
+                        onClick={() => {
+                          const el = datePickerRefs.current[member.id];
+                          if (!el) return;
+                          if (typeof (el as HTMLInputElement & { showPicker?: () => void }).showPicker === "function") {
+                            (el as HTMLInputElement & { showPicker: () => void }).showPicker();
+                          } else {
+                            el.focus();
+                            el.click();
+                          }
+                        }}
+                      >
+                        <span className={`text-xs font-medium ${memberDateInput[member.id] ? "text-foreground" : "text-muted-foreground"}`}>
+                          {memberDateInput[member.id]
+                            ? new Date(memberDateInput[member.id] + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                            : "Pick a date to block…"}
+                        </span>
+                        <span className="material-symbols-outlined text-[16px] text-muted-foreground ml-1">expand_more</span>
+                        <input
+                          ref={(el) => { datePickerRefs.current[member.id] = el; }}
+                          type="date"
+                          value={memberDateInput[member.id] ?? ""}
+                          className="sr-only"
+                          onChange={(e) => {
+                            setMemberDateInput((prev) => ({ ...prev, [member.id]: e.target.value }));
+                            if (!e.target.value) return;
+                            const d = new Date(e.target.value + "T12:00:00");
+                            setMemberMiniDate((prev) => ({ ...prev, [member.id]: new Date(d.getFullYear(), d.getMonth(), 1) }));
+                          }}
+                        />
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const val = memberDateInput[member.id];
+                          if (!val) return;
+                          await toggleMemberBlockedDate(member.id, val);
+                          setMemberDateInput((prev) => ({ ...prev, [member.id]: "" }));
+                        }}
+                        disabled={!memberDateInput[member.id] || togglingDateFor === member.id}
+                        className="px-3 py-2 rounded-xl bg-red-500 text-white text-xs font-bold hover:bg-red-600 disabled:opacity-40 transition-colors shrink-0"
+                      >
+                        Block
+                      </button>
+                    </div>
+
+                    {/* Month navigation */}
+                    {(() => {
+                      const miniDate = memberMiniDate[member.id] ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                      const blocked = memberBlockedDates[member.id] ?? new Set<string>();
+                      const todayStr = dateKey(new Date());
+                      return (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <button
+                              onClick={() => setMemberMiniDate((prev) => ({ ...prev, [member.id]: new Date(miniDate.getFullYear(), miniDate.getMonth() - 1, 1) }))}
+                              className="flex size-7 items-center justify-center rounded-full hover:bg-muted transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                            </button>
+                            <span className="text-xs font-extrabold text-foreground">
+                              {MONTHS[miniDate.getMonth()]} {miniDate.getFullYear()}
+                            </span>
+                            <button
+                              onClick={() => setMemberMiniDate((prev) => ({ ...prev, [member.id]: new Date(miniDate.getFullYear(), miniDate.getMonth() + 1, 1) }))}
+                              className="flex size-7 items-center justify-center rounded-full hover:bg-muted transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                            </button>
+                          </div>
+
+                          {/* Day headers */}
+                          <div className="grid grid-cols-7">
+                            {DAY_LABELS.map((d) => (
+                              <div key={d} className="text-center text-[9px] font-bold uppercase text-muted-foreground py-1">{d[0]}</div>
+                            ))}
+                          </div>
+
+                          {/* Calendar grid */}
+                          <div className="grid grid-cols-7 gap-0.5">
+                            {getCalendarDays(miniDate.getFullYear(), miniDate.getMonth()).map((day) => {
+                              const key = dateKey(day);
+                              const isThisMonth = day.getMonth() === miniDate.getMonth();
+                              const isBlocked = blocked.has(key);
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => isThisMonth && toggleMemberBlockedDate(member.id, key)}
+                                  disabled={!isThisMonth || togglingDateFor === member.id}
+                                  className={`flex items-center justify-center h-8 rounded-lg text-xs font-bold transition-all active:scale-95 ${
+                                    isBlocked
+                                      ? "bg-red-500 text-white shadow-sm"
+                                      : key === todayStr
+                                      ? "bg-primary/10 text-primary"
+                                      : !isThisMonth
+                                      ? "text-muted-foreground/20 cursor-default"
+                                      : "text-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  {day.getDate()}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Blocked list */}
+                          {blocked.size > 0 && (
+                            <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                              {Array.from(blocked).sort().map((d) => (
+                                <div key={d} className="flex items-center justify-between px-2.5 py-1.5 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-100 dark:border-red-900/30">
+                                  <span className="text-xs font-medium text-red-800 dark:text-red-300">
+                                    {new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                                  </span>
+                                  <button
+                                    onClick={() => toggleMemberBlockedDate(member.id, d)}
+                                    className="flex size-5 items-center justify-center rounded-full text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-[12px]">close</span>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {blocked.size === 0 && (
+                            <p className="text-[11px] text-muted-foreground text-center py-1">Tap any date to mark it unavailable.</p>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
             </Card>
@@ -733,6 +1003,44 @@ export default function TeamPage() {
                 className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-primary text-white shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
               >
                 {editSaving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Confirmation Modal */}
+      {confirmRemoveId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmRemoveId(null)} />
+          <div className="relative w-full max-w-sm bg-background rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="flex size-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/40">
+                <span className="material-symbols-outlined text-[28px] text-red-500" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-extrabold text-foreground">Remove Member?</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <span className="font-semibold text-foreground">{members.find((m) => m.id === confirmRemoveId)?.name}</span> will be removed from your team. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmRemoveId(null)}
+                className="flex-1 rounded-xl border border-border py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await handleRemove(confirmRemoveId);
+                  setConfirmRemoveId(null);
+                }}
+                disabled={deletingId === confirmRemoveId}
+                className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                {deletingId === confirmRemoveId ? "Removing…" : "Remove"}
               </button>
             </div>
           </div>

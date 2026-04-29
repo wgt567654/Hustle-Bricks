@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -388,6 +389,9 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
   const tagStyle = TAG_COLORS[client.tag];
   const hasPlan = client.recurring_plan && client.recurring_plan !== "none";
+
+  const swipeSendMenu = useSwipeToDismiss(() => setSendMenuOpen(false));
+  const swipeEdit = useSwipeToDismiss(() => setEditOpen(false));
 
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-28 lg:pb-8">
@@ -846,14 +850,17 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       {sendMenuOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setSendMenuOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden">
-            <div className="flex justify-center pt-3 pb-1">
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeSendMenu.sheetStyle}>
+            {/* Drag zone: handle + header */}
+            <div {...swipeSendMenu.dragHandleProps}>
+            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
             <div className="px-5 py-3 border-b border-border/50">
               <h2 className="text-base font-extrabold text-foreground">Send Booking Link</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Choose how to send {client?.name} their scheduling link</p>
             </div>
+            </div>{/* end drag zone */}
             <div className="flex flex-col divide-y divide-border/40 px-2 py-2">
               {client?.email && (
                 <button
@@ -919,16 +926,19 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       {editOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setEditOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden">
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeEdit.sheetStyle}>
+            {/* Drag zone: handle + header */}
+            <div {...swipeEdit.dragHandleProps} className="shrink-0">
+            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 shrink-0">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
               <h2 className="text-lg font-extrabold text-foreground">Edit Client</h2>
               <button onClick={() => setEditOpen(false)} className="flex size-8 items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:bg-muted transition-colors">
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
+            </div>{/* end drag zone */}
 
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">

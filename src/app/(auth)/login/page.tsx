@@ -172,11 +172,11 @@ export default function LoginPage() {
         </div>
 
         <Link
-          href="/employee-join"
+          href="/employee-login"
           className="w-full flex items-center justify-center gap-2 rounded-xl font-bold py-3.5 text-sm border-2 border-border text-foreground hover:bg-muted/50 active:scale-95 transition-all"
         >
           <span className="material-symbols-outlined text-[18px]">badge</span>
-          Join your team
+          Employee Login
         </Link>
 
       </div>
