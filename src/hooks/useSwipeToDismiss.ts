@@ -2,19 +2,44 @@ import { useEffect, useRef } from "react";
 import type React from "react";
 
 const DISMISS_THRESHOLD = 120;
-const DIRECTION_THRESHOLD = 8; // px before committing to a direction
+const DIRECTION_THRESHOLD = 8;
 
 export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
   const sheetRef = useRef<HTMLDivElement>(null);
-  const startYRef = useRef<number | null>(null);
-  const startXRef = useRef<number | null>(null);
-  const pointerIdRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
   const dragYRef = useRef(0);
+  const touchActiveRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
   onDismissRef.current = onDismiss;
 
-  // Prime GPU layer and reset all state on each open
+  function findScrollParent(el: Element | null, boundary: Element): Element | null {
+    while (el && el !== boundary && el !== document.body) {
+      const oy = window.getComputedStyle(el).overflowY;
+      if (oy === "auto" || oy === "scroll") return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function finishDrag(el: HTMLDivElement) {
+    const wasDragging = draggingRef.current;
+    draggingRef.current = false;
+    const currentDragY = dragYRef.current;
+    dragYRef.current = 0;
+    if (!wasDragging) return;
+    if (currentDragY > DISMISS_THRESHOLD) {
+      el.style.transition = "transform 0.28s cubic-bezier(0.4,0,1,1)";
+      el.style.transform = "translateY(100%)";
+      setTimeout(() => onDismissRef.current(), 280);
+    } else {
+      el.style.transition = "transform 0.3s cubic-bezier(0.25,1,0.5,1)";
+      el.style.transform = "translateY(0)";
+      const ref = el;
+      setTimeout(() => { ref.style.transition = ""; ref.style.transform = ""; }, 300);
+    }
+  }
+
+  // Prime GPU layer and reset state on each open
   useEffect(() => {
     const el = sheetRef.current;
     if (!isOpen || !el) return;
@@ -24,14 +49,14 @@ export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
     el.style.transition = "";
     draggingRef.current = false;
     dragYRef.current = 0;
-    startYRef.current = null;
-    startXRef.current = null;
-    pointerIdRef.current = null;
+    touchActiveRef.current = false;
   }, [isOpen]);
 
-  // Lock body scroll + block Safari pull-to-refresh while modal is open
+  // Body scroll lock + touch-based drag (works in scrollable content on iOS)
   useEffect(() => {
-    if (!isOpen) return;
+    const el = sheetRef.current;
+    if (!isOpen || !el) return;
+    const sheet: HTMLDivElement = el;
 
     const scrollY = window.scrollY;
     document.body.style.overflow = "hidden";
@@ -39,113 +64,136 @@ export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
 
-    function blockPullToRefresh(e: TouchEvent) {
+    let startY = 0;
+    let startX = 0;
+    let active = false;
+
+    function onTouchStart(e: TouchEvent) {
       if (e.touches.length !== 1) return;
-      // If a dismiss drag is in progress, block all scroll
-      if (draggingRef.current) { e.preventDefault(); return; }
-      let el = e.target as Element | null;
-      while (el && el !== document.body) {
-        const oy = window.getComputedStyle(el).overflowY;
-        if (oy === "auto" || oy === "scroll") return;
-        el = el.parentElement;
-      }
-      e.preventDefault();
+      const target = e.target as Element;
+      if (target.closest("button, input, select, textarea, a, [role=button]")) return;
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      active = true;
+      touchActiveRef.current = true;
+      draggingRef.current = false;
+      dragYRef.current = 0;
     }
-    document.addEventListener("touchmove", blockPullToRefresh, { passive: false });
+
+    function onTouchMove(e: TouchEvent) {
+      if (!active || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const dy = touch.clientY - startY;
+      const dx = touch.clientX - startX;
+
+      // Already committed — move the sheet and block everything else
+      if (draggingRef.current) {
+        e.preventDefault();
+        if (dy > 0) {
+          dragYRef.current = dy;
+          sheet.style.transition = "none";
+          sheet.style.transform = `translateY(${dy}px)`;
+        }
+        return;
+      }
+
+      // Cancel on horizontal or upward movement
+      if (Math.abs(dx) > Math.abs(dy) + 3 || dy < 0) {
+        active = false;
+        return;
+      }
+
+      // Not enough vertical movement yet — block PTR on non-scrollable areas
+      if (dy < DIRECTION_THRESHOLD) {
+        const sp = findScrollParent(e.target as Element, sheet);
+        if (!sp) e.preventDefault();
+        return;
+      }
+
+      // Clear downward intent — cancel if scrollable content isn't at top
+      const sp = findScrollParent(e.target as Element, sheet);
+      if (sp && sp.scrollTop > 0) {
+        active = false;
+        return;
+      }
+
+      // Commit to dismiss — prevent browser scroll from here on
+      draggingRef.current = true;
+      e.preventDefault();
+      if (dy > 0) {
+        dragYRef.current = dy;
+        sheet.style.transition = "none";
+        sheet.style.transform = `translateY(${dy}px)`;
+      }
+    }
+
+    function onTouchEnd() {
+      active = false;
+      touchActiveRef.current = false;
+      finishDrag(sheet);
+    }
+
+    sheet.addEventListener("touchstart", onTouchStart, { passive: true });
+    sheet.addEventListener("touchmove", onTouchMove, { passive: false });
+    sheet.addEventListener("touchend", onTouchEnd);
+    sheet.addEventListener("touchcancel", onTouchEnd);
 
     return () => {
+      sheet.removeEventListener("touchstart", onTouchStart);
+      sheet.removeEventListener("touchmove", onTouchMove);
+      sheet.removeEventListener("touchend", onTouchEnd);
+      sheet.removeEventListener("touchcancel", onTouchEnd);
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.top = "";
       document.body.style.width = "";
       window.scrollTo(0, scrollY);
-      document.removeEventListener("touchmove", blockPullToRefresh);
     };
   }, [isOpen]);
 
-  function scrollParent(el: Element | null, boundary: Element | null): Element | null {
-    while (el && el !== boundary && el !== document.body) {
-      const oy = window.getComputedStyle(el).overflowY;
-      if (oy === "auto" || oy === "scroll") return el;
-      el = el.parentElement;
-    }
-    return null;
-  }
-
+  // Pointer events for desktop mouse drag (touch devices use the touch handlers above)
   function onPointerDown(e: React.PointerEvent) {
+    if (touchActiveRef.current) return;
+    if (e.pointerType === "touch") return;
     if ((e.target as Element).closest("button, input, select, textarea, a, [role=button]")) return;
-    if (pointerIdRef.current !== null) return;
-    startYRef.current = e.clientY;
-    startXRef.current = e.clientX;
-    pointerIdRef.current = e.pointerId;
-    draggingRef.current = false;
-  }
+    const startY = e.clientY;
+    const startX = e.clientX;
+    let committed = false;
 
-  function onPointerMove(e: React.PointerEvent) {
-    if (pointerIdRef.current !== e.pointerId || startYRef.current === null) return;
-
-    const dy = e.clientY - startYRef.current;
-    const dx = e.clientX - (startXRef.current ?? e.clientX);
-
-    if (!draggingRef.current) {
-      // Cancel on horizontal or upward movement
-      if (Math.abs(dx) > Math.abs(dy) + 3 || dy < 0) {
-        startYRef.current = null;
-        pointerIdRef.current = null;
-        return;
+    function onMove(ev: PointerEvent) {
+      const dy = ev.clientY - startY;
+      const dx = ev.clientX - startX;
+      if (!committed) {
+        if (Math.abs(dx) > Math.abs(dy) + 3 || dy < 0) { cleanup(); return; }
+        if (dy < DIRECTION_THRESHOLD) return;
+        const sp = findScrollParent(ev.target as Element, sheetRef.current!);
+        if (sp && sp.scrollTop > 0) { cleanup(); return; }
+        committed = true;
+        draggingRef.current = true;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       }
-      if (dy < DIRECTION_THRESHOLD) return; // wait for clear intent
-
-      // Downward — cancel if scrollable content isn't at the top
-      const sp = scrollParent(e.target as Element, e.currentTarget as Element);
-      if (sp && sp.scrollTop > 0) {
-        startYRef.current = null;
-        pointerIdRef.current = null;
-        return;
+      if (dy > 0 && sheetRef.current) {
+        dragYRef.current = dy;
+        sheetRef.current.style.transition = "none";
+        sheetRef.current.style.transform = `translateY(${dy}px)`;
       }
-
-      // Commit to dismiss
-      draggingRef.current = true;
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
     }
 
-    if (dy > 0 && sheetRef.current) {
-      dragYRef.current = dy;
-      sheetRef.current.style.transition = "none";
-      sheetRef.current.style.transform = `translateY(${dy}px)`;
+    function onUp() { cleanup(); if (sheetRef.current) finishDrag(sheetRef.current); }
+
+    function cleanup() {
+      (e.currentTarget as HTMLElement)?.removeEventListener("pointermove", onMove);
+      (e.currentTarget as HTMLElement)?.removeEventListener("pointerup", onUp);
+      (e.currentTarget as HTMLElement)?.removeEventListener("pointercancel", onUp);
     }
+
+    (e.currentTarget as HTMLElement).addEventListener("pointermove", onMove);
+    (e.currentTarget as HTMLElement).addEventListener("pointerup", onUp);
+    (e.currentTarget as HTMLElement).addEventListener("pointercancel", onUp);
   }
 
-  function onPointerUp() {
-    const wasDragging = draggingRef.current;
-    draggingRef.current = false;
-    startYRef.current = null;
-    startXRef.current = null;
-    pointerIdRef.current = null;
-
-    if (!wasDragging || !sheetRef.current) return;
-
-    const currentDragY = dragYRef.current;
-    dragYRef.current = 0;
-
-    if (currentDragY > DISMISS_THRESHOLD) {
-      sheetRef.current.style.transition = "transform 0.28s cubic-bezier(0.4,0,1,1)";
-      sheetRef.current.style.transform = "translateY(100%)";
-      setTimeout(() => onDismissRef.current(), 280);
-    } else {
-      sheetRef.current.style.transition = "transform 0.3s cubic-bezier(0.25,1,0.5,1)";
-      sheetRef.current.style.transform = "translateY(0)";
-      const el = sheetRef.current;
-      setTimeout(() => { el.style.transition = ""; el.style.transform = ""; }, 300);
-    }
-  }
-
-  // Spread onto the sheet container div (alongside ref={sheetRef})
   const sheetDragProps = {
     onPointerDown,
-    onPointerMove,
-    onPointerUp,
-    onPointerCancel: onPointerUp,
     style: { userSelect: "none" } as React.CSSProperties,
   };
 
