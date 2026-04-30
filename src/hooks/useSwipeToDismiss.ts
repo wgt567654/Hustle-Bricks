@@ -4,19 +4,35 @@ import type React from "react";
 const DISMISS_THRESHOLD = 120;
 
 export function useSwipeToDismiss(onDismiss: () => void) {
-  // Lock body scroll for iOS Safari — fixed position prevents scroll bleed-through
+  // Lock body scroll + block Safari pull-to-refresh while modal is open
   useEffect(() => {
     const scrollY = window.scrollY;
     document.body.style.overflow = "hidden";
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
+
+    // Non-passive touchmove blocks Safari's pull-to-refresh gesture.
+    // Allow touches that land on an overflow-scroll/auto ancestor (modal content scroll).
+    function blockPullToRefresh(e: TouchEvent) {
+      if (e.touches.length !== 1) return;
+      let el = e.target as Element | null;
+      while (el && el !== document.body) {
+        const oy = window.getComputedStyle(el).overflowY;
+        if (oy === "auto" || oy === "scroll") return;
+        el = el.parentElement;
+      }
+      e.preventDefault();
+    }
+    document.addEventListener("touchmove", blockPullToRefresh, { passive: false });
+
     return () => {
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.top = "";
       document.body.style.width = "";
       window.scrollTo(0, scrollY);
+      document.removeEventListener("touchmove", blockPullToRefresh);
     };
   }, []);
 
