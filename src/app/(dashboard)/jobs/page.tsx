@@ -11,6 +11,8 @@ import { getDefaultTemplate, interpolateTemplate } from "@/lib/messageTemplates"
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
+type ClientOption = { id: string; name: string; phone: string | null };
+
 type Job = {
   id: string;
   status: JobStatus;
@@ -31,6 +33,55 @@ type TomorrowJob = {
   scheduled_at: string;
   service_type: string | null;
   clients: { name: string; phone: string | null } | null;
+};
+
+const SERVICE_TYPES = [
+  "Pressure Washing",
+  "Window Cleaning",
+  "Lawn Care",
+  "Gutter Cleaning",
+  "Landscaping",
+  "Snow Removal",
+  "House Cleaning",
+  "Pest Control",
+  "Pool Service",
+  "Painting",
+  "Other",
+] as const;
+
+const LEAD_SOURCES = [
+  "Google",
+  "Facebook/Instagram",
+  "Referral",
+  "Door Knock",
+  "Yard Sign",
+  "Repeat Customer",
+  "Other",
+] as const;
+
+const LOG_PAYMENT_METHODS = [
+  { value: "cash", label: "Cash", icon: "payments" },
+  { value: "card", label: "Card", icon: "credit_card" },
+  { value: "check", label: "Check", icon: "receipt" },
+  { value: "venmo", label: "Venmo", icon: "phone_iphone" },
+  { value: "zelle", label: "Zelle", icon: "phone_iphone" },
+  { value: "other", label: "Other", icon: "more_horiz" },
+] as const;
+
+type PaymentMethod = (typeof LOG_PAYMENT_METHODS)[number]["value"];
+
+const EMPTY_LOG_FORM = {
+  client_id: "",
+  client_name: "",
+  client_phone: "",
+  client_email: "",
+  client_address: "",
+  client_lead_source: "",
+  service_type: "",
+  total: "",
+  payment_method: "cash" as PaymentMethod,
+  date: "",
+  notes: "",
 };
 
 function getGreeting() {
@@ -87,6 +138,7 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [firstName, setFirstName] = useState("");
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [allPayments, setAllPayments] = useState<{ amount: number; paid_at: string }[]>([]);
   const [revenueFilter, setRevenueFilter] = useState<"today" | "week" | "month" | "year">("week");
   const [outstandingAmount, setOutstandingAmount] = useState(0);
@@ -108,6 +160,17 @@ export default function JobsPage() {
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState<number | null>(null);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Log Job modal state
+  const [showLogJob, setShowLogJob] = useState(false);
+  const [logMode, setLogMode] = useState<"done" | "now">("done");
+  const [logForm, setLogForm] = useState(() => ({ ...EMPTY_LOG_FORM, date: toLocalDateStr(new Date()) }));
+  const [logSaving, setLogSaving] = useState(false);
+  const [logError, setLogError] = useState<string | null>(null);
+  const [allClients, setAllClients] = useState<ClientOption[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [isNewClient, setIsNewClient] = useState(false);
 
   useEffect(() => {
     if (!showCrewPanel) return;
@@ -136,6 +199,7 @@ export default function JobsPage() {
         .maybeSingle();
       if (!biz) return;
       const businessId = biz.id;
+      setBusinessId(businessId);
       setCurrency((biz as unknown as { currency: string }).currency ?? "USD");
       setSmsReminders((biz as unknown as { sms_reminders_enabled: boolean }).sms_reminders_enabled ?? false);
       setBusinessName((biz as unknown as { name: string }).name ?? "");
@@ -341,6 +405,99 @@ export default function JobsPage() {
 
   const hasAnyJobs = inProgressJobs.length + scheduledJobs.length + completedJobsList.length > 0;
 
+  useEffect(() => {
+    if (!showLogJob || !businessId || allClients.length > 0) return;
+    const supabase = createClient();
+    supabase
+      .from("clients")
+      .select("id, name, phone")
+      .eq("business_id", businessId)
+      .order("name")
+      .then(({ data }) => setAllClients((data as ClientOption[]) ?? []));
+  }, [showLogJob, businessId, allClients.length]);
+
+  const clientMatches = clientSearch.trim()
+    ? allClients.filter((c) => c.name.toLowerCase().includes(clientSearch.toLowerCase()))
+    : allClients.slice(0, 6);
+
+  function resetLogJobForm() {
+    setLogForm({ ...EMPTY_LOG_FORM, date: toLocalDateStr(new Date()) });
+    setLogMode("done");
+    setLogError(null);
+    setClientSearch("");
+    setIsNewClient(false);
+    setShowClientDropdown(false);
+  }
+
+  async function handleLogJob(e: React.SyntheticEvent) {
+    e.preventDefault();
+    if (!businessId) return;
+    setLogSaving(true);
+    setLogError(null);
+    const supabase = createClient();
+
+    let clientId = logForm.client_id;
+    if (isNewClient) {
+      const { data: newClient, error: clientErr } = await supabase
+        .from("clients")
+        .insert({
+          business_id: businessId,
+          name: logForm.client_name.trim(),
+          phone: logForm.client_phone.trim() || null,
+          email: logForm.client_email.trim() || null,
+          address: logForm.client_address.trim() || null,
+          lead_source: logForm.client_lead_source || null,
+        })
+        .select("id")
+        .single();
+      if (clientErr) { setLogError(clientErr.message); setLogSaving(false); return; }
+      clientId = newClient.id;
+    }
+
+    if (!clientId) { setLogError("Please select or add a client."); setLogSaving(false); return; }
+
+    const now = new Date().toISOString();
+    const completedAt = (() => {
+      if (logMode !== "done") return null;
+      const [y, m, d] = logForm.date.split("-").map(Number);
+      const t = new Date();
+      return new Date(y, m - 1, d, t.getHours(), t.getMinutes()).toISOString();
+    })();
+
+    const totalAmount = parseFloat(logForm.total) || 0;
+
+    const { data: job, error: jobErr } = await supabase
+      .from("jobs")
+      .insert({
+        business_id: businessId,
+        client_id: clientId,
+        quote_id: null,
+        status: logMode === "done" ? "completed" : "in_progress",
+        total: totalAmount,
+        service_type: logForm.service_type || null,
+        notes: logForm.notes.trim() || null,
+        scheduled_at: logMode === "now" ? now : null,
+        completed_at: completedAt,
+      })
+      .select("id")
+      .single();
+    if (jobErr) { setLogError(jobErr.message); setLogSaving(false); return; }
+
+    if (logMode === "done" && totalAmount > 0) {
+      await supabase.from("payments").insert({
+        job_id: job.id,
+        business_id: businessId,
+        amount: totalAmount,
+        status: "paid",
+        method: logForm.payment_method,
+        paid_at: completedAt,
+      });
+    }
+
+    setLogSaving(false);
+    setShowLogJob(false);
+    router.push(`/jobs/${job.id}`);
+  }
 
   return (
     <div className="flex flex-col gap-3 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-4 lg:pb-8">
@@ -422,8 +579,15 @@ export default function JobsPage() {
           </div>
 
           <button
+            onClick={() => { resetLogJobForm(); setShowLogJob(true); }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-primary text-primary active:scale-95 transition-transform shrink-0 ml-auto"
+          >
+            <span className="material-symbols-outlined text-[14px]">bolt</span>
+            <span className="text-xs font-bold">Log Job</span>
+          </button>
+          <button
             onClick={() => router.push("/quotes/new")}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary text-white shadow-sm active:scale-95 transition-transform shrink-0 ml-auto"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary text-white shadow-sm active:scale-95 transition-transform shrink-0"
             style={{ boxShadow: "0 2px 8px oklch(0.511 0.230 277 / 0.30)" }}
           >
             <span className="material-symbols-outlined text-[14px]">add</span>
@@ -674,6 +838,235 @@ export default function JobsPage() {
       </div>
 
       {loading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
+
+      {/* Log Job Sheet */}
+      {showLogJob && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowLogJob(false)} />
+          <form
+            onSubmit={handleLogJob}
+            className="relative w-full max-w-lg bg-background rounded-t-3xl p-6 pb-10 shadow-2xl max-h-[92vh] overflow-y-auto flex flex-col gap-4"
+          >
+            {/* Handle */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-muted-foreground/20" />
+
+            <div className="flex items-center justify-between pt-2">
+              <h2 className="text-lg font-extrabold text-foreground">Log a Job</h2>
+              <button type="button" onClick={() => setShowLogJob(false)} className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Mode toggle */}
+            <div className="flex rounded-xl border border-border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setLogMode("done")}
+                className={`flex-1 py-2 text-sm font-bold transition-colors ${logMode === "done" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:text-foreground"}`}
+              >
+                Already Done
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogMode("now")}
+                className={`flex-1 py-2 text-sm font-bold transition-colors ${logMode === "now" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:text-foreground"}`}
+              >
+                Starting Now
+              </button>
+            </div>
+
+            {/* Client picker */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Client</label>
+              {!isNewClient ? (
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search clients…"
+                    value={clientSearch}
+                    onChange={(e) => { setClientSearch(e.target.value); setLogForm((f) => ({ ...f, client_id: "" })); setShowClientDropdown(true); }}
+                    onFocus={() => setShowClientDropdown(true)}
+                    className="flex h-12 w-full rounded-xl border border-border bg-background px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                  />
+                  {logForm.client_id ? (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[16px] text-green-500">check_circle</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onMouseDown={() => { setIsNewClient(true); setShowClientDropdown(false); setLogForm((f) => ({ ...f, client_id: "" })); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                    </button>
+                  )}
+                  {showClientDropdown && (
+                    <div className="absolute top-full mt-1 w-full z-10 bg-background border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                      {clientMatches.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onMouseDown={() => { setLogForm((f) => ({ ...f, client_id: c.id })); setClientSearch(c.name); setShowClientDropdown(false); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-muted transition-colors"
+                        >
+                          <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-extrabold text-primary">
+                            {getInitials(c.name)}
+                          </span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-semibold text-foreground truncate">{c.name}</span>
+                            {c.phone && <span className="text-xs text-muted-foreground">{c.phone}</span>}
+                          </div>
+                        </button>
+                      ))}
+                      {clientMatches.length === 0 && (
+                        <p className="px-3 py-2.5 text-sm text-muted-foreground">No clients found.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-primary uppercase tracking-wide">New Client</span>
+                    <button type="button" onClick={() => { setIsNewClient(false); setClientSearch(""); }} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Full name *"
+                    required
+                    value={logForm.client_name}
+                    onChange={(e) => setLogForm((f) => ({ ...f, client_name: e.target.value }))}
+                    className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Phone"
+                    value={logForm.client_phone}
+                    onChange={(e) => setLogForm((f) => ({ ...f, client_phone: e.target.value }))}
+                    className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={logForm.client_email}
+                    onChange={(e) => setLogForm((f) => ({ ...f, client_email: e.target.value }))}
+                    className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Address"
+                    value={logForm.client_address}
+                    onChange={(e) => setLogForm((f) => ({ ...f, client_address: e.target.value }))}
+                    className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                  />
+                  <select
+                    value={logForm.client_lead_source}
+                    onChange={(e) => setLogForm((f) => ({ ...f, client_lead_source: e.target.value }))}
+                    className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                  >
+                    <option value="">Lead source (optional)</option>
+                    {LEAD_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Service type */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Service Type</label>
+              <select
+                value={logForm.service_type}
+                onChange={(e) => setLogForm((f) => ({ ...f, service_type: e.target.value }))}
+                className="flex h-12 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+              >
+                <option value="">Select service…</option>
+                {SERVICE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            {/* Total */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                Total{logMode === "done" ? " *" : " (optional)"}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  required={logMode === "done"}
+                  value={logForm.total}
+                  onChange={(e) => setLogForm((f) => ({ ...f, total: e.target.value }))}
+                  className="flex h-12 w-full rounded-xl border border-border bg-background pl-7 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                />
+              </div>
+            </div>
+
+            {/* Payment method — only for "done" mode */}
+            {logMode === "done" && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Payment Method</label>
+                <div className="flex flex-wrap gap-2">
+                  {LOG_PAYMENT_METHODS.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setLogForm((f) => ({ ...f, payment_method: m.value }))}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+                        logForm.payment_method === m.value
+                          ? "bg-primary text-white border-primary"
+                          : "bg-card text-foreground border-border hover:bg-muted"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[15px]">{m.icon}</span>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Date — only for "done" mode */}
+            {logMode === "done" && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Date Completed</label>
+                <input
+                  type="date"
+                  value={logForm.date}
+                  max={toLocalDateStr(new Date())}
+                  onChange={(e) => setLogForm((f) => ({ ...f, date: e.target.value }))}
+                  className="flex h-12 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                />
+              </div>
+            )}
+
+            {/* Notes */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Notes (optional)</label>
+              <textarea
+                rows={2}
+                placeholder="Any details about the job…"
+                value={logForm.notes}
+                onChange={(e) => setLogForm((f) => ({ ...f, notes: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30 resize-none"
+              />
+            </div>
+
+            {logError && (
+              <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl px-3 py-2">{logError}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={logSaving || (!logForm.client_id && !isNewClient)}
+              className="w-full h-12 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform mt-1"
+            >
+              {logSaving ? "Logging…" : logMode === "done" ? "Log Completed Job" : "Start Job Now"}
+            </button>
+          </form>
+        </div>
+      )}
 
       {!loading && (
         <div className="flex flex-col gap-6">

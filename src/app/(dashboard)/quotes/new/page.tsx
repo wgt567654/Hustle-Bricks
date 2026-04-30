@@ -22,6 +22,24 @@ type Client = {
   tag: string;
 };
 
+const LEAD_SOURCES = [
+  "Google",
+  "Facebook/Instagram",
+  "Referral",
+  "Door Knock",
+  "Yard Sign",
+  "Repeat Customer",
+  "Other",
+] as const;
+
+const EMPTY_NEW_CLIENT = {
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  lead_source: "",
+};
+
 type LineItem = {
   serviceId: string;
   name: string;
@@ -49,6 +67,10 @@ export default function QuoteBuilder() {
   const [selectedClientId, setSelectedClientId] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [showClientPicker, setShowClientPicker] = useState(false);
+  const [isNewClientForm, setIsNewClientForm] = useState(false);
+  const [newClientForm, setNewClientForm] = useState(EMPTY_NEW_CLIENT);
+  const [newClientSaving, setNewClientSaving] = useState(false);
+  const [newClientError, setNewClientError] = useState<string | null>(null);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [applyTax, setApplyTax] = useState(false);
@@ -135,6 +157,33 @@ export default function QuoteBuilder() {
   const tax = applyTax ? subtotal * 0.08 : 0;
   const discountAmt = parseFloat(discount) || 0;
   const total = subtotal + tax - discountAmt;
+
+  async function handleCreateClient() {
+    if (!businessId || !newClientForm.name.trim()) return;
+    setNewClientSaving(true);
+    setNewClientError(null);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("clients")
+      .insert({
+        business_id: businessId,
+        name: newClientForm.name.trim(),
+        phone: newClientForm.phone.trim() || null,
+        email: newClientForm.email.trim() || null,
+        address: newClientForm.address.trim() || null,
+        lead_source: newClientForm.lead_source || null,
+        tag: "residential",
+      })
+      .select("id, name, tag")
+      .single();
+    if (error) { setNewClientError(error.message); setNewClientSaving(false); return; }
+    setClients((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setSelectedClientId(data.id);
+    setNewClientSaving(false);
+    setIsNewClientForm(false);
+    setNewClientForm(EMPTY_NEW_CLIENT);
+    setShowClientPicker(false);
+  }
 
   async function handleSave(status: "draft" | "sent") {
     if (!businessId || !selectedClientId) {
@@ -408,53 +457,127 @@ export default function QuoteBuilder() {
       {/* Client Picker Modal */}
       {showClientPicker && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowClientPicker(false)} />
-          <div className="relative w-full max-w-lg bg-background rounded-t-3xl p-6 pb-10 shadow-2xl flex flex-col gap-4 max-h-[70vh]">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setShowClientPicker(false); setIsNewClientForm(false); setNewClientForm(EMPTY_NEW_CLIENT); }} />
+          <div className="relative w-full max-w-lg bg-background rounded-t-3xl p-6 pb-10 shadow-2xl flex flex-col gap-4 max-h-[85vh]">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-extrabold tracking-tight text-foreground">Select Client</h2>
+              <h2 className="text-lg font-extrabold tracking-tight text-foreground">
+                {isNewClientForm ? "New Client" : "Select Client"}
+              </h2>
               <button
-                onClick={() => setShowClientPicker(false)}
+                onClick={() => { setShowClientPicker(false); setIsNewClientForm(false); setNewClientForm(EMPTY_NEW_CLIENT); }}
                 className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-muted-foreground">search</span>
-              <input
-                type="text"
-                placeholder="Search clients…"
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
-                autoFocus
-                className="flex h-11 w-full rounded-xl border border-border bg-muted/30 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-            <div className="overflow-y-auto flex flex-col gap-2">
-              {filteredClients.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-6">No clients found</p>
-              )}
-              {filteredClients.map((client) => (
-                <button
-                  key={client.id}
-                  onClick={() => { setSelectedClientId(client.id); setShowClientPicker(false); setClientSearch(""); }}
-                  className={`flex items-center gap-3 p-3 rounded-xl text-left transition-colors hover:bg-muted ${
-                    selectedClientId === client.id ? "bg-primary/10" : ""
-                  }`}
-                >
-                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-extrabold text-sm shrink-0">
-                    {client.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="font-bold text-foreground text-sm">{client.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{client.tag}</p>
-                  </div>
-                  {selectedClientId === client.id && (
-                    <span className="material-symbols-outlined text-[20px] text-primary ml-auto">check_circle</span>
+
+            {!isNewClientForm ? (
+              <>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-muted-foreground">search</span>
+                  <input
+                    type="text"
+                    placeholder="Search clients…"
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    autoFocus
+                    className="flex h-11 w-full rounded-xl border border-border bg-muted/30 pl-9 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setIsNewClientForm(true); setClientSearch(""); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                  </button>
+                </div>
+                <div className="overflow-y-auto flex flex-col gap-2">
+                  {filteredClients.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-6">No clients found</p>
                   )}
-                </button>
-              ))}
-            </div>
+                  {filteredClients.map((client) => (
+                    <button
+                      key={client.id}
+                      onClick={() => { setSelectedClientId(client.id); setShowClientPicker(false); setClientSearch(""); }}
+                      className={`flex items-center gap-3 p-3 rounded-xl text-left transition-colors hover:bg-muted ${
+                        selectedClientId === client.id ? "bg-primary/10" : ""
+                      }`}
+                    >
+                      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-extrabold text-sm shrink-0">
+                        {client.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground text-sm">{client.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{client.tag}</p>
+                      </div>
+                      {selectedClientId === client.id && (
+                        <span className="material-symbols-outlined text-[20px] text-primary ml-auto">check_circle</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col gap-3 overflow-y-auto">
+                <input
+                  type="text"
+                  placeholder="Full name *"
+                  autoFocus
+                  value={newClientForm.name}
+                  onChange={(e) => setNewClientForm((f) => ({ ...f, name: e.target.value }))}
+                  className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone"
+                  value={newClientForm.phone}
+                  onChange={(e) => setNewClientForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={newClientForm.email}
+                  onChange={(e) => setNewClientForm((f) => ({ ...f, email: e.target.value }))}
+                  className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+                <input
+                  type="text"
+                  placeholder="Address"
+                  value={newClientForm.address}
+                  onChange={(e) => setNewClientForm((f) => ({ ...f, address: e.target.value }))}
+                  className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+                <select
+                  value={newClientForm.lead_source}
+                  onChange={(e) => setNewClientForm((f) => ({ ...f, lead_source: e.target.value }))}
+                  className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Lead source (optional)</option>
+                  {LEAD_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {newClientError && (
+                  <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl px-3 py-2">{newClientError}</p>
+                )}
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setIsNewClientForm(false); setNewClientForm(EMPTY_NEW_CLIENT); setNewClientError(null); }}
+                    className="flex-1 h-11 rounded-xl border border-border bg-card text-foreground font-bold text-sm"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateClient}
+                    disabled={newClientSaving || !newClientForm.name.trim()}
+                    className="flex-1 h-11 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+                  >
+                    {newClientSaving ? "Creating…" : "Create & Select"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
