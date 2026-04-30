@@ -725,10 +725,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       ? addDays(job.scheduled_at, job.recurrence_interval_days)
       : null;
 
-  const swipeEdit = useSwipeToDismiss(() => setEditModalOpen(false));
-  const swipeRecurring = useSwipeToDismiss(() => setRecurringSheetOpen(false));
-  const swipeAssign = useSwipeToDismiss(() => { setAssignModalOpen(false); setEmployeeSearch(""); });
-  const swipePay = useSwipeToDismiss(() => setPayModalOpen(false));
+  const swipeEdit = useSwipeToDismiss(() => setEditModalOpen(false), editModalOpen);
+  const swipeRecurring = useSwipeToDismiss(() => setRecurringSheetOpen(false), recurringSheetOpen);
+  const swipeAssign = useSwipeToDismiss(() => { setAssignModalOpen(false); setEmployeeSearch(""); }, assignModalOpen);
+  const swipePay = useSwipeToDismiss(() => setPayModalOpen(false), payModalOpen);
 
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-52 lg:pb-48">

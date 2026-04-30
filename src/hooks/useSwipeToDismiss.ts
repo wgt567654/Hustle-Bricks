@@ -3,9 +3,30 @@ import type React from "react";
 
 const DISMISS_THRESHOLD = 120;
 
-export function useSwipeToDismiss(onDismiss: () => void) {
+export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
+  const startYRef = useRef<number | null>(null);
+  const draggingRef = useRef(false);
+  const dragYRef = useRef(0);
+  const [dragY, setDragY] = useState(0);
+  const [dismissing, setDismissing] = useState(false);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  // Reset gesture state each time the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setDismissing(false);
+      setDragY(0);
+      dragYRef.current = 0;
+      draggingRef.current = false;
+      startYRef.current = null;
+    }
+  }, [isOpen]);
+
   // Lock body scroll + block Safari pull-to-refresh while modal is open
   useEffect(() => {
+    if (!isOpen) return;
+
     const scrollY = window.scrollY;
     document.body.style.overflow = "hidden";
     document.body.style.position = "fixed";
@@ -34,15 +55,7 @@ export function useSwipeToDismiss(onDismiss: () => void) {
       window.scrollTo(0, scrollY);
       document.removeEventListener("touchmove", blockPullToRefresh);
     };
-  }, []);
-
-  const startYRef = useRef<number | null>(null);
-  const draggingRef = useRef(false);
-  const dragYRef = useRef(0);
-  const [dragY, setDragY] = useState(0);
-  const [dismissing, setDismissing] = useState(false);
-  const onDismissRef = useRef(onDismiss);
-  onDismissRef.current = onDismiss;
+  }, [isOpen]);
 
   function onPointerDown(e: React.PointerEvent) {
     if ((e.target as Element).closest("button, input, select, textarea, a, [role=button]")) return;

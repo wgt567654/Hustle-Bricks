@@ -191,7 +191,7 @@ export default function PaymentsPage() {
 
   const displayed = filter === "unpaid" ? unpaidJobs : paidJobs;
 
-  const swipePay = useSwipeToDismiss(() => setPayModal(null));
+  const swipePay = useSwipeToDismiss(() => setPayModal(null), !!payModal);
 
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-32 lg:pb-8">

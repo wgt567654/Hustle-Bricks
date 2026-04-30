@@ -345,7 +345,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
 
   const meta = STATUS_META[job.status];
 
-  const swipeSig = useSwipeToDismiss(() => setSigModalOpen(false));
+  const swipeSig = useSwipeToDismiss(() => setSigModalOpen(false), sigModalOpen);
 
   return (
     <div className="flex flex-col gap-4 px-4 py-5 max-w-xl mx-auto pb-32">

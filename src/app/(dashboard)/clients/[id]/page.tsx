@@ -390,8 +390,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const tagStyle = TAG_COLORS[client.tag];
   const hasPlan = client.recurring_plan && client.recurring_plan !== "none";
 
-  const swipeSendMenu = useSwipeToDismiss(() => setSendMenuOpen(false));
-  const swipeEdit = useSwipeToDismiss(() => setEditOpen(false));
+  const swipeSendMenu = useSwipeToDismiss(() => setSendMenuOpen(false), sendMenuOpen);
+  const swipeEdit = useSwipeToDismiss(() => setEditOpen(false), editOpen);
 
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-28 lg:pb-8">

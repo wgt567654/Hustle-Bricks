@@ -712,7 +712,7 @@ export default function CalendarPage() {
   const selectedDayJobs = selectedDay ? (jobsByDay[selectedDay] ?? []) : [];
   const dayJobLayout = useMemo(() => layoutJobs(selectedDayJobs, HOUR_HEIGHT), [selectedDayJobs, HOUR_HEIGHT]);
 
-  const swipeSchedule = useSwipeToDismiss(() => setScheduleOpen(false));
+  const swipeSchedule = useSwipeToDismiss(() => setScheduleOpen(false), scheduleOpen && !!scheduleDate);
 
   return (
     <div className="flex flex-col gap-0 max-w-xl mx-auto lg:max-w-none">
