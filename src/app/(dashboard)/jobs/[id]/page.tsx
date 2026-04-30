@@ -1295,16 +1295,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setEditModalOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeEdit.sheetRef}>
-            {/* Drag zone: handle + header */}
-            <div {...swipeEdit.dragHandleProps} className="shrink-0">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeEdit.sheetRef} {...swipeEdit.sheetDragProps}>
             {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+            <div className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
             {/* Header */}
-            <div className="px-5 pt-2 pb-4 border-b border-border/50">
+            <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <span className="material-symbols-outlined text-[28px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1317,7 +1315,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
-            </div>{/* end drag zone */}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
@@ -1391,16 +1388,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setRecurringSheetOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeRecurring.sheetRef}>
-            {/* Drag zone: handle + header */}
-            <div {...swipeRecurring.dragHandleProps} className="shrink-0">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeRecurring.sheetRef} {...swipeRecurring.sheetDragProps}>
             {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+            <div className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
             {/* Header */}
-            <div className="px-5 pt-2 pb-4 border-b border-border/50">
+            <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <span className="material-symbols-outlined text-[28px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1413,7 +1408,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
-            </div>{/* end drag zone */}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-5">
@@ -1489,16 +1483,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => { setAssignModalOpen(false); setEmployeeSearch(""); }}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeAssign.sheetRef}>
-            {/* Drag zone: handle + header */}
-            <div {...swipeAssign.dragHandleProps} className="shrink-0">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeAssign.sheetRef} {...swipeAssign.sheetDragProps}>
             {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+            <div className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
             {/* Header */}
-            <div className="px-5 pt-2 pb-4 border-b border-border/50">
+            <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <span className="material-symbols-outlined text-[28px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1511,7 +1503,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
-            </div>{/* end drag zone */}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-5">
@@ -1672,11 +1663,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       {payModalOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipePay.sheetRef}>
-            {/* Drag zone: handle + header */}
-            <div {...swipePay.dragHandleProps} className="shrink-0">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipePay.sheetRef} {...swipePay.sheetDragProps}>
             {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+            <div className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
@@ -1693,7 +1682,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             )}
 
             {/* Success header */}
-            <div className="px-5 pt-3 pb-4 border-b border-border/50">
+            <div className="px-5 pt-3 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-status-completed/10">
                   <span className="material-symbols-outlined text-[28px] text-[var(--color-status-completed)]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1708,7 +1697,6 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               </div>
             </div>
-            </div>{/* end drag zone */}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">

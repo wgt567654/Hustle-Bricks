@@ -377,14 +377,12 @@ export default function PaymentsPage() {
       {payModal && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setPayModal(null)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[80vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipePay.sheetRef}>
-            {/* Drag zone: handle + header */}
-            <div {...swipePay.dragHandleProps} className="shrink-0">
-            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[80vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipePay.sheetRef} {...swipePay.sheetDragProps}>
+            <div className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
 
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 shrink-0">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Collect Payment</p>
                 <h2 className="text-lg font-extrabold text-foreground leading-tight">
@@ -398,7 +396,6 @@ export default function PaymentsPage() {
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
-            </div>{/* end drag zone */}
 
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
               {/* Amount */}

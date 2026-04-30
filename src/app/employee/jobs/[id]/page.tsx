@@ -740,13 +740,11 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
             onClick={() => !sigSaving && setSigModalOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border flex flex-col overflow-hidden" ref={swipeSig.sheetRef}>
-            {/* Drag zone: handle + header */}
-            <div {...swipeSig.dragHandleProps} className="shrink-0">
-            <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border flex flex-col overflow-hidden" ref={swipeSig.sheetRef} {...swipeSig.sheetDragProps}>
+            <div className="flex justify-center pt-3 pb-1 shrink-0 cursor-grab active:cursor-grabbing">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
-            <div className="px-5 pt-2 pb-4 border-b border-border/50">
+            <div className="px-5 pt-2 pb-4 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-status-completed/10">
                   <span className="material-symbols-outlined text-[26px] text-[var(--color-status-completed)]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -759,7 +757,6 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
                 </div>
               </div>
             </div>
-            </div>{/* end drag zone */}
             <div className="px-5 py-4 flex flex-col gap-3 shrink-0">
               <div className="rounded-2xl border-2 border-dashed border-border bg-white overflow-hidden">
                 <canvas
