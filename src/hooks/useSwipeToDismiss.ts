@@ -1,26 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type React from "react";
 
 const DISMISS_THRESHOLD = 120;
 
 export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
+  const sheetRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
   const dragYRef = useRef(0);
-  const [dragY, setDragY] = useState(0);
-  const [dismissing, setDismissing] = useState(false);
   const onDismissRef = useRef(onDismiss);
   onDismissRef.current = onDismiss;
 
-  // Reset gesture state each time the modal opens
+  // Prime GPU layer and reset DOM state each time the modal opens
   useEffect(() => {
-    if (isOpen) {
-      setDismissing(false);
-      setDragY(0);
-      dragYRef.current = 0;
-      draggingRef.current = false;
-      startYRef.current = null;
-    }
+    const el = sheetRef.current;
+    if (!isOpen || !el) return;
+    el.style.willChange = "transform";
+    el.style.backfaceVisibility = "hidden";
+    el.style.transform = "";
+    el.style.transition = "";
+    draggingRef.current = false;
+    dragYRef.current = 0;
+    startYRef.current = null;
   }, [isOpen]);
 
   // Lock body scroll + block Safari pull-to-refresh while modal is open
@@ -33,8 +34,6 @@ export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
 
-    // Non-passive touchmove blocks Safari's pull-to-refresh gesture.
-    // Allow touches that land on an overflow-scroll/auto ancestor (modal content scroll).
     function blockPullToRefresh(e: TouchEvent) {
       if (e.touches.length !== 1) return;
       let el = e.target as Element | null;
@@ -65,35 +64,36 @@ export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
   }
 
   function onPointerMove(e: React.PointerEvent) {
-    if (!draggingRef.current || startYRef.current === null) return;
+    if (!draggingRef.current || startYRef.current === null || !sheetRef.current) return;
     const delta = e.clientY - startYRef.current;
     if (delta > 0) {
       dragYRef.current = delta;
-      setDragY(delta);
+      sheetRef.current.style.transition = "none";
+      sheetRef.current.style.transform = `translateY(${delta}px)`;
     }
   }
 
   function onPointerUp() {
-    if (!draggingRef.current) return;
+    if (!draggingRef.current || !sheetRef.current) return;
     draggingRef.current = false;
     const currentDragY = dragYRef.current;
     dragYRef.current = 0;
     startYRef.current = null;
+
     if (currentDragY > DISMISS_THRESHOLD) {
-      setDismissing(true);
+      sheetRef.current.style.transition = "transform 0.28s cubic-bezier(0.4,0,1,1)";
+      sheetRef.current.style.transform = "translateY(100%)";
       setTimeout(() => onDismissRef.current(), 280);
     } else {
-      setDragY(0);
+      sheetRef.current.style.transition = "transform 0.3s cubic-bezier(0.25,1,0.5,1)";
+      sheetRef.current.style.transform = "translateY(0)";
+      const el = sheetRef.current;
+      setTimeout(() => {
+        el.style.transition = "";
+        el.style.transform = "";
+      }, 300);
     }
   }
-
-  const sheetStyle: React.CSSProperties = dismissing
-    ? { transform: "translateY(100%)", transition: "transform 0.28s cubic-bezier(0.4,0,1,1)" }
-    : draggingRef.current
-    ? { transform: `translateY(${dragY}px)` }
-    : dragY > 0
-    ? { transform: `translateY(${dragY}px)`, transition: "transform 0.3s cubic-bezier(0.25,1,0.5,1)" }
-    : {};
 
   const dragHandleProps = {
     onPointerDown,
@@ -103,5 +103,5 @@ export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
     style: { touchAction: "none", userSelect: "none" } as React.CSSProperties,
   };
 
-  return { sheetStyle, dragHandleProps };
+  return { sheetRef, dragHandleProps };
 }

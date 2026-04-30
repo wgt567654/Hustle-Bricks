@@ -1295,7 +1295,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setEditModalOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeEdit.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeEdit.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipeEdit.dragHandleProps} className="shrink-0">
             {/* Handle */}
@@ -1391,7 +1391,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setRecurringSheetOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeRecurring.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeRecurring.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipeRecurring.dragHandleProps} className="shrink-0">
             {/* Handle */}
@@ -1489,7 +1489,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => { setAssignModalOpen(false); setEmployeeSearch(""); }}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeAssign.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeAssign.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipeAssign.dragHandleProps} className="shrink-0">
             {/* Handle */}
@@ -1672,7 +1672,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       {payModalOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipePay.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipePay.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipePay.dragHandleProps} className="shrink-0">
             {/* Handle */}

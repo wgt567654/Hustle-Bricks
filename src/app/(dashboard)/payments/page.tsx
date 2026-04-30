@@ -377,7 +377,7 @@ export default function PaymentsPage() {
       {payModal && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setPayModal(null)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[80vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipePay.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[80vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipePay.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipePay.dragHandleProps} className="shrink-0">
             <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">

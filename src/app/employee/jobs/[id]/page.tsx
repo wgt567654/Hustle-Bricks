@@ -740,7 +740,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
             onClick={() => !sigSaving && setSigModalOpen(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border flex flex-col overflow-hidden" style={swipeSig.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border flex flex-col overflow-hidden" ref={swipeSig.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipeSig.dragHandleProps} className="shrink-0">
             <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">

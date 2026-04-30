@@ -850,7 +850,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       {sendMenuOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setSendMenuOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeSendMenu.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeSendMenu.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipeSendMenu.dragHandleProps}>
             <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
@@ -926,7 +926,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       {editOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setEditOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeEdit.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[90vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeEdit.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipeEdit.dragHandleProps} className="shrink-0">
             <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">

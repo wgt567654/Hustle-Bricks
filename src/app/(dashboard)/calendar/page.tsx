@@ -1593,7 +1593,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
             onClick={() => setScheduleOpen(false)}
           />
           {/* Bottom sheet */}
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[85vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" style={swipeSchedule.sheetStyle}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col max-h-[85vh] max-w-xl mx-auto rounded-t-3xl bg-background shadow-2xl border-t border-border overflow-hidden" ref={swipeSchedule.sheetRef}>
             {/* Drag zone: handle + header */}
             <div {...swipeSchedule.dragHandleProps} className="shrink-0">
             {/* Handle */}
