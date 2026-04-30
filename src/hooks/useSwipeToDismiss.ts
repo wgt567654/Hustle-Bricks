@@ -103,10 +103,11 @@ export function useSwipeToDismiss(onDismiss: () => void, isOpen: boolean) {
         return;
       }
 
-      // Not enough vertical movement yet — block PTR on non-scrollable areas
+      // Not enough vertical movement yet — claim the gesture early if there's
+      // nothing above to scroll, so Safari can't take it over before we commit
       if (dy < DIRECTION_THRESHOLD) {
         const sp = findScrollParent(e.target as Element, sheet);
-        if (!sp) e.preventDefault();
+        if (!sp || sp.scrollTop === 0) e.preventDefault();
         return;
       }
 
