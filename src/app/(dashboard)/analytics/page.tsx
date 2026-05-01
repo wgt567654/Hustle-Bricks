@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
 import { formatCurrencyRounded } from "@/lib/currency";
+import { CHART_COLORS } from "@/lib/status-colors";
 
 import {
   AnalyticsTimeFilter,
@@ -280,8 +281,8 @@ function fmtCurrency(v: number, currency = "USD") {
 function KpiMiniCard({ label, value }: { label: string; value: string }) {
   return (
     <Card className="rounded-2xl p-3 flex flex-col gap-1">
-      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className="text-lg font-extrabold tracking-tight">{value}</span>
+      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+      <span className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>{value}</span>
     </Card>
   );
 }
@@ -408,10 +409,10 @@ export default function AnalyticsPage() {
       return { label, count: subset.length, value: subset.reduce((s, q) => s + (q.total ?? 0), 0), color };
     }
     return [
-      stage((q) => q.status === "draft",    "Lead",     "#6b7280"),
-      stage((q) => q.status === "sent",     "Proposal", "#007AFF"),
-      stage((q) => q.status === "accepted", "Closed",   "#16a34a"),
-      stage((q) => q.status === "declined", "Lost",     "#ef4444"),
+      stage((q) => q.status === "draft",    "Lead",     CHART_COLORS.muted),
+      stage((q) => q.status === "sent",     "Proposal", CHART_COLORS.blue),
+      stage((q) => q.status === "accepted", "Closed",   CHART_COLORS.green),
+      stage((q) => q.status === "declined", "Lost",     CHART_COLORS.red),
     ];
   }, [filteredQuotes]);
 
@@ -510,12 +511,13 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-extrabold tracking-tight">Analytics</h1>
-          <p className="text-xs text-muted-foreground">Revenue, pipeline, and performance</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Hustle Bricks</p>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>Analytics</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Revenue, pipeline, and performance</p>
         </div>
         <button
           onClick={() => router.push("/reports/payroll")}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
         >
           <span className="material-symbols-outlined text-[15px]">badge</span>
           Payroll

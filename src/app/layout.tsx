@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import { Barlow, Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
+const barlow = Barlow({
+  variable: "--font-barlow",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const inter = Inter({
@@ -18,8 +19,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F9FAFB" },
-    { media: "(prefers-color-scheme: dark)",  color: "#191921" },
+    { media: "(prefers-color-scheme: light)", color: "#F7F8F9" },
+    { media: "(prefers-color-scheme: dark)",  color: "#0F1E2E" },
   ],
 };
 
@@ -48,7 +49,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body
-        className={`${jakarta.variable} ${inter.variable} antialiased font-sans`}
+        className={`${barlow.variable} ${inter.variable} antialiased font-sans`}
       >
         <ThemeProvider
           attribute="class"

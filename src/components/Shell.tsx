@@ -261,58 +261,73 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       {/* ── DESKTOP SIDEBAR — lg+ only, hidden on map ── */}
       {!isMapPage && (
         <div
-          className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-[60px] z-40 border-r border-border/40"
-          style={{ background: "var(--card)" }}
+          className="group hidden lg:flex flex-col fixed left-0 top-0 h-screen w-[60px] hover:w-[220px] z-40 border-r border-border/40 overflow-hidden"
+          style={{
+            background: "var(--card)",
+            transition: "width 200ms ease-in-out",
+          }}
         >
-          {/* Logo mark */}
-          <div className="flex items-center justify-center h-14 shrink-0">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground text-xs font-black tracking-tight select-none">
-              HB
+          {/* Logo */}
+          <div className="flex items-center h-14 shrink-0 px-[14px] gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary select-none">
+              <svg viewBox="0 0 22 13" className="w-[18px] h-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Top row — 2 bricks */}
+                <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                {/* Bottom row — offset bond (half + full + half) */}
+                <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              </svg>
             </div>
+            <span
+              className="whitespace-nowrap text-[13px] font-extrabold tracking-wide uppercase text-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+              style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
+            >
+              Hustle Bricks
+            </span>
           </div>
 
-          <div className="h-px bg-border/40 mx-2" />
+          <div className="h-px bg-border/40 mx-2 shrink-0" />
 
           {/* Nav items */}
-          <nav className="flex flex-col items-center gap-1 flex-1 py-3">
+          <nav className="flex flex-col gap-0.5 flex-1 py-2 px-2">
             {visibleSidebarNav.map(({ href, label, icon, exact }) => {
               const active = isActive(href, exact);
               return (
-                <div key={href} className="group relative w-full flex justify-center">
-                  <Link
-                    href={href}
-                    className={`flex size-10 items-center justify-center rounded-xl transition-all active:scale-90 ${
-                      active ? "bg-primary/10" : "hover:bg-muted/60"
-                    }`}
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-3 h-10 rounded-xl px-[11px] transition-colors active:scale-95 ${
+                    active ? "bg-primary/10" : "hover:bg-muted/60"
+                  }`}
+                >
+                  <span
+                    className="material-symbols-outlined text-[22px] shrink-0"
+                    style={{
+                      color: active ? "var(--color-primary)" : "var(--muted-foreground)",
+                      fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                    }}
                   >
-                    <span
-                      className="material-symbols-outlined text-[22px]"
-                      style={{
-                        color: active ? "var(--color-primary)" : "var(--muted-foreground)",
-                        fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
-                      }}
-                    >
-                      {icon}
-                    </span>
-                  </Link>
-                  {/* Tooltip */}
-                  <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold whitespace-nowrap shadow-lg opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[60]">
+                    {icon}
+                  </span>
+                  <span className={`whitespace-nowrap text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-100 ${active ? "text-primary" : "text-muted-foreground"}`}>
                     {label}
-                  </div>
-                </div>
+                  </span>
+                </Link>
               );
             })}
           </nav>
 
-          <div className="h-px bg-border/40 mx-2" />
+          <div className="h-px bg-border/40 mx-2 shrink-0" />
 
           {/* Notifications + Settings at bottom */}
-          <div className="flex flex-col items-center gap-1 py-3">
-            <div className="group relative w-full flex justify-center">
-              <button
-                onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
-                className="relative flex size-10 items-center justify-center rounded-xl hover:bg-muted/60 transition-all active:scale-90"
-              >
+          <div className="flex flex-col gap-0.5 py-2 px-2">
+            <button
+              onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
+              className="flex items-center gap-3 h-10 rounded-xl px-[11px] hover:bg-muted/60 transition-colors active:scale-95 w-full text-left"
+            >
+              <span className="relative shrink-0">
                 <span
                   className="material-symbols-outlined text-[22px]"
                   style={{
@@ -323,33 +338,27 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                   notifications
                 </span>
                 {(!open || !loaded) && (
-                  <span className="absolute top-2 right-2 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" />
+                  <span className="absolute -top-0.5 -right-0.5 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" />
                 )}
-              </button>
-              <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold whitespace-nowrap shadow-lg opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[60]">
-                Notifications
-              </div>
-            </div>
+              </span>
+              <span className="whitespace-nowrap text-sm font-semibold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100">Notifications</span>
+            </button>
 
-            <div className="group relative w-full flex justify-center">
-              <button
-                onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
-                className="flex size-10 items-center justify-center rounded-xl hover:bg-muted/60 transition-all active:scale-90"
+            <button
+              onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
+              className="flex items-center gap-3 h-10 rounded-xl px-[11px] hover:bg-muted/60 transition-colors active:scale-95 w-full text-left"
+            >
+              <span
+                className="material-symbols-outlined text-[22px] shrink-0"
+                style={{
+                  color: "var(--muted-foreground)",
+                  fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0",
+                }}
               >
-                <span
-                  className="material-symbols-outlined text-[22px]"
-                  style={{
-                    color: "var(--muted-foreground)",
-                    fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0",
-                  }}
-                >
-                  settings
-                </span>
-              </button>
-              <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold whitespace-nowrap shadow-lg opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[60]">
-                Settings
-              </div>
-            </div>
+                settings
+              </span>
+              <span className="whitespace-nowrap text-sm font-semibold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100">Settings</span>
+            </button>
           </div>
         </div>
       )}

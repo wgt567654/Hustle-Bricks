@@ -11,12 +11,12 @@
  */
 
 export const STATUS_HEX = {
-  scheduled:   "#4F46E5",  // --color-status-scheduled  (indigo)
+  scheduled:   "#2E6A8E",  // --color-status-scheduled  (steel blue)
   in_progress: "#EA580C",  // --color-status-in-progress (orange)
   completed:   "#16A34A",  // --color-status-completed   (green)
   cancelled:   "#6B7280",  // --color-status-cancelled   (gray)
   draft:       "#6B7280",  // --color-status-draft       (gray)
-  sent:        "#4F46E5",  // --color-status-sent        (indigo)
+  sent:        "#2E6A8E",  // --color-status-sent        (steel blue)
   accepted:    "#16A34A",  // --color-status-accepted    (green)
   declined:    "#DC2626",  // --color-status-declined    (red)
 } as const;
@@ -41,7 +41,7 @@ export const STATUS_CLASS: Record<AnyStatus, string> = {
 };
 
 export const CHART_COLORS = {
-  blue:    "#4F46E5",  // primary indigo
+  blue:    "#2E6A8E",  // primary steel blue
   green:   "#16A34A",
   orange:  "#EA580C",
   violet:  "#8B5CF6",
