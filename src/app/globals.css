@@ -301,13 +301,7 @@
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  /* Brick marquee scroll */
-  .animate-scroll-bricks {
-    animation: scroll-bricks 16s linear infinite;
-    will-change: transform;
-    width: max-content;
-    display: flex;
-  }
+  /* Bricks scrolling inside the loader — -50% = exactly N bricks (half of 2N total) */
   @keyframes scroll-bricks {
     from { transform: translateX(0); }
     to   { transform: translateX(-50%); }

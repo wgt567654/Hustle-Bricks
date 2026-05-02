@@ -1,65 +1,85 @@
-function BrickMark({ size = 40 }: { size?: number }) {
+import React from "react";
+
+/**
+ * Container: 200×200 circle
+ * Clip window: 144×80px, centered (top/bottom: 60px, left/right: 28px)
+ * BRICK_H derived from clip: (80 - GAP_Y) / 2 = 36px — rows never clip
+ * BRICK_W: 52, GAP_X: 8 — ~2 full bricks visible across 144px window
+ */
+
+const BRICK_W = 50;
+const BRICK_H = 28;
+const GAP_X   = 8;
+const GAP_Y   = 8;
+const N       = 8;
+const STEP    = BRICK_W + GAP_X; // 58
+
+function BrickRow({ startOffset = 0 }: { startOffset?: number }) {
   return (
-    <div
-      className="shrink-0 flex items-center justify-center rounded-xl bg-primary"
-      style={{ width: size, height: size, borderRadius: size * 0.28 }}
-    >
-      <svg
-        viewBox="0 0 22 13"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ width: size * 0.75, height: "auto" }}
+    <div style={{ transform: `translateX(${startOffset}px)`, height: BRICK_H }}>
+      <div
+        style={{
+          display: "flex",
+          animation: "scroll-bricks 4s linear infinite",
+          willChange: "transform",
+        }}
       >
-        <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-        <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-        <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-        <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-        <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-      </svg>
+        {Array.from({ length: N * 2 }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: BRICK_W,
+              height: BRICK_H,
+              borderRadius: 7,
+              background: "rgba(255,255,255,0.95)",
+              flexShrink: 0,
+              marginRight: GAP_X,
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-const MARKS = Array.from({ length: 8 });
-
 export function BrickLoader() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-10 select-none">
-
-      {/* Brand mark + wordmark */}
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-pulse" style={{ animationDuration: "2s" }}>
-          <BrickMark size={64} />
-        </div>
-        <p
-          className="text-[15px] font-extrabold uppercase tracking-[0.14em] text-foreground"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Hustle Bricks
-        </p>
-        <p className="text-xs text-muted-foreground tracking-wide">Loading…</p>
-      </div>
-
-      {/* Scrolling marquee */}
+    <div
+      style={{
+        minHeight: "100svh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <div
-        className="w-full overflow-hidden py-1"
+        className="bg-primary"
         style={{
-          WebkitMaskImage:
-            "linear-gradient(to right, transparent, black 12%, black 88%, transparent)",
-          maskImage:
-            "linear-gradient(to right, transparent, black 12%, black 88%, transparent)",
+          width: 200,
+          height: 200,
+          borderRadius: 100,
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <div className="animate-scroll-bricks">
-          {/* Two identical sets for seamless loop */}
-          {[...MARKS, ...MARKS].map((_, i) => (
-            <div key={i} className="mx-3 opacity-70">
-              <BrickMark size={36} />
-            </div>
-          ))}
+        <div
+          style={{
+            position: "absolute",
+            left: 40,
+            right: 40,
+            top: 68,
+            bottom: 68,
+            overflow: "hidden",
+            borderRadius: 7,
+            display: "flex",
+            flexDirection: "column",
+            gap: GAP_Y,
+          }}
+        >
+          <BrickRow startOffset={0} />
+          <BrickRow startOffset={-STEP / 2} />
         </div>
       </div>
-
     </div>
   );
 }
