@@ -9,6 +9,7 @@ const NAV = [
   { href: "/employee/canvassing",   label: "Canvass",   icon: "door_front",    exact: false },
   { href: "/employee/schedule",     label: "Schedule",  icon: "calendar_month", exact: false },
   { href: "/employee/analytics",    label: "My Stats",  icon: "leaderboard",   exact: false },
+  { href: "/employee/settings",     label: "Settings",  icon: "settings",      exact: false },
 ];
 
 export default function EmployeeShell({
@@ -45,8 +46,14 @@ export default function EmployeeShell({
       >
         {/* Logo mark */}
         <div className="flex items-center justify-center h-14 shrink-0">
-          <div className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground text-xs font-black tracking-tight select-none">
-            HB
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary select-none">
+            <svg viewBox="0 0 22 13" width="18" height="auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+            </svg>
           </div>
         </div>
 
@@ -83,27 +90,6 @@ export default function EmployeeShell({
           })}
         </nav>
 
-        <div className="h-px bg-border/40 mx-2" />
-
-        {/* Sign out at bottom */}
-        <div className="flex flex-col items-center gap-1 py-3">
-          <div className="group relative w-full flex justify-center">
-            <button
-              onClick={handleSignOut}
-              className="flex size-10 items-center justify-center rounded-xl hover:bg-muted/60 transition-all active:scale-90"
-            >
-              <span
-                className="material-symbols-outlined text-[22px]"
-                style={{ color: "var(--muted-foreground)", fontVariationSettings: "'FILL' 0" }}
-              >
-                logout
-              </span>
-            </button>
-            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold whitespace-nowrap shadow-lg opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[60]">
-              Sign Out
-            </div>
-          </div>
-        </div>
       </div>}
 
       {/* ── TOP BAR ── */}
