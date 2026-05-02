@@ -40,39 +40,46 @@ export default function EmployeeShell({
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
 
       {/* ── DESKTOP SIDEBAR — lg+ only, hidden on map ── */}
-      {!isMapPage && <div
-        className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-[60px] z-40 border-r border-border/40"
-        style={{ background: "var(--card)" }}
-      >
-        {/* Logo mark */}
-        <div className="flex items-center justify-center h-14 shrink-0">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary select-none">
-            <svg viewBox="0 0 22 13" width="18" height="auto" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-              <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-              <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-              <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-              <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-            </svg>
+      {!isMapPage && (
+        <div
+          className="group hidden lg:flex flex-col fixed left-0 top-0 h-screen w-[60px] hover:w-[220px] z-40 border-r border-border/40 overflow-hidden"
+          style={{ background: "var(--card)", transition: "width 200ms ease-in-out" }}
+        >
+          {/* Logo mark */}
+          <div className="flex items-center h-14 shrink-0 px-[14px] gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary select-none">
+              <svg viewBox="0 0 22 13" width="18" height="auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              </svg>
+            </div>
+            <span
+              className="whitespace-nowrap text-[13px] font-extrabold tracking-wide uppercase text-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+              style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
+            >
+              Employee Portal
+            </span>
           </div>
-        </div>
 
-        <div className="h-px bg-border/40 mx-2" />
+          <div className="h-px bg-border/40 mx-2 shrink-0" />
 
-        {/* Nav items */}
-        <nav className="flex flex-col items-center gap-1 flex-1 py-3">
-          {NAV.map(({ href, label, icon, exact }) => {
-            const active = isActive(href, exact);
-            return (
-              <div key={href} className="group relative w-full flex justify-center">
+          {/* Nav items */}
+          <nav className="flex flex-col gap-0.5 flex-1 py-2 px-2">
+            {NAV.map(({ href, label, icon, exact }) => {
+              const active = isActive(href, exact);
+              return (
                 <Link
+                  key={href}
                   href={href}
-                  className={`flex size-10 items-center justify-center rounded-xl transition-all active:scale-90 ${
+                  className={`flex items-center gap-3 h-10 rounded-xl px-[11px] transition-colors active:scale-95 ${
                     active ? "bg-primary/10" : "hover:bg-muted/60"
                   }`}
                 >
                   <span
-                    className="material-symbols-outlined text-[22px]"
+                    className="material-symbols-outlined text-[22px] shrink-0"
                     style={{
                       color: active ? "var(--color-primary)" : "var(--muted-foreground)",
                       fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
@@ -80,17 +87,15 @@ export default function EmployeeShell({
                   >
                     {icon}
                   </span>
+                  <span className={`whitespace-nowrap text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-100 ${active ? "text-primary" : "text-muted-foreground"}`}>
+                    {label}
+                  </span>
                 </Link>
-                {/* Tooltip */}
-                <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-semibold whitespace-nowrap shadow-lg opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[60]">
-                  {label}
-                </div>
-              </div>
-            );
-          })}
-        </nav>
-
-      </div>}
+              );
+            })}
+          </nav>
+        </div>
+      )}
 
       {/* ── TOP BAR ── */}
       <header className={`sticky top-0 z-30 chrome lg:hidden${isMapPage ? " hidden" : ""}`}>
