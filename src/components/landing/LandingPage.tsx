@@ -42,13 +42,13 @@ function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: "oklch(0.470 0.082 229)" }}>
-            <svg viewBox="0 0 200 200" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-              <rect x="28" y="74" width="66" height="40" rx="5" fill="white" fillOpacity="0.95" />
-              <rect x="106" y="74" width="66" height="40" rx="5" fill="white" fillOpacity="0.95" />
-              <rect x="28" y="122" width="37" height="40" rx="5" fill="white" fillOpacity="0.95" />
-              <rect x="73" y="122" width="54" height="40" rx="5" fill="white" fillOpacity="0.95" />
-              <rect x="135" y="122" width="37" height="40" rx="5" fill="white" fillOpacity="0.95" />
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl select-none" style={{ background: "oklch(0.470 0.082 229)" }}>
+            <svg viewBox="0 0 22 13" width="18" height="auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
             </svg>
           </div>
           <span className="font-display font-bold text-lg tracking-tight" style={{ color: "oklch(0.220 0.031 260)" }}>
@@ -831,13 +831,13 @@ function Footer() {
     <footer className="py-10 border-t" style={{ background: "#faf9f7", borderColor: "oklch(0.928 0.006 265 / 0.6)" }}>
       <div className="max-w-6xl mx-auto px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: "oklch(0.470 0.082 229)" }}>
-            <svg viewBox="0 0 200 200" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
-              <rect x="28" y="74" width="66" height="40" rx="5" fill="white" fillOpacity="0.95" />
-              <rect x="106" y="74" width="66" height="40" rx="5" fill="white" fillOpacity="0.95" />
-              <rect x="28" y="122" width="37" height="40" rx="5" fill="white" fillOpacity="0.95" />
-              <rect x="73" y="122" width="54" height="40" rx="5" fill="white" fillOpacity="0.95" />
-              <rect x="135" y="122" width="37" height="40" rx="5" fill="white" fillOpacity="0.95" />
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg select-none" style={{ background: "oklch(0.470 0.082 229)" }}>
+            <svg viewBox="0 0 22 13" width="15" height="auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+              <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
             </svg>
           </div>
           <span className="font-display font-bold" style={{ color: "oklch(0.220 0.031 260)" }}>HustleBricks</span>
