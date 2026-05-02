@@ -10,7 +10,7 @@ const light = {
   "--card": "oklch(1 0 0)",
   "--muted-foreground": "oklch(0.551 0.023 264)",
   "--border": "oklch(0.928 0.006 265)",
-  "--primary": "oklch(0.511 0.230 277)",
+  "--primary": "oklch(0.470 0.082 229)",
   "--secondary": "oklch(0.970 0.004 248)",
   colorScheme: "light",
 } as React.CSSProperties;
@@ -42,8 +42,14 @@ function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "oklch(0.511 0.230 277)" }}>
-            <span className="text-white font-bold text-sm">H</span>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: "oklch(0.470 0.082 229)" }}>
+            <svg viewBox="0 0 200 200" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+              <rect x="28" y="74" width="66" height="40" rx="5" fill="white" fillOpacity="0.95" />
+              <rect x="106" y="74" width="66" height="40" rx="5" fill="white" fillOpacity="0.95" />
+              <rect x="28" y="122" width="37" height="40" rx="5" fill="white" fillOpacity="0.95" />
+              <rect x="73" y="122" width="54" height="40" rx="5" fill="white" fillOpacity="0.95" />
+              <rect x="135" y="122" width="37" height="40" rx="5" fill="white" fillOpacity="0.95" />
+            </svg>
           </div>
           <span className="font-display font-bold text-lg tracking-tight" style={{ color: "oklch(0.220 0.031 260)" }}>
             HustleBricks
@@ -65,7 +71,7 @@ function Navbar() {
           <Link
             href="/signup"
             className="text-sm font-medium text-white px-4 py-2 rounded-xl transition-colors press"
-            style={{ background: "oklch(0.511 0.230 277)" }}
+            style={{ background: "oklch(0.470 0.082 229)" }}
           >
             Get Started
           </Link>
@@ -91,7 +97,7 @@ function Navbar() {
           <a href="#faq" className="text-sm" style={{ color: "oklch(0.551 0.023 264)" }} onClick={() => setOpen(false)}>FAQ</a>
           <div className="flex gap-3 pt-2 border-t" style={{ borderColor: "oklch(0.928 0.006 265 / 0.6)" }}>
             <Link href="/login" className="flex-1 text-center text-sm border rounded-xl py-2" style={{ borderColor: "oklch(0.928 0.006 265)", color: "oklch(0.220 0.031 260)" }}>Log in</Link>
-            <Link href="/signup" className="flex-1 text-center text-sm text-white rounded-xl py-2 font-medium" style={{ background: "oklch(0.511 0.230 277)" }}>Get Started</Link>
+            <Link href="/signup" className="flex-1 text-center text-sm text-white rounded-xl py-2 font-medium" style={{ background: "oklch(0.470 0.082 229)" }}>Get Started</Link>
           </div>
         </div>
       )}
@@ -105,20 +111,20 @@ function Hero() {
   return (
     <section
       className="relative pt-32 pb-24 overflow-hidden"
-      style={{ background: "linear-gradient(160deg, #faf9f7 0%, #f0eef8 60%, #e8e4f5 100%)" }}
+      style={{ background: "linear-gradient(160deg, #f7f8f9 0%, #e5f2f8 60%, #d6e3ec 100%)" }}
     >
       <div
         className="absolute top-10 left-1/2 -translate-x-1/2 w-[700px] h-[400px] -z-10 opacity-20"
-        style={{ background: "radial-gradient(ellipse, oklch(0.511 0.230 277) 0%, transparent 70%)", filter: "blur(80px)" }}
+        style={{ background: "radial-gradient(ellipse, oklch(0.470 0.082 229) 0%, transparent 70%)", filter: "blur(80px)" }}
       />
 
       <div className="max-w-4xl mx-auto px-5 text-center">
         <div
           className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-6 border"
-          style={{ background: "oklch(0.511 0.230 277 / 0.08)", borderColor: "oklch(0.511 0.230 277 / 0.20)" }}
+          style={{ background: "oklch(0.470 0.082 229 / 0.08)", borderColor: "oklch(0.470 0.082 229 / 0.20)" }}
         >
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span className="text-sm font-medium" style={{ color: "oklch(0.511 0.230 277)" }}>Built for home service businesses</span>
+          <span className="text-sm font-medium" style={{ color: "oklch(0.470 0.082 229)" }}>Built for home service businesses</span>
         </div>
 
         <h1 className="text-5xl md:text-7xl font-display font-bold leading-[1.05] mb-6" style={{ color: "oklch(0.220 0.031 260)" }}>
@@ -126,7 +132,7 @@ function Hero() {
           <br />
           <span
             className="text-transparent bg-clip-text"
-            style={{ backgroundImage: "linear-gradient(90deg, oklch(0.511 0.230 277), oklch(0.606 0.219 293))" }}
+            style={{ backgroundImage: "linear-gradient(90deg, oklch(0.470 0.082 229), oklch(0.685 0.148 237))" }}
           >
             Not the other way around.
           </span>
@@ -140,7 +146,7 @@ function Hero() {
           <Link
             href="/signup"
             className="press w-full sm:w-auto inline-flex items-center justify-center gap-2 text-white font-semibold px-7 py-3.5 rounded-xl transition-colors text-base shadow-lg"
-            style={{ background: "oklch(0.511 0.230 277)", boxShadow: "0 8px 24px oklch(0.511 0.230 277 / 0.25)" }}
+            style={{ background: "oklch(0.470 0.082 229)", boxShadow: "0 8px 24px oklch(0.470 0.082 229 / 0.25)" }}
           >
             Start Free Trial
             <span className="material-symbols-outlined text-lg">arrow_forward</span>
@@ -148,7 +154,7 @@ function Hero() {
           <Link
             href="/login"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 font-medium px-7 py-3.5 rounded-xl transition-colors text-base border"
-            style={{ borderColor: "oklch(0.511 0.230 277 / 0.30)", color: "oklch(0.511 0.230 277)" }}
+            style={{ borderColor: "oklch(0.470 0.082 229 / 0.30)", color: "oklch(0.470 0.082 229)" }}
           >
             Log in
           </Link>
@@ -163,7 +169,7 @@ function Hero() {
 // ─── Feature Cards ────────────────────────────────────────────────────────────
 
 const featureCards = [
-  { icon: "work",     color: "oklch(0.511 0.230 277)", bg: "oklch(0.511 0.230 277 / 0.08)", title: "Jobs & Scheduling",       desc: "Track every job from quote to completion. Google Calendar sync keeps your whole team in the loop." },
+  { icon: "work",     color: "oklch(0.470 0.082 229)", bg: "oklch(0.470 0.082 229 / 0.08)", title: "Jobs & Scheduling",       desc: "Track every job from quote to completion. Google Calendar sync keeps your whole team in the loop." },
   { icon: "group",    color: "oklch(0.606 0.219 293)", bg: "oklch(0.606 0.219 293 / 0.08)", title: "Clients & Quotes",        desc: "Manage your client list, send professional quotes, and convert them into invoices in one click." },
   { icon: "payments", color: "oklch(0.627 0.170 149)", bg: "oklch(0.627 0.170 149 / 0.08)", title: "Online Payments",         desc: "Get paid faster with Stripe-powered invoices your clients can pay from any device." },
   { icon: "badge",    color: "oklch(0.769 0.165 70)",  bg: "oklch(0.769 0.165 70  / 0.08)", title: "Team & Employee Portal",  desc: "Add crew members, assign jobs, and let your team clock in straight from their phones." },
@@ -174,7 +180,7 @@ function FeatureCards() {
     <section id="features" className="py-6" style={{ background: "white" }}>
       <SectionCard className="py-16 px-8">
         <div className="text-center mb-12">
-          <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.511 0.230 277)" }}>Features</p>
+          <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.470 0.082 229)" }}>Features</p>
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: "oklch(0.220 0.031 260)" }}>
             Everything you need to run the job.
           </h2>
@@ -220,9 +226,9 @@ function JobBoardMockup() {
     <div className="rounded-2xl overflow-hidden border" style={{ background: "white", borderColor: "oklch(0.928 0.006 265 / 0.6)", boxShadow: "0 8px 40px oklch(0 0 0 / 0.10)" }}>
       <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor: "oklch(0.928 0.006 265 / 0.5)" }}>
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.511 0.230 277)" }}>work</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.470 0.082 229)" }}>work</span>
           <span className="font-display font-semibold text-base" style={{ color: "oklch(0.220 0.031 260)" }}>Jobs</span>
-          <span className="text-xs px-2 py-0.5 rounded-full font-semibold ml-1" style={{ background: "oklch(0.511 0.230 277 / 0.10)", color: "oklch(0.511 0.230 277)" }}>6 active</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-semibold ml-1" style={{ background: "oklch(0.470 0.082 229 / 0.10)", color: "oklch(0.470 0.082 229)" }}>6 active</span>
         </div>
         <div className="flex items-center gap-2 rounded-xl px-4 py-2" style={{ background: "oklch(0.970 0.004 248)" }}>
           <span className="material-symbols-outlined" style={{ fontSize: 15, color: "oklch(0.551 0.023 264)" }}>search</span>
@@ -291,11 +297,11 @@ function CanvasMapMockup() {
       {/* Header */}
       <div className="px-6 py-5 flex items-center justify-between border-b" style={{ background: "white", borderColor: "oklch(0.928 0.006 265 / 0.5)" }}>
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.511 0.230 277)" }}>map</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.470 0.082 229)" }}>map</span>
           <span className="font-display font-semibold text-base" style={{ color: "oklch(0.220 0.031 260)" }}>Canvassing Map</span>
-          <span className="text-xs px-2 py-0.5 rounded-full font-semibold ml-1" style={{ background: "oklch(0.511 0.230 277 / 0.10)", color: "oklch(0.511 0.230 277)" }}>Live</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-semibold ml-1" style={{ background: "oklch(0.470 0.082 229 / 0.10)", color: "oklch(0.470 0.082 229)" }}>Live</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "oklch(0.511 0.230 277 / 0.10)", color: "oklch(0.511 0.230 277)" }}>
+        <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "oklch(0.470 0.082 229 / 0.10)", color: "oklch(0.470 0.082 229)" }}>
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>location_on</span>
           Oak Park, IL
         </div>
@@ -421,7 +427,7 @@ function RevenueChartMockup() {
       <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor: "oklch(0.928 0.006 265 / 0.5)" }}>
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.511 0.230 277)" }}>bar_chart</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.470 0.082 229)" }}>bar_chart</span>
             <span className="font-display font-semibold text-base" style={{ color: "oklch(0.220 0.031 260)" }}>Revenue</span>
           </div>
           <p className="text-3xl font-display font-bold" style={{ color: "oklch(0.220 0.031 260)" }}>$24,830</p>
@@ -432,7 +438,7 @@ function RevenueChartMockup() {
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>trending_up</span>
             +18% vs last month
           </div>
-          <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl" style={{ background: "oklch(0.511 0.230 277 / 0.08)", color: "oklch(0.511 0.230 277)" }}>
+          <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl" style={{ background: "oklch(0.470 0.082 229 / 0.08)", color: "oklch(0.470 0.082 229)" }}>
             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>payments</span>
             12 invoices paid
           </div>
@@ -453,11 +459,11 @@ function RevenueChartMockup() {
                 style={{
                   height: `${b.height}%`,
                   background: i === bars.length - 1
-                    ? "linear-gradient(180deg, oklch(0.511 0.230 277), oklch(0.600 0.219 293))"
-                    : "oklch(0.511 0.230 277 / 0.18)",
+                    ? "linear-gradient(180deg, oklch(0.470 0.082 229), oklch(0.685 0.148 237))"
+                    : "oklch(0.470 0.082 229 / 0.18)",
                 }}
               />
-              <span className="font-medium" style={{ fontSize: 10, color: i === bars.length - 1 ? "oklch(0.511 0.230 277)" : "oklch(0.551 0.023 264)" }}>{b.month}</span>
+              <span className="font-medium" style={{ fontSize: 10, color: i === bars.length - 1 ? "oklch(0.470 0.082 229)" : "oklch(0.551 0.023 264)" }}>{b.month}</span>
             </div>
           ))}
         </div>
@@ -468,7 +474,7 @@ function RevenueChartMockup() {
 
 function ClientListMockup() {
   const clients = [
-    { initials: "MJ", name: "Mike Johnson",      lastJob: "Roof Inspection",      date: "Jun 10", balance: "$0",   jobs: 8,  color: "oklch(0.511 0.230 277)" },
+    { initials: "MJ", name: "Mike Johnson",      lastJob: "Roof Inspection",      date: "Jun 10", balance: "$0",   jobs: 8,  color: "oklch(0.470 0.082 229)" },
     { initials: "SR", name: "Sarah Rodriguez",   lastJob: "Window Cleaning",      date: "Jun 8",  balance: "$180", jobs: 5,  color: "oklch(0.606 0.219 293)" },
     { initials: "TP", name: "Tom Patel",          lastJob: "Gutter Cleaning",      date: "Jun 5",  balance: "$0",   jobs: 12, color: "oklch(0.627 0.170 149)" },
     { initials: "AL", name: "Amanda Lee",         lastJob: "Pressure Washing",     date: "Jun 3",  balance: "$95",  jobs: 3,  color: "oklch(0.769 0.165 70)"  },
@@ -478,9 +484,9 @@ function ClientListMockup() {
     <div className="rounded-2xl overflow-hidden border" style={{ background: "white", borderColor: "oklch(0.928 0.006 265 / 0.6)", boxShadow: "0 8px 40px oklch(0 0 0 / 0.10)" }}>
       <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor: "oklch(0.928 0.006 265 / 0.5)" }}>
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.511 0.230 277)" }}>group</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.470 0.082 229)" }}>group</span>
           <span className="font-display font-semibold text-base" style={{ color: "oklch(0.220 0.031 260)" }}>Clients</span>
-          <span className="text-xs px-2 py-0.5 rounded-full font-semibold ml-1" style={{ background: "oklch(0.511 0.230 277 / 0.10)", color: "oklch(0.511 0.230 277)" }}>48 total</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-semibold ml-1" style={{ background: "oklch(0.470 0.082 229 / 0.10)", color: "oklch(0.470 0.082 229)" }}>48 total</span>
         </div>
         <div className="flex items-center gap-2 rounded-xl px-4 py-2" style={{ background: "oklch(0.970 0.004 248)" }}>
           <span className="material-symbols-outlined" style={{ fontSize: 15, color: "oklch(0.551 0.023 264)" }}>search</span>
@@ -500,7 +506,7 @@ function ClientListMockup() {
             <p className="text-sm font-semibold flex-shrink-0" style={{ color: c.balance === "$0" ? "oklch(0.627 0.170 149)" : "#f97316" }}>
               {c.balance === "$0" ? "Paid ✓" : c.balance + " due"}
             </p>
-            <div className="px-3 h-8 rounded-xl border flex items-center justify-center flex-shrink-0 text-xs font-medium" style={{ borderColor: "oklch(0.928 0.006 265)", color: "oklch(0.511 0.230 277)" }}>
+            <div className="px-3 h-8 rounded-xl border flex items-center justify-center flex-shrink-0 text-xs font-medium" style={{ borderColor: "oklch(0.928 0.006 265)", color: "oklch(0.470 0.082 229)" }}>
               View
             </div>
           </div>
@@ -557,8 +563,8 @@ function DetailSections() {
           title="From first call to final sign-off."
           description="Create jobs, assign them to your crew, and track every status update in real time. HustleBricks syncs with Google Calendar so nothing falls through the cracks."
           bullets={["Create and assign jobs in seconds", "Track job status: scheduled, in progress, completed", "Google Calendar sync for every team member", "Before & after photos captured on-site", "Client portal for booking requests"]}
-          iconColor="oklch(0.511 0.230 277)"
-          iconBg="oklch(0.511 0.230 277 / 0.10)"
+          iconColor="oklch(0.470 0.082 229)"
+          iconBg="oklch(0.470 0.082 229 / 0.10)"
           mockup={<JobBoardMockup />}
         />
         <div className="border-t" style={{ borderColor: "oklch(0.928 0.006 265 / 0.5)" }} />
@@ -622,7 +628,7 @@ function Pricing() {
     <section id="pricing" className="py-6" style={{ background: "white" }}>
       <SectionCard className="py-16 px-8">
         <div className="text-center mb-12">
-          <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.511 0.230 277)" }}>Pricing</p>
+          <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.470 0.082 229)" }}>Pricing</p>
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: "oklch(0.220 0.031 260)" }}>
             Built and priced for growth.
           </h2>
@@ -632,14 +638,14 @@ function Pricing() {
             <button
               onClick={() => setYearly(false)}
               className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-              style={!yearly ? { background: "oklch(0.511 0.230 277)", color: "white" } : { color: "oklch(0.551 0.023 264)" }}
+              style={!yearly ? { background: "oklch(0.470 0.082 229)", color: "white" } : { color: "oklch(0.551 0.023 264)" }}
             >
               Monthly
             </button>
             <button
               onClick={() => setYearly(true)}
               className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
-              style={yearly ? { background: "oklch(0.511 0.230 277)", color: "white" } : { color: "oklch(0.551 0.023 264)" }}
+              style={yearly ? { background: "oklch(0.470 0.082 229)", color: "white" } : { color: "oklch(0.551 0.023 264)" }}
             >
               Yearly
               <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#f0fdf4", color: "#16a34a" }}>30% OFF</span>
@@ -653,11 +659,11 @@ function Pricing() {
               key={plan.name}
               className="relative rounded-2xl p-7 flex flex-col gap-6"
               style={plan.highlight
-                ? { background: "oklch(0.511 0.230 277)", boxShadow: "0 8px 40px oklch(0.511 0.230 277 / 0.35)" }
+                ? { background: "oklch(0.470 0.082 229)", boxShadow: "0 8px 40px oklch(0.470 0.082 229 / 0.35)" }
                 : { background: "white", border: "1px solid oklch(0.928 0.006 265 / 0.8)", boxShadow: "0 2px 12px oklch(0 0 0 / 0.05)" }}
             >
               {plan.highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-xs font-bold px-4 py-1 rounded-full shadow-sm" style={{ color: "oklch(0.511 0.230 277)" }}>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-xs font-bold px-4 py-1 rounded-full shadow-sm" style={{ color: "oklch(0.470 0.082 229)" }}>
                   Most Popular
                 </div>
               )}
@@ -692,8 +698,8 @@ function Pricing() {
                 href="/signup"
                 className="press w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-colors"
                 style={plan.highlight
-                  ? { background: "white", color: "oklch(0.511 0.230 277)" }
-                  : { background: "oklch(0.511 0.230 277)", color: "white" }}
+                  ? { background: "white", color: "oklch(0.470 0.082 229)" }
+                  : { background: "oklch(0.470 0.082 229)", color: "white" }}
               >
                 Start Free Trial
               </Link>
@@ -703,7 +709,7 @@ function Pricing() {
                   <li key={f} className="flex items-center gap-2.5 text-sm">
                     <span
                       className="material-symbols-outlined flex-shrink-0"
-                      style={{ fontSize: "16px", color: plan.highlight ? "rgba(255,255,255,0.80)" : "oklch(0.511 0.230 277)" }}
+                      style={{ fontSize: "16px", color: plan.highlight ? "rgba(255,255,255,0.80)" : "oklch(0.470 0.082 229)" }}
                     >
                       check
                     </span>
@@ -737,7 +743,7 @@ function FAQ() {
       <SectionCard className="py-16 px-8">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.511 0.230 277)" }}>FAQ</p>
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.470 0.082 229)" }}>FAQ</p>
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: "oklch(0.220 0.031 260)" }}>
               Everything you need before switching.
             </h2>
@@ -783,11 +789,11 @@ function FinalCTA() {
     <section className="py-6" style={{ background: "white" }}>
       <div
         className="mx-4 md:mx-8 rounded-3xl py-20 text-center relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, oklch(0.380 0.130 277) 0%, oklch(0.460 0.200 277) 100%)" }}
+        style={{ background: "linear-gradient(135deg, oklch(0.300 0.082 229) 0%, oklch(0.420 0.082 229) 100%)" }}
       >
         <div
           className="absolute inset-0 opacity-40"
-          style={{ background: "radial-gradient(ellipse at 50% 0%, oklch(0.600 0.230 277), transparent 70%)" }}
+          style={{ background: "radial-gradient(ellipse at 50% 0%, oklch(0.570 0.100 229), transparent 70%)" }}
         />
         <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4 relative">
           Your business deserves better software.
@@ -799,7 +805,7 @@ function FinalCTA() {
           <Link
             href="/signup"
             className="press inline-flex items-center gap-2 bg-white font-semibold px-8 py-3.5 rounded-xl hover:bg-white/90 transition-colors shadow-lg"
-            style={{ color: "oklch(0.511 0.230 277)" }}
+            style={{ color: "oklch(0.470 0.082 229)" }}
           >
             Start Free Trial
             <span className="material-symbols-outlined text-lg">arrow_forward</span>
@@ -825,8 +831,14 @@ function Footer() {
     <footer className="py-10 border-t" style={{ background: "#faf9f7", borderColor: "oklch(0.928 0.006 265 / 0.6)" }}>
       <div className="max-w-6xl mx-auto px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "oklch(0.511 0.230 277)" }}>
-            <span className="text-white font-bold text-xs">H</span>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: "oklch(0.470 0.082 229)" }}>
+            <svg viewBox="0 0 200 200" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
+              <rect x="28" y="74" width="66" height="40" rx="5" fill="white" fillOpacity="0.95" />
+              <rect x="106" y="74" width="66" height="40" rx="5" fill="white" fillOpacity="0.95" />
+              <rect x="28" y="122" width="37" height="40" rx="5" fill="white" fillOpacity="0.95" />
+              <rect x="73" y="122" width="54" height="40" rx="5" fill="white" fillOpacity="0.95" />
+              <rect x="135" y="122" width="37" height="40" rx="5" fill="white" fillOpacity="0.95" />
+            </svg>
           </div>
           <span className="font-display font-bold" style={{ color: "oklch(0.220 0.031 260)" }}>HustleBricks</span>
         </div>
