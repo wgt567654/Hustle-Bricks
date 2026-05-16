@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ type Quote = {
   total: number;
   created_at: string;
   notes: string | null;
+  video_url: string | null;
   client_id: string;
   clients: {
     name: string;
@@ -58,6 +59,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [currency, setCurrency] = useState("USD");
   const [acting, setActing] = useState(false);
   const [linkedJobId, setLinkedJobId] = useState<string | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function load() {
@@ -77,7 +81,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
       const { data, error } = await supabase
         .from("quotes")
-        .select("id, status, total, created_at, notes, client_id, clients(name, phone, email, address), quote_line_items(id, description, quantity, unit_price)")
+        .select("id, status, total, created_at, notes, video_url, client_id, clients(name, phone, email, address), quote_line_items(id, description, quantity, unit_price)")
         .eq("id", id)
         .single();
 
@@ -173,6 +177,38 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     await supabase.from("quotes").update({ status: "sent" }).eq("id", quote.id);
     setQuote((q) => q ? { ...q, status: "sent" } : q);
     setActing(false);
+  }
+
+  async function uploadVideo(file: File) {
+    if (!quote) return;
+    setUploadingVideo(true);
+    const supabase = createClient();
+    const ext = file.name.split(".").pop() ?? "mp4";
+    const path = `${quote.id}/video.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("quote-videos")
+      .upload(path, file, { upsert: true });
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from("quote-videos").getPublicUrl(path);
+      await supabase.from("quotes").update({ video_url: publicUrl }).eq("id", quote.id);
+      setQuote((q) => q ? { ...q, video_url: publicUrl } : q);
+    }
+    setUploadingVideo(false);
+  }
+
+  async function removeVideo() {
+    if (!quote?.video_url) return;
+    const supabase = createClient();
+    await supabase.from("quotes").update({ video_url: null }).eq("id", quote.id);
+    setQuote((q) => q ? { ...q, video_url: null } : q);
+  }
+
+  function copyShareLink() {
+    if (!quote) return;
+    const url = `${window.location.origin}/q/${quote.id}`;
+    navigator.clipboard.writeText(url);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
   }
 
   if (loading) {
@@ -335,6 +371,96 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </Card>
+
+      {/* ── Video Proposal ── */}
+      <section>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">Video Proposal</h3>
+        {quote.video_url ? (
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video
+              src={quote.video_url}
+              controls
+              playsInline
+              className="w-full max-h-[280px] bg-black"
+            />
+            <div className="flex gap-2 p-3 border-t border-border">
+              <button
+                onClick={() => videoInputRef.current?.click()}
+                disabled={uploadingVideo}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-border text-xs font-bold text-foreground bg-muted/40 active:scale-95 transition-transform disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[14px]">videocam</span>
+                Replace
+              </button>
+              <button
+                onClick={removeVideo}
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-red-200 text-xs font-bold text-red-500 bg-red-50 active:scale-95 transition-transform"
+              >
+                <span className="material-symbols-outlined text-[14px]">delete</span>
+                Remove
+              </button>
+            </div>
+          </Card>
+        ) : (
+          <button
+            onClick={() => videoInputRef.current?.click()}
+            disabled={uploadingVideo}
+            className="w-full flex flex-col items-center gap-3 py-8 rounded-2xl border-2 border-dashed border-border bg-card hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[32px] text-muted-foreground/50">
+              {uploadingVideo ? "hourglass_top" : "videocam"}
+            </span>
+            <div className="text-center">
+              <p className="text-sm font-bold text-foreground">
+                {uploadingVideo ? "Uploading…" : "Attach Video Walkthrough"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Record a quick tour of the job site to win the deal
+              </p>
+            </div>
+          </button>
+        )}
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) uploadVideo(file);
+            e.target.value = "";
+          }}
+        />
+      </section>
+
+      {/* ── Share Link ── */}
+      <section>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">Client Link</h3>
+        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          <div className="p-4 flex flex-col gap-3">
+            <p className="text-xs text-muted-foreground">
+              Share this link with {quote.clients?.name ?? "your client"} so they can view the quote
+              {quote.video_url ? ", watch your video," : ""} and accept online.
+            </p>
+            <div className="flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-3">
+              <span className="text-xs text-muted-foreground flex-1 truncate font-mono">
+                {typeof window !== "undefined" ? `${window.location.origin}/q/${quote.id}` : `/q/${quote.id}`}
+              </span>
+            </div>
+            <button
+              onClick={copyShareLink}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-white text-sm font-bold active:scale-[0.98] transition-all"
+            >
+              <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                {copySuccess ? "check_circle" : "content_copy"}
+              </span>
+              {copySuccess ? "Copied!" : "Copy Client Link"}
+            </button>
+          </div>
+        </Card>
+      </section>
 
       {/* ── ACTION BAR ── */}
 

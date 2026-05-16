@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { STATUS_HEX, STATUS_CLASS } from "@/lib/status-colors";
 import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
 import { getDefaultTemplate, interpolateTemplate } from "@/lib/messageTemplates";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -160,6 +161,8 @@ export default function JobsPage() {
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState<number | null>(null);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
+  const [weatherRiskDates, setWeatherRiskDates] = useState<Set<string>>(new Set());
+  const [hasServiceAreas, setHasServiceAreas] = useState(false);
 
   // Log Job modal state
   const [showLogJob, setShowLogJob] = useState(false);
@@ -203,6 +206,21 @@ export default function JobsPage() {
       setCurrency((biz as unknown as { currency: string }).currency ?? "USD");
       setSmsReminders((biz as unknown as { sms_reminders_enabled: boolean }).sms_reminders_enabled ?? false);
       setBusinessName((biz as unknown as { name: string }).name ?? "");
+      const areas: string[] = (biz as unknown as { service_areas: string[] | null }).service_areas ?? [];
+      // Fallback: legacy single-city field
+      const legacyCity = (biz as unknown as { city: string | null }).city;
+      const allAreas = areas.length ? areas : (legacyCity ? [legacyCity] : []);
+      setHasServiceAreas(allAreas.length > 0);
+      if (allAreas.length > 0) {
+        const params = new URLSearchParams();
+        allAreas.forEach((a) => params.append("city", a));
+        fetch(`/api/weather-alerts?${params}`)
+          .then((r) => r.ok ? r.json() : { risk: [] })
+          .then((data: { risk: { date: string; hasRisk: boolean }[] }) => {
+            setWeatherRiskDates(new Set(data.risk.filter((d) => d.hasRisk).map((d) => d.date)));
+          })
+          .catch(() => {});
+      }
 
       const now = new Date();
       const twoYearsAgo = new Date(now.getFullYear() - 1, 0, 1);
@@ -634,6 +652,28 @@ export default function JobsPage() {
         </div>
       )}
 
+      {/* Weather alert banner */}
+      {hasServiceAreas && (() => {
+        const affected = scheduledJobs.filter((j) => {
+          if (!j.scheduled_at) return false;
+          return weatherRiskDates.has(toLocalDateStr(new Date(j.scheduled_at)));
+        });
+        if (affected.length === 0) return null;
+        return (
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800/40 px-4 py-3">
+            <span className="material-symbols-outlined text-[20px] text-amber-500 shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>thunderstorm</span>
+            <div className="flex flex-col flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                {affected.length} job{affected.length !== 1 ? "s" : ""} may face weather delays
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 truncate">
+                {affected.map((j) => j.clients?.name ?? "Unknown").join(", ")}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Time filter chips + filter icon button */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
@@ -951,11 +991,10 @@ export default function JobsPage() {
                     onChange={(e) => setLogForm((f) => ({ ...f, client_email: e.target.value }))}
                     className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
                   />
-                  <input
-                    type="text"
-                    placeholder="Address"
+                  <AddressAutocomplete
                     value={logForm.client_address}
-                    onChange={(e) => setLogForm((f) => ({ ...f, client_address: e.target.value }))}
+                    onChange={(v) => setLogForm((f) => ({ ...f, client_address: v }))}
+                    placeholder="Address"
                     className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
                   />
                   <select
@@ -1169,6 +1208,9 @@ export default function JobsPage() {
     const color = STATUS_HEX[job.status];
     const title = job.job_line_items[0]?.description ?? "Job";
     const extraItems = job.job_line_items.length - 1;
+    const isWeatherRisk = job.scheduled_at
+      ? weatherRiskDates.has(toLocalDateStr(new Date(job.scheduled_at)))
+      : false;
     return (
       <Card
         onClick={() => router.push(`/jobs/${job.id}`)}
@@ -1188,7 +1230,15 @@ export default function JobsPage() {
                 <span className="text-sm font-medium text-muted-foreground">{job.clients?.name ?? "Unknown client"}</span>
               </div>
             </div>
-            <span className="font-extrabold text-foreground">{formatCurrency(job.total, currency)}</span>
+            <div className="flex flex-col items-end gap-1">
+              <span className="font-extrabold text-foreground">{formatCurrency(job.total, currency)}</span>
+              {isWeatherRisk && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40">
+                  <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>thunderstorm</span>
+                  Weather risk
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 bg-muted/40 rounded-xl p-2 border border-border/50">
             <span className="material-symbols-outlined text-[14px] text-muted-foreground">calendar_clock</span>

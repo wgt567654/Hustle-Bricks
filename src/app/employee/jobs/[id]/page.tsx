@@ -1,9 +1,10 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useVoiceNote } from "@/hooks/useVoiceNote";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -69,9 +70,26 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
   const [notFound, setNotFound] = useState(false);
   const [updating, setUpdating] = useState(false);
 
+  // Voice note
+  const voice = useVoiceNote();
+  const [voiceNoteText, setVoiceNoteText] = useState("");
+  const [savingVoiceNote, setSavingVoiceNote] = useState(false);
+  const [voiceNoteSaved, setVoiceNoteSaved] = useState(false);
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setVoiceNoteText((prev) => prev ? prev + " " + text : text);
+  }, []);
+
   // Clock in/out
   const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null);
   const [clocking, setClocking] = useState(false);
+
+  // Supplies / inventory usage
+  const [inventoryItems, setInventoryItems] = useState<{ id: string; name: string; category: string; quantity: number }[]>([]);
+  const [supplyItemId, setSupplyItemId] = useState("");
+  const [supplyQty, setSupplyQty] = useState("1");
+  const [supplyNotes, setSupplyNotes] = useState("");
+  const [supplySaving, setSupplySaving] = useState(false);
+  const [supplySuccess, setSupplySuccess] = useState(false);
 
   // Photos
   const [uploadingPhoto, setUploadingPhoto] = useState<"before" | "after" | null>(null);
@@ -91,11 +109,36 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
   const [tipSaving, setTipSaving]  = useState(false);
   const [tipSuccess, setTipSuccess] = useState(false);
 
+  // Upsell suggestions
+  const [upsellSuggestions, setUpsellSuggestions] = useState<{ title: string; pitch: string; icon: string }[]>([]);
+  const [upsellLoading, setUpsellLoading] = useState(false);
+
+  // Neighbor referral
+  const [refOpen, setRefOpen] = useState(false);
+  const [refName, setRefName] = useState("");
+  const [refAddress, setRefAddress] = useState("");
+  const [refPhone, setRefPhone] = useState("");
+  const [refNotes, setRefNotes] = useState("");
+  const [refHeat, setRefHeat] = useState<"hot" | "warm" | "cool">("warm");
+  const [refSaving, setRefSaving] = useState(false);
+  const [refSuccess, setRefSuccess] = useState(false);
+
+  // Competitor intel
+  const [intelOpen, setIntelOpen] = useState(false);
+  const [intelCompetitor, setIntelCompetitor] = useState("");
+  const [intelType, setIntelType] = useState("truck_spotted");
+  const [intelPrice, setIntelPrice] = useState("");
+  const [intelNotes, setIntelNotes] = useState("");
+  const [intelSaving, setIntelSaving] = useState(false);
+  const [intelSuccess, setIntelSuccess] = useState(false);
+
   // Signature
   const [sigModalOpen, setSigModalOpen] = useState(false);
   const [sigSaving, setSigSaving] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
+
+  const swipeSig = useSwipeToDismiss(() => setSigModalOpen(false), sigModalOpen);
 
   useEffect(() => {
     async function load() {
@@ -134,10 +177,32 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       setJob(j);
       setPayAmount(j.total.toFixed(2));
       setActiveEntry(entryData as TimeEntry | null);
+
+      const { data: invData } = await supabase
+        .from("inventory_items")
+        .select("id, name, category, quantity")
+        .eq("business_id", j.business_id)
+        .eq("is_active", true)
+        .order("name");
+      setInventoryItems((invData ?? []) as { id: string; name: string; category: string; quantity: number }[]);
+
       setLoading(false);
     }
     load();
   }, [id]);
+
+  async function saveVoiceNote() {
+    if (!job || !voiceNoteText.trim()) return;
+    setSavingVoiceNote(true);
+    const supabase = createClient();
+    const newNote = job.notes ? job.notes + "\n" + voiceNoteText.trim() : voiceNoteText.trim();
+    await supabase.from("jobs").update({ notes: newNote }).eq("id", job.id);
+    setJob((j) => j ? { ...j, notes: newNote } : j);
+    setVoiceNoteText("");
+    setSavingVoiceNote(false);
+    setVoiceNoteSaved(true);
+    setTimeout(() => setVoiceNoteSaved(false), 2000);
+  }
 
   async function updateStatus(status: JobStatus) {
     if (!job) return;
@@ -229,6 +294,39 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     setTimeout(() => setTipSuccess(false), 3000);
   }
 
+  async function logSupplyUsage() {
+    if (!job || !employeeId || !supplyItemId) return;
+    setSupplySaving(true);
+    const supabase = createClient();
+
+    const qty = parseFloat(supplyQty) || 1;
+    const selectedItem = inventoryItems.find((i) => i.id === supplyItemId);
+
+    await supabase.from("inventory_usage").insert({
+      item_id: supplyItemId,
+      job_id: job.id,
+      quantity_used: qty,
+      logged_by: employeeId,
+      notes: supplyNotes || null,
+    });
+
+    // Decrement quantity for parts
+    if (selectedItem?.category === "part") {
+      const newQty = Math.max(0, selectedItem.quantity - qty);
+      await supabase.from("inventory_items").update({ quantity: newQty }).eq("id", supplyItemId);
+      setInventoryItems((items) =>
+        items.map((i) => i.id === supplyItemId ? { ...i, quantity: newQty } : i)
+      );
+    }
+
+    setSupplyItemId("");
+    setSupplyQty("1");
+    setSupplyNotes("");
+    setSupplySuccess(true);
+    setSupplySaving(false);
+    setTimeout(() => setSupplySuccess(false), 3000);
+  }
+
   function getCanvasCoords(canvas: HTMLCanvasElement, e: React.PointerEvent) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -301,6 +399,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
           setJob((j) => j ? { ...j, status: "completed" } : j);
           setSigModalOpen(false);
           setSigSaving(false);
+          fetchUpsell(job.id);
           return;
         }
       }
@@ -314,6 +413,70 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     setJob((j) => j ? { ...j, status: "completed" } : j);
     setSigModalOpen(false);
     setSigSaving(false);
+    fetchUpsell(job.id);
+  }
+
+  function fetchUpsell(jobId: string) {
+    setUpsellLoading(true);
+    fetch("/api/upsell", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.suggestions?.length) setUpsellSuggestions(d.suggestions); })
+      .catch(() => {})
+      .finally(() => setUpsellLoading(false));
+  }
+
+  async function submitIntel() {
+    if (!job || !employeeId || !intelCompetitor.trim()) return;
+    setIntelSaving(true);
+    const supabase = createClient();
+    await supabase.from("competitor_intel").insert({
+      business_id: job.business_id,
+      job_id: job.id,
+      team_member_id: employeeId,
+      competitor_name: intelCompetitor.trim(),
+      observation_type: intelType,
+      price_amount: intelType === "price_info" && intelPrice ? parseFloat(intelPrice) : null,
+      notes: intelNotes.trim() || null,
+    });
+    setIntelCompetitor("");
+    setIntelType("truck_spotted");
+    setIntelPrice("");
+    setIntelNotes("");
+    setIntelSaving(false);
+    setIntelSuccess(true);
+    setIntelOpen(false);
+    setTimeout(() => setIntelSuccess(false), 3000);
+  }
+
+  async function submitReferral() {
+    if (!job || !refName.trim() || !refAddress.trim()) return;
+    setRefSaving(true);
+    const supabase = createClient();
+    const heatNote = { hot: "Hot lead", warm: "Warm lead", cool: "Just browsing" }[refHeat];
+    const fullNotes = [heatNote, refNotes.trim()].filter(Boolean).join(" — ");
+    await supabase.from("leads").insert({
+      business_id: job.business_id,
+      name: refName.trim(),
+      address: refAddress.trim(),
+      phone: refPhone.trim() || null,
+      stage: "new",
+      source: "Neighbor Referral",
+      notes: fullNotes || null,
+      referral_job_id: job.id,
+    });
+    setRefName("");
+    setRefAddress("");
+    setRefPhone("");
+    setRefNotes("");
+    setRefHeat("warm");
+    setRefSaving(false);
+    setRefSuccess(true);
+    setRefOpen(false);
+    setTimeout(() => setRefSuccess(false), 3000);
   }
 
   const invoiceUrl = typeof window !== "undefined"
@@ -344,8 +507,6 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
   }
 
   const meta = STATUS_META[job.status];
-
-  const swipeSig = useSwipeToDismiss(() => setSigModalOpen(false), sigModalOpen);
 
   return (
     <div className="flex flex-col gap-4 px-4 py-5 max-w-xl mx-auto pb-32">
@@ -424,6 +585,47 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
         )}
+
+        {/* Voice Note */}
+        <div className="p-4 flex flex-col gap-3 border-t border-border/40">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Add Note</span>
+            {voice.supported && (
+              <button
+                type="button"
+                onClick={() => voice.listening ? voice.stop() : voice.start(handleVoiceTranscript)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  voice.listening
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">
+                  {voice.listening ? "stop" : "mic"}
+                </span>
+                {voice.listening ? "Stop" : "Dictate"}
+              </button>
+            )}
+          </div>
+          <textarea
+            rows={3}
+            placeholder="Type or dictate a note…"
+            value={voice.listening && voice.interim ? voiceNoteText + " " + voice.interim : voiceNoteText}
+            onChange={(e) => setVoiceNoteText(e.target.value)}
+            className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring/40 resize-none"
+          />
+          {voice.error && <p className="text-xs text-red-500">{voice.error}</p>}
+          {voice.listening && <p className="text-xs text-primary animate-pulse">Listening… speak your note</p>}
+          {voiceNoteText.trim() && (
+            <button
+              onClick={saveVoiceNote}
+              disabled={savingVoiceNote}
+              className="self-end px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:opacity-90 disabled:opacity-50 transition-all"
+            >
+              {voiceNoteSaved ? "Saved!" : savingVoiceNote ? "Saving…" : "Save Note"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Services */}
@@ -499,6 +701,39 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
           </span>
           Mark Complete
         </button>
+      )}
+
+      {/* ── Upsell suggestions ── */}
+      {job.status === "completed" && (upsellLoading || upsellSuggestions.length > 0) && (
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="px-4 pt-3.5 pb-3 flex items-center gap-2.5 border-b border-border/50">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <span className="material-symbols-outlined text-[17px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+            </div>
+            <div>
+              <p className="text-xs font-extrabold text-foreground">Upsell Ideas for the Boss</p>
+              <p className="text-[11px] text-muted-foreground">Tell the owner about these opportunities</p>
+            </div>
+          </div>
+          {upsellLoading ? (
+            <div className="flex items-center gap-2 px-4 py-4">
+              <span className="material-symbols-outlined text-[16px] text-muted-foreground animate-spin">progress_activity</span>
+              <span className="text-xs text-muted-foreground">Generating suggestions…</span>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {upsellSuggestions.map((s, i) => (
+                <div key={i} className="flex items-start gap-3 px-4 py-3">
+                  <span className="material-symbols-outlined text-[20px] text-primary mt-0.5 shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-bold text-foreground">{s.title}</span>
+                    <span className="text-xs text-muted-foreground">{s.pitch}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Photos ── */}
@@ -635,7 +870,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
                 <input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="0.1"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
                   className="w-full h-12 rounded-xl border border-border bg-transparent pl-7 pr-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -713,7 +948,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
                 <input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="0.1"
                   value={tipAmount}
                   onChange={(e) => setTipAmount(e.target.value)}
                   placeholder="0.00"
@@ -728,6 +963,299 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
               className="w-full py-3.5 rounded-xl bg-[var(--color-status-completed)] text-white font-bold text-sm shadow-md shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {tipSaving ? "Recording…" : `Record $${tipAmount || "0.00"} Tip`}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Supplies Used ── */}
+      {inventoryItems.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Log Supplies Used</h2>
+
+          {supplySuccess && (
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400">
+              <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <span className="text-sm font-bold">Usage logged!</span>
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Item</label>
+              <select
+                value={supplyItemId}
+                onChange={(e) => setSupplyItemId(e.target.value)}
+                className="h-12 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Select item…</option>
+                {inventoryItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}{item.category === "part" ? ` (${item.quantity} left)` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex flex-col gap-1.5 flex-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Quantity</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={supplyQty}
+                  onChange={(e) => setSupplyQty(e.target.value)}
+                  className="h-12 rounded-xl border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 flex-[2]">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes (optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Used full bottle"
+                  value={supplyNotes}
+                  onChange={(e) => setSupplyNotes(e.target.value)}
+                  className="h-12 rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={logSupplyUsage}
+              disabled={supplySaving || !supplyItemId}
+              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {supplySaving ? "Logging…" : "Log Usage"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Competitor Intel ── */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Competitive Intel</h2>
+
+        {intelSuccess && (
+          <div className="flex items-center gap-2 icon-green rounded-xl px-3 py-2.5">
+            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            <span className="text-sm font-bold">Intel logged!</span>
+          </div>
+        )}
+
+        {!intelOpen ? (
+          <button
+            onClick={() => setIntelOpen(true)}
+            className="flex items-center gap-3 w-full py-4 px-4 rounded-2xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98] transition-all"
+          >
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <span className="material-symbols-outlined text-[18px]">visibility</span>
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-bold text-foreground">Report Competitor</span>
+              <span className="text-xs text-muted-foreground">Spotted a rival? Log it for the boss</span>
+            </div>
+          </button>
+        ) : (
+          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-sm text-foreground">Report Competitor</span>
+              <button onClick={() => setIntelOpen(false)} className="text-xs font-bold text-muted-foreground">Cancel</button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Competitor Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Green Clean Co."
+                value={intelCompetitor}
+                onChange={(e) => setIntelCompetitor(e.target.value)}
+                className="h-12 rounded-xl border border-border bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">What did you see?</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "truck_spotted",      label: "Truck spotted",      icon: "local_shipping" },
+                  { value: "yard_sign",           label: "Yard sign",          icon: "signpost" },
+                  { value: "customer_mentioned",  label: "Customer mentioned", icon: "chat_bubble" },
+                  { value: "price_info",          label: "Price info",         icon: "sell" },
+                  { value: "quality_note",        label: "Quality note",       icon: "star" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setIntelType(opt.value)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all active:scale-95 ${
+                      intelType === opt.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-muted/40 text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">{opt.icon}</span>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {intelType === "price_info" && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Price mentioned</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    value={intelPrice}
+                    onChange={(e) => setIntelPrice(e.target.value)}
+                    className="w-full h-12 rounded-xl border border-border bg-transparent pl-7 pr-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Notes <span className="normal-case font-normal text-muted-foreground/60">(optional)</span>
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Any extra details…"
+                value={intelNotes}
+                onChange={(e) => setIntelNotes(e.target.value)}
+                className="rounded-xl border border-border bg-transparent px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+              />
+            </div>
+
+            <button
+              onClick={submitIntel}
+              disabled={intelSaving || !intelCompetitor.trim()}
+              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {intelSaving ? "Logging…" : "Log Intel"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Neighbor Referral ── */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Neighbor Leads</h2>
+
+        {refSuccess && (
+          <div className="flex items-center gap-2 icon-green rounded-xl px-3 py-2.5">
+            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            <span className="text-sm font-bold">Lead logged for the boss!</span>
+          </div>
+        )}
+
+        {!refOpen ? (
+          <button
+            onClick={() => {
+              setRefOpen(true);
+              if (job.clients?.address) setRefAddress("");
+            }}
+            className="flex items-center gap-3 w-full py-4 px-4 rounded-2xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98] transition-all"
+          >
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <span className="material-symbols-outlined text-[18px]">handshake</span>
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-bold text-foreground">Log a Neighbor Lead</span>
+              <span className="text-xs text-muted-foreground">Neighbor interested? Add them to the pipeline</span>
+            </div>
+          </button>
+        ) : (
+          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-sm text-foreground">Log a Neighbor Lead</span>
+              <button onClick={() => setRefOpen(false)} className="text-xs font-bold text-muted-foreground">Cancel</button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Neighbor Name *</label>
+              <input
+                type="text"
+                placeholder="e.g. John Smith"
+                value={refName}
+                onChange={(e) => setRefName(e.target.value)}
+                className="h-12 rounded-xl border border-border bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Their Address *</label>
+              <input
+                type="text"
+                placeholder={job.clients?.address ? `Near ${job.clients.address}` : "123 Oak St"}
+                value={refAddress}
+                onChange={(e) => setRefAddress(e.target.value)}
+                className="h-12 rounded-xl border border-border bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Phone <span className="normal-case font-normal text-muted-foreground/60">(optional)</span>
+              </label>
+              <input
+                type="tel"
+                placeholder="(555) 000-0000"
+                value={refPhone}
+                onChange={(e) => setRefPhone(e.target.value)}
+                className="h-12 rounded-xl border border-border bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">How interested?</label>
+              <div className="flex gap-2">
+                {([
+                  { value: "hot",  label: "Hot",          icon: "local_fire_department" },
+                  { value: "warm", label: "Warm",         icon: "thumb_up"             },
+                  { value: "cool", label: "Just browsing", icon: "remove_red_eye"       },
+                ] as { value: "hot" | "warm" | "cool"; label: string; icon: string }[]).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setRefHeat(opt.value)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
+                      refHeat === opt.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-muted/40 text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">{opt.icon}</span>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                What do they want? <span className="normal-case font-normal text-muted-foreground/60">(optional)</span>
+              </label>
+              <textarea
+                rows={2}
+                placeholder="e.g. Wants a quote on lawn care…"
+                value={refNotes}
+                onChange={(e) => setRefNotes(e.target.value)}
+                className="rounded-xl border border-border bg-transparent px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+              />
+            </div>
+
+            <button
+              onClick={submitReferral}
+              disabled={refSaving || !refName.trim() || !refAddress.trim()}
+              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {refSaving ? "Logging…" : "Add to Pipeline"}
             </button>
           </div>
         )}

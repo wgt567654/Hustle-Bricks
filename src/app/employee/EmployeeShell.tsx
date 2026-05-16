@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
@@ -21,6 +22,7 @@ export default function EmployeeShell({
 }) {
   const pathname = usePathname();
   const router   = useRouter();
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const isMapPage = pathname === "/employee/canvassing";
 
   function isActive(href: string, exact: boolean) {
@@ -42,8 +44,14 @@ export default function EmployeeShell({
       {/* ── DESKTOP SIDEBAR — lg+ only, hidden on map ── */}
       {!isMapPage && (
         <div
-          className="group hidden lg:flex flex-col fixed left-0 top-0 h-screen w-[60px] hover:w-[220px] z-40 border-r border-border/40 overflow-hidden"
-          style={{ background: "var(--card)", transition: "width 200ms ease-in-out" }}
+          onMouseEnter={() => setSidebarExpanded(true)}
+          onMouseLeave={() => setSidebarExpanded(false)}
+          className="hidden lg:flex flex-col fixed left-0 top-0 h-screen z-40 border-r border-border/40 overflow-hidden"
+          style={{
+            background: "var(--card)",
+            width: sidebarExpanded ? 220 : 60,
+            transition: sidebarExpanded ? "none" : "width 200ms ease-in-out",
+          }}
         >
           {/* Logo mark */}
           <div className="flex items-center h-14 shrink-0 px-[14px] gap-3">
@@ -57,7 +65,7 @@ export default function EmployeeShell({
               </svg>
             </div>
             <span
-              className="whitespace-nowrap text-[13px] font-extrabold tracking-wide uppercase text-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+              className={`whitespace-nowrap text-[13px] font-extrabold tracking-wide uppercase text-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}
               style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
             >
               Employee Portal
@@ -87,7 +95,7 @@ export default function EmployeeShell({
                   >
                     {icon}
                   </span>
-                  <span className={`whitespace-nowrap text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-100 ${active ? "text-primary" : "text-muted-foreground"}`}>
+                  <span className={`whitespace-nowrap text-sm font-semibold transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"} ${active ? "text-primary" : "text-muted-foreground"}`}>
                     {label}
                   </span>
                 </Link>

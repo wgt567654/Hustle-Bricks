@@ -18,27 +18,43 @@ const MORE_GROUPS = [
   {
     label: "Money",
     items: [
-      { href: "/payments", label: "Payments", icon: "attach_money", ownerOnly: false },
+      { href: "/payments",          label: "Payments",   icon: "attach_money",     ownerOnly: false },
+      { href: "/reports/mileage",        label: "Mileage",       icon: "local_gas_station", ownerOnly: true  },
+      { href: "/reports/profitability", label: "Profitability", icon: "trending_up",       ownerOnly: true  },
+      { href: "/reports/commission",    label: "Commission",    icon: "emoji_events",      ownerOnly: true  },
     ],
   },
   {
     label: "Business",
     items: [
-      { href: "/clients", label: "Clients",  icon: "group",         ownerOnly: false },
-      { href: "/leads",   label: "Leads",    icon: "person_search", ownerOnly: false },
-      { href: "/plans",   label: "Plans",    icon: "autorenew",     ownerOnly: false },
-      { href: "/team",    label: "Team",     icon: "badge",         ownerOnly: true  },
+      { href: "/inbox",     label: "Inbox",     icon: "chat",           ownerOnly: false },
+      { href: "/clients",   label: "Clients",   icon: "group",          ownerOnly: false },
+      { href: "/leads",     label: "Leads",     icon: "person_search",  ownerOnly: false },
+      { href: "/plans",     label: "Plans",     icon: "autorenew",      ownerOnly: false },
+      { href: "/inventory", label: "Inventory", icon: "inventory_2",    ownerOnly: true  },
+      { href: "/team",        label: "Team",       icon: "badge",          ownerOnly: true  },
+      { href: "/territories", label: "Territories", icon: "pin_drop",       ownerOnly: true  },
+      { href: "/heatmap",      label: "Heat Map",     icon: "heat_map",       ownerOnly: true  },
+      { href: "/intel",        label: "Intel",        icon: "visibility",     ownerOnly: true  },
     ],
   },
 ];
 
 const SIDEBAR_NAV = [
   ...NAV,
-  { href: "/payments", label: "Payments", icon: "attach_money", exact: false, ownerOnly: false },
-  { href: "/clients",  label: "Clients",  icon: "group",        exact: false, ownerOnly: false },
-  { href: "/leads",    label: "Leads",    icon: "person_search", exact: false, ownerOnly: false },
-  { href: "/plans",    label: "Plans",    icon: "autorenew",    exact: false, ownerOnly: false },
-  { href: "/team",     label: "Team",     icon: "badge",        exact: false, ownerOnly: true  },
+  { href: "/inbox",     label: "Inbox",     icon: "chat",            exact: false, ownerOnly: false },
+  { href: "/payments",        label: "Payments", icon: "attach_money",     exact: false, ownerOnly: false },
+  { href: "/reports/mileage",        label: "Mileage",       icon: "local_gas_station", exact: false, ownerOnly: true  },
+  { href: "/reports/profitability", label: "Profitability", icon: "trending_up",       exact: false, ownerOnly: true  },
+  { href: "/reports/commission",    label: "Commission",    icon: "emoji_events",      exact: false, ownerOnly: true  },
+  { href: "/clients",    label: "Clients",   icon: "group",          exact: false, ownerOnly: false },
+  { href: "/leads",     label: "Leads",     icon: "person_search",  exact: false, ownerOnly: false },
+  { href: "/plans",     label: "Plans",     icon: "autorenew",      exact: false, ownerOnly: false },
+  { href: "/inventory", label: "Inventory", icon: "inventory_2",    exact: false, ownerOnly: true  },
+  { href: "/team",        label: "Team",        icon: "badge",          exact: false, ownerOnly: true  },
+  { href: "/territories", label: "Territories", icon: "pin_drop",       exact: false, ownerOnly: true  },
+  { href: "/heatmap",      label: "Heat Map",     icon: "heat_map",       exact: false, ownerOnly: true  },
+  { href: "/intel",        label: "Intel",        icon: "visibility",     exact: false, ownerOnly: true  },
 ];
 
 type Notification = {
@@ -58,16 +74,19 @@ async function fetchNotifications(): Promise<Notification[]> {
 
   const { data: business } = await supabase
     .from("businesses")
-    .select("id")
+    .select("id, stale_quote_days")
     .eq("owner_id", user.id)
     .single();
   if (!business) return [];
+  const staleQuoteDays = (business as unknown as { stale_quote_days: number | null }).stale_quote_days ?? 7;
 
   const now = new Date();
   const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
   const endOfToday   = new Date(now); endOfToday.setHours(23, 59, 59, 999);
 
-  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }, { data: pendingMembers }, { data: newLeads }, { data: pendingBookings }] = await Promise.all([
+  const staleThreshold = new Date(now.getTime() - staleQuoteDays * 24 * 60 * 60 * 1000);
+
+  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }, { data: pendingMembers }, { data: newLeads }, { data: pendingBookings }, { data: stalledQuotes }, { data: unreadSms }] = await Promise.all([
     supabase.from("jobs").select("id, total, clients(name), payments(id)")
       .eq("business_id", business.id).eq("status", "completed"),
     supabase.from("jobs").select("id, scheduled_at, job_line_items(description), clients(name)")
@@ -85,6 +104,12 @@ async function fetchNotifications(): Promise<Notification[]> {
     supabase.from("booking_requests").select("id, requested_date, requested_time, clients(name)")
       .eq("business_id", business.id).eq("status", "pending")
       .order("created_at", { ascending: false }).limit(5),
+    supabase.from("quotes").select("id, total, sent_at, clients(name)")
+      .eq("business_id", business.id).eq("status", "sent")
+      .not("sent_at", "is", null)
+      .lt("sent_at", staleThreshold.toISOString()),
+    supabase.from("sms_messages").select("id, clients(name)")
+      .eq("business_id", business.id).eq("direction", "inbound").is("read_at", null),
   ]);
 
   const notes: Notification[] = [];
@@ -120,6 +145,38 @@ async function fetchNotifications(): Promise<Notification[]> {
       title: `${leads.length} new lead${leads.length !== 1 ? "s" : ""} from website`,
       subtitle: leads.length === 1 ? `${leads[0].name} submitted a quote request` : `${leads[0].name} and ${leads.length - 1} more submitted quote requests`,
       href: "/leads",
+    });
+  }
+
+  // Unread SMS messages
+  const unread = (unreadSms ?? []) as unknown as { id: string; clients: { name: string } | null }[];
+  if (unread.length > 0) {
+    const senderNames = [...new Set(unread.map((m) => m.clients?.name).filter(Boolean))].slice(0, 2);
+    notes.push({
+      id: "unread-sms",
+      icon: "chat",
+      iconColor: "#2E6A8E",
+      iconBg: "icon-primary",
+      title: `${unread.length} unread message${unread.length !== 1 ? "s" : ""}`,
+      subtitle: senderNames.length > 0 ? `From ${senderNames.join(", ")}${unread.length > senderNames.length ? " and others" : ""}` : "Open inbox to reply",
+      href: "/inbox",
+    });
+  }
+
+  // Stalled quotes
+  const stalled = (stalledQuotes ?? []) as unknown as { id: string; total: number; sent_at: string; clients: { name: string } | null }[];
+  if (stalled.length > 0) {
+    const totalValue = stalled.reduce((s, q) => s + (q.total ?? 0), 0);
+    const oldest = stalled.reduce((a, b) => new Date(a.sent_at) < new Date(b.sent_at) ? a : b);
+    const daysAgo = Math.floor((now.getTime() - new Date(oldest.sent_at).getTime()) / 86400000);
+    notes.push({
+      id: "stalled-quotes",
+      icon: "timer",
+      iconColor: "#dc2626",
+      iconBg: "icon-red",
+      title: `${stalled.length} stalled quote${stalled.length !== 1 ? "s" : ""} need attention`,
+      subtitle: `$${totalValue.toFixed(0)} at risk · oldest is ${daysAgo} days old`,
+      href: "/sales",
     });
   }
 
@@ -187,9 +244,10 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
   const router      = useRouter();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-  const [open,          setOpen]          = useState(false);
-  const [settingsOpen,  setSettingsOpen]  = useState(false);
-  const [moreOpen,      setMoreOpen]      = useState(false);
+  const [open,            setOpen]            = useState(false);
+  const [settingsOpen,    setSettingsOpen]    = useState(false);
+  const [moreOpen,        setMoreOpen]        = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading,       setLoading]       = useState(false);
   const [loaded,        setLoaded]        = useState(false);
@@ -253,7 +311,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
   const isOwner            = role === "owner";
   const visibleNav         = NAV.filter((n) => !n.ownerOnly || isOwner);
   const visibleSidebarNav  = SIDEBAR_NAV.filter((n) => !n.ownerOnly || isOwner);
-  const isMapPage          = pathname === "/map" || pathname.startsWith("/map/") || pathname === "/canvassing" || pathname.startsWith("/canvassing/");
+  const isMapPage          = pathname === "/map" || pathname.startsWith("/map/") || pathname === "/canvassing" || pathname.startsWith("/canvassing/") || pathname === "/territories" || pathname.startsWith("/territories/");
 
   return (
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
@@ -261,10 +319,13 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       {/* ── DESKTOP SIDEBAR — lg+ only, hidden on map ── */}
       {!isMapPage && (
         <div
-          className="group hidden lg:flex flex-col fixed left-0 top-0 h-screen w-[60px] hover:w-[220px] z-40 border-r border-border/40 overflow-hidden"
+          onMouseEnter={() => setSidebarExpanded(true)}
+          onMouseLeave={() => setSidebarExpanded(false)}
+          className="hidden lg:flex flex-col fixed left-0 top-0 h-screen z-40 border-r border-border/40 overflow-hidden"
           style={{
             background: "var(--card)",
-            transition: "width 200ms ease-in-out",
+            width: sidebarExpanded ? 220 : 60,
+            transition: sidebarExpanded ? "none" : "width 200ms ease-in-out",
           }}
         >
           {/* Logo */}
@@ -281,7 +342,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               </svg>
             </div>
             <span
-              className="whitespace-nowrap text-[13px] font-extrabold tracking-wide uppercase text-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100"
+              className={`whitespace-nowrap text-[13px] font-extrabold tracking-wide uppercase text-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}
               style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
             >
               Hustle Bricks
@@ -291,7 +352,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           <div className="h-px bg-border/40 mx-2 shrink-0" />
 
           {/* Nav items */}
-          <nav className="flex flex-col gap-0.5 flex-1 py-2 px-2">
+          <nav className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto py-2 px-2 scrollbar-none">
             {visibleSidebarNav.map(({ href, label, icon, exact }) => {
               const active = isActive(href, exact);
               return (
@@ -311,7 +372,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                   >
                     {icon}
                   </span>
-                  <span className={`whitespace-nowrap text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-100 ${active ? "text-primary" : "text-muted-foreground"}`}>
+                  <span className={`whitespace-nowrap text-sm font-semibold transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"} ${active ? "text-primary" : "text-muted-foreground"}`}>
                     {label}
                   </span>
                 </Link>
@@ -341,7 +402,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                   <span className="absolute -top-0.5 -right-0.5 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" />
                 )}
               </span>
-              <span className="whitespace-nowrap text-sm font-semibold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100">Notifications</span>
+              <span className={`whitespace-nowrap text-sm font-semibold text-muted-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}>Notifications</span>
             </button>
 
             <button
@@ -357,7 +418,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               >
                 settings
               </span>
-              <span className="whitespace-nowrap text-sm font-semibold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-100">Settings</span>
+              <span className={`whitespace-nowrap text-sm font-semibold text-muted-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}>Settings</span>
             </button>
           </div>
         </div>

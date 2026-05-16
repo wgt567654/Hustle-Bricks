@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { SERVICE_TYPES, MessageType, DEFAULT_TEMPLATES, interpolateTemplate as _interpolate } from "@/lib/messageTemplates";
+import CityAutocomplete from "@/components/CityAutocomplete";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -24,6 +25,9 @@ export default function SettingsPage() {
   const [editingPayments, setEditingPayments] = useState(false);
   const [savingPayments, setSavingPayments] = useState(false);
 
+  // Service areas (weather alerts)
+  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
+
   // Contact info fields
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -38,10 +42,13 @@ export default function SettingsPage() {
   // Tax & commission
   const [taxRate, setTaxRate] = useState("8.00");
   const [commissionRate, setCommissionRate] = useState("5.00");
+  const [mileageRate, setMileageRate] = useState("0.70");
   const [editingTax, setEditingTax] = useState(false);
   const [editingCommission, setEditingCommission] = useState(false);
+  const [editingMileage, setEditingMileage] = useState(false);
   const [savingTax, setSavingTax] = useState(false);
   const [savingCommission, setSavingCommission] = useState(false);
+  const [savingMileage, setSavingMileage] = useState(false);
 
   // Stripe Connect
   const searchParams = useSearchParams();
@@ -60,7 +67,26 @@ export default function SettingsPage() {
   // Automations
   const [smsReminders, setSmsReminders] = useState(false);
   const [smartScheduling, setSmartScheduling] = useState(false);
+  const [reviewRequests, setReviewRequests] = useState(false);
+  const [leadNotify, setLeadNotify] = useState(false);
+  const [followUpEnabled, setFollowUpEnabled] = useState(false);
+  const [rebookingEnabled, setRebookingEnabled] = useState(false);
   const [savingAutomation, setSavingAutomation] = useState<string | null>(null);
+
+  // Rebooking threshold
+  const [rebookingAfterDays, setRebookingAfterDays] = useState("60");
+  const [editingRebookingDays, setEditingRebookingDays] = useState(false);
+  const [savingRebookingDays, setSavingRebookingDays] = useState(false);
+
+  // Google Review URL
+  const [googleReviewUrl, setGoogleReviewUrl] = useState("");
+  const [editingReviewUrl, setEditingReviewUrl] = useState(false);
+  const [savingReviewUrl, setSavingReviewUrl] = useState(false);
+
+  // Pipeline velocity
+  const [staleQuoteDays, setStaleQuoteDays] = useState("7");
+  const [editingStaleQuoteDays, setEditingStaleQuoteDays] = useState(false);
+  const [savingStaleQuoteDays, setSavingStaleQuoteDays] = useState(false);
 
   // Scheduling settings
   const [unavailableDays, setUnavailableDays] = useState<number[]>([0, 6]);
@@ -86,6 +112,14 @@ export default function SettingsPage() {
   const [cfOptionsInput, setCfOptionsInput] = useState("");
   const [cfSaving, setCfSaving] = useState(false);
   const [cfDeleting, setCfDeleting] = useState<string | null>(null);
+
+  // Customer financing (BNPL)
+  const [financingEnabled, setFinancingEnabled] = useState(false);
+  const [financingPartner, setFinancingPartner] = useState("");
+  const [financingUrl, setFinancingUrl] = useState("");
+  const [financingMinAmount, setFinancingMinAmount] = useState("500");
+  const [editingFinancing, setEditingFinancing] = useState(false);
+  const [savingFinancing, setSavingFinancing] = useState(false);
 
   // Message templates
   const [tmplService, setTmplService] = useState<string>(
@@ -141,10 +175,33 @@ export default function SettingsPage() {
         setCheckPayableTo(business.check_payable_to ?? business.name ?? "");
         setContactEmail(business.contact_email ?? "");
         setContactPhone(business.contact_phone ?? "");
+        const areas = (business as unknown as { service_areas: string[] | null }).service_areas ?? [];
+        setServiceAreas(areas.length ? areas : (business as unknown as { city: string | null }).city ? [(business as unknown as { city: string }).city] : []);
         setTaxRate(business.tax_rate != null ? String(business.tax_rate) : "8.00");
         setCommissionRate(business.commission_rate != null ? String(business.commission_rate) : "5.00");
+        setMileageRate((business as unknown as { mileage_rate_per_mile: number | null }).mileage_rate_per_mile != null ? String((business as unknown as { mileage_rate_per_mile: number }).mileage_rate_per_mile) : "0.70");
         setSmsReminders(business.sms_reminders_enabled ?? false);
         setSmartScheduling(business.smart_scheduling_enabled ?? false);
+        const biz2 = business as unknown as {
+          review_requests_enabled: boolean | null;
+          lead_notify_enabled: boolean | null;
+          google_review_url: string | null;
+        };
+        setReviewRequests(biz2.review_requests_enabled ?? false);
+        setLeadNotify(biz2.lead_notify_enabled ?? false);
+        setGoogleReviewUrl(biz2.google_review_url ?? "");
+        const biz3 = business as unknown as { follow_up_enabled: boolean | null; stale_quote_days: number | null; rebooking_enabled: boolean | null; rebooking_after_days: number | null };
+        setFollowUpEnabled(biz3.follow_up_enabled ?? false);
+        setStaleQuoteDays(biz3.stale_quote_days != null ? String(biz3.stale_quote_days) : "7");
+        setRebookingEnabled(biz3.rebooking_enabled ?? false);
+        setRebookingAfterDays(biz3.rebooking_after_days != null ? String(biz3.rebooking_after_days) : "60");
+
+        // Financing
+        const biz4 = business as unknown as { financing_enabled: boolean | null; financing_partner: string | null; financing_url: string | null; financing_min_amount: number | null };
+        setFinancingEnabled(biz4.financing_enabled ?? false);
+        setFinancingPartner(biz4.financing_partner ?? "");
+        setFinancingUrl(biz4.financing_url ?? "");
+        setFinancingMinAmount(biz4.financing_min_amount != null ? String(biz4.financing_min_amount) : "500");
 
         // Stripe Connect state
         const biz = business as unknown as {
@@ -244,6 +301,20 @@ export default function SettingsPage() {
     setDisconnecting(false);
   }
 
+  async function saveFinancing() {
+    if (!businessId) return;
+    setSavingFinancing(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({
+      financing_enabled: financingEnabled,
+      financing_partner: financingPartner.trim() || null,
+      financing_url: financingUrl.trim() || null,
+      financing_min_amount: parseInt(financingMinAmount) || 500,
+    }).eq("id", businessId);
+    setSavingFinancing(false);
+    setEditingFinancing(false);
+  }
+
   async function openSubscriptionPortal() {
     setOpeningPortal(true);
     try {
@@ -285,6 +356,22 @@ export default function SettingsPage() {
     setBusinessName(nameInput.trim());
     setEditingName(false);
     setSaving(false);
+  }
+
+  async function addServiceArea(area: string) {
+    if (!businessId || !area.trim() || serviceAreas.includes(area.trim())) return;
+    const updated = [...serviceAreas, area.trim()];
+    const supabase = createClient();
+    await supabase.from("businesses").update({ service_areas: updated }).eq("id", businessId);
+    setServiceAreas(updated);
+  }
+
+  async function removeServiceArea(area: string) {
+    if (!businessId) return;
+    const updated = serviceAreas.filter((a) => a !== area);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ service_areas: updated }).eq("id", businessId);
+    setServiceAreas(updated);
   }
 
   async function savePaymentMethods() {
@@ -330,18 +417,65 @@ export default function SettingsPage() {
     setEditingCommission(false);
   }
 
-  async function toggleAutomation(key: "sms_reminders_enabled" | "smart_scheduling_enabled", current: boolean) {
-    if (key === "sms_reminders_enabled") setSmsReminders(!current);
-    else setSmartScheduling(!current);
+  async function saveMileageRate() {
+    if (!businessId) return;
+    setSavingMileage(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ mileage_rate_per_mile: parseFloat(mileageRate) || 0.70 }).eq("id", businessId);
+    setSavingMileage(false);
+    setEditingMileage(false);
+  }
+
+  async function toggleAutomation(
+    key: "sms_reminders_enabled" | "smart_scheduling_enabled" | "review_requests_enabled" | "lead_notify_enabled" | "follow_up_enabled" | "rebooking_enabled",
+    current: boolean
+  ) {
+    const setters: Record<string, (v: boolean) => void> = {
+      sms_reminders_enabled: setSmsReminders,
+      smart_scheduling_enabled: setSmartScheduling,
+      review_requests_enabled: setReviewRequests,
+      lead_notify_enabled: setLeadNotify,
+      follow_up_enabled: setFollowUpEnabled,
+      rebooking_enabled: setRebookingEnabled,
+    };
+    setters[key]?.(!current);
     if (!businessId) return;
     setSavingAutomation(key);
     const supabase = createClient();
     const { error } = await supabase.from("businesses").update({ [key]: !current }).eq("id", businessId);
-    if (error) {
-      if (key === "sms_reminders_enabled") setSmsReminders(current);
-      else setSmartScheduling(current);
-    }
+    if (error) setters[key]?.(current);
     setSavingAutomation(null);
+  }
+
+  async function saveGoogleReviewUrl() {
+    if (!businessId) return;
+    setSavingReviewUrl(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ google_review_url: googleReviewUrl || null }).eq("id", businessId);
+    setSavingReviewUrl(false);
+    setEditingReviewUrl(false);
+  }
+
+  async function saveStaleQuoteDays() {
+    if (!businessId) return;
+    setSavingStaleQuoteDays(true);
+    const supabase = createClient();
+    const days = parseInt(staleQuoteDays) || 7;
+    await supabase.from("businesses").update({ stale_quote_days: days }).eq("id", businessId);
+    setStaleQuoteDays(String(days));
+    setSavingStaleQuoteDays(false);
+    setEditingStaleQuoteDays(false);
+  }
+
+  async function saveRebookingAfterDays() {
+    if (!businessId) return;
+    setSavingRebookingDays(true);
+    const supabase = createClient();
+    const days = parseInt(rebookingAfterDays) || 60;
+    await supabase.from("businesses").update({ rebooking_after_days: days }).eq("id", businessId);
+    setRebookingAfterDays(String(days));
+    setSavingRebookingDays(false);
+    setEditingRebookingDays(false);
   }
 
   function fillKnownVars(body: string) {
@@ -490,10 +624,25 @@ export default function SettingsPage() {
     ]);
   }
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/";
+  }
+
+  async function deleteAccount() {
+    setDeletingAccount(true);
+    const res = await fetch("/api/account/delete", { method: "DELETE" });
+    if (res.ok) {
+      window.location.href = "/";
+    } else {
+      const { error } = await res.json();
+      alert(error ?? "Could not delete account. Please try again.");
+      setDeletingAccount(false);
+    }
   }
 
   const hasPaymentMethods = venmoUsername || cashappTag || checkPayableTo;
@@ -544,6 +693,49 @@ export default function SettingsPage() {
                   <button onClick={() => setEditingName(true)} className="text-primary text-sm font-bold shrink-0">Edit</button>
                 </div>
               )}
+            </div>
+          </Card>
+
+          {/* Service Areas (weather alerts) */}
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <div className="p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[20px] text-primary">partly_cloudy_day</span>
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-foreground">Service Areas</p>
+                  <p className="text-xs text-muted-foreground">Cities where you work — used for weather alerts on scheduled jobs.</p>
+                </div>
+              </div>
+
+              {serviceAreas.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {serviceAreas.map((area) => (
+                    <span key={area} className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                      <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>location_city</span>
+                      {area}
+                      <button
+                        onClick={() => removeServiceArea(area)}
+                        className="flex size-4 items-center justify-center rounded-full hover:bg-primary/20 transition-colors ml-0.5"
+                        aria-label={`Remove ${area}`}
+                      >
+                        <span className="material-symbols-outlined text-[11px]">close</span>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {serviceAreas.length === 0 && (
+                <p className="text-xs text-muted-foreground/70 italic">No areas added yet — search below to add your first.</p>
+              )}
+
+              <CityAutocomplete
+                onSelect={addServiceArea}
+                placeholder="Search for a city to add…"
+                inputClassName="flex h-10 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
+              />
             </div>
           </Card>
         </section>
@@ -1039,6 +1231,47 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+
+            {/* Mileage Reimbursement Rate */}
+            <div className="flex flex-col border-t border-border/50">
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center text-foreground">
+                    <span className="material-symbols-outlined text-[20px]">local_gas_station</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-foreground">Mileage Reimbursement</span>
+                    <span className="text-xs text-muted-foreground">${mileageRate}/mile</span>
+                  </div>
+                </div>
+                <button onClick={() => setEditingMileage((v) => !v)} className="text-xs font-bold text-primary">
+                  {editingMileage ? "Cancel" : "Edit"}
+                </button>
+              </div>
+              {editingMileage && (
+                <div className="px-4 pb-4 flex gap-2 items-center">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={mileageRate}
+                      onChange={(e) => setMileageRate(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-card pl-7 pr-16 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">/mi</span>
+                  </div>
+                  <button
+                    onClick={saveMileageRate}
+                    disabled={savingMileage}
+                    className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {savingMileage ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              )}
+            </div>
           </Card>
         </section>
 
@@ -1049,6 +1282,10 @@ export default function SettingsPage() {
             {([
               { label: "Automated Reminders", sub: "Send SMS 24hrs before job", key: "sms_reminders_enabled" as const, value: smsReminders },
               { label: "Smart Scheduling", sub: "Optimize routes using Maps API", key: "smart_scheduling_enabled" as const, value: smartScheduling },
+              { label: "Review Request Automation", sub: "Auto-send a Google Review link 24hrs after job completion", key: "review_requests_enabled" as const, value: reviewRequests },
+              { label: "Lead Speed-to-Contact", sub: "Auto-text new leads within minutes of submission", key: "lead_notify_enabled" as const, value: leadNotify },
+              { label: "Quote Follow-Up Sequence", sub: "Auto-text clients at 24hrs, 72hrs, and 7 days after a quote is sent", key: "follow_up_enabled" as const, value: followUpEnabled },
+              { label: "Rebooking Campaign", sub: `Auto-text past clients who haven't booked in ${rebookingAfterDays} days to bring them back`, key: "rebooking_enabled" as const, value: rebookingEnabled },
             ]).map((item, i) => (
               <div key={item.key}>
                 {i > 0 && <Separator className="bg-border/50" />}
@@ -1067,6 +1304,157 @@ export default function SettingsPage() {
                 </div>
               </div>
             ))}
+          </Card>
+
+          {/* Google Review URL — only shown when Review Request Automation is on */}
+          {reviewRequests && (
+            <Card className="rounded-2xl border-border shadow-sm">
+              <div className="p-4 flex flex-col gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-sm text-foreground">Google Review Link</span>
+                  <span className="text-xs text-muted-foreground">Paste your Google Business review URL. Customers will receive this link automatically after each completed job.</span>
+                </div>
+                {editingReviewUrl ? (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="url"
+                      value={googleReviewUrl}
+                      onChange={(e) => setGoogleReviewUrl(e.target.value)}
+                      placeholder="https://g.page/r/your-business/review"
+                      className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveGoogleReviewUrl}
+                        disabled={savingReviewUrl}
+                        className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {savingReviewUrl ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingReviewUrl(false); }}
+                        className="px-4 py-2.5 rounded-xl bg-muted text-foreground text-sm font-bold hover:bg-muted/80"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-foreground truncate">
+                      {googleReviewUrl || <span className="text-muted-foreground italic">No URL set — add one to activate</span>}
+                    </span>
+                    <button
+                      onClick={() => setEditingReviewUrl(true)}
+                      className="shrink-0 text-xs font-bold text-primary hover:underline"
+                    >
+                      {googleReviewUrl ? "Edit" : "Add URL"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {rebookingEnabled && (
+            <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+              <div className="p-4 flex flex-col gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-sm text-foreground">Rebooking Window</span>
+                  <span className="text-xs text-muted-foreground">
+                    Send the rebooking SMS after a client has gone {rebookingAfterDays} days without a new job.
+                    We won&apos;t contact the same client again until another {rebookingAfterDays} days pass.
+                  </span>
+                </div>
+                {editingRebookingDays ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        min="7"
+                        max="365"
+                        step="1"
+                        value={rebookingAfterDays}
+                        onChange={(e) => setRebookingAfterDays(e.target.value)}
+                        className="flex-1 rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
+                      />
+                      <span className="text-sm font-bold text-muted-foreground shrink-0">days</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveRebookingAfterDays}
+                        disabled={savingRebookingDays}
+                        className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {savingRebookingDays ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => setEditingRebookingDays(false)}
+                        className="px-4 py-2.5 rounded-xl bg-muted text-foreground text-sm font-bold hover:bg-muted/80"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-bold text-foreground">{rebookingAfterDays} days</span>
+                    <button
+                      onClick={() => setEditingRebookingDays(true)}
+                      className="shrink-0 text-xs font-bold text-primary hover:underline"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+        </section>
+
+        {/* Sales Pipeline */}
+        <section className="flex flex-col gap-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Sales Pipeline</h3>
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <div className="flex flex-col border-border/50">
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center text-foreground">
+                    <span className="material-symbols-outlined text-[20px]">timer</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-foreground">Stalled Quote Threshold</span>
+                    <span className="text-xs text-muted-foreground">Flag quotes as stalled after {staleQuoteDays} days with no response</span>
+                  </div>
+                </div>
+                <button onClick={() => setEditingStaleQuoteDays((v) => !v)} className="text-xs font-bold text-primary">
+                  {editingStaleQuoteDays ? "Cancel" : "Edit"}
+                </button>
+              </div>
+              {editingStaleQuoteDays && (
+                <div className="px-4 pb-4 flex gap-2 items-center">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="1"
+                      max="365"
+                      step="1"
+                      value={staleQuoteDays}
+                      onChange={(e) => setStaleQuoteDays(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">days</span>
+                  </div>
+                  <button
+                    onClick={saveStaleQuoteDays}
+                    disabled={savingStaleQuoteDays}
+                    className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {savingStaleQuoteDays ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              )}
+            </div>
           </Card>
         </section>
 
@@ -1331,6 +1719,116 @@ export default function SettingsPage() {
           );
         })()}
 
+        {/* Customer Financing */}
+        <section className="flex flex-col gap-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Customer Financing</h3>
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <div className="p-4 flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <p className="font-semibold text-sm text-foreground">Offer financing to clients</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Show a &quot;Finance this job&quot; button on quotes and invoices above the minimum amount</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const next = !financingEnabled;
+                    setFinancingEnabled(next);
+                    if (businessId) {
+                      const supabase = createClient();
+                      await supabase.from("businesses").update({ financing_enabled: next }).eq("id", businessId);
+                    }
+                  }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${financingEnabled ? "bg-primary" : "bg-muted"}`}
+                  aria-checked={financingEnabled}
+                >
+                  <span className={`inline-block size-5 transform rounded-full bg-white shadow-sm transition-transform ${financingEnabled ? "translate-x-5" : "translate-x-0"}`} />
+                </button>
+              </div>
+
+              {financingEnabled && (
+                <>
+                  <Separator />
+                  {!editingFinancing ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-1">
+                          <p className="text-xs text-muted-foreground">Partner</p>
+                          <p className="text-sm font-medium text-foreground">{financingPartner || "Not set"}</p>
+                        </div>
+                        <div className="flex flex-col gap-1 text-right">
+                          <p className="text-xs text-muted-foreground">Min. job amount</p>
+                          <p className="text-sm font-medium text-foreground">${financingMinAmount}</p>
+                        </div>
+                      </div>
+                      {financingUrl && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          Link: <span className="text-primary">{financingUrl}</span>
+                        </p>
+                      )}
+                      <button
+                        onClick={() => setEditingFinancing(true)}
+                        className="flex items-center gap-1.5 self-start px-3 py-1.5 rounded-xl bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">edit</span>
+                        Configure
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Financing partner</label>
+                        <input
+                          value={financingPartner}
+                          onChange={(e) => setFinancingPartner(e.target.value)}
+                          placeholder="e.g. Wisetack, Hearth, Sunbit"
+                          className="mt-1 w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Application / referral link</label>
+                        <input
+                          value={financingUrl}
+                          onChange={(e) => setFinancingUrl(e.target.value)}
+                          placeholder="https://…"
+                          type="url"
+                          className="mt-1 w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Minimum job amount ($)</label>
+                        <input
+                          value={financingMinAmount}
+                          onChange={(e) => setFinancingMinAmount(e.target.value)}
+                          type="number"
+                          min="0"
+                          placeholder="500"
+                          className="mt-1 w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Financing button only appears on quotes and invoices at or above this amount</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={saveFinancing}
+                          disabled={savingFinancing}
+                          className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+                        >
+                          {savingFinancing ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          onClick={() => setEditingFinancing(false)}
+                          className="px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </Card>
+        </section>
+
         {/* Account */}
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Canvassing Fields</h3>
@@ -1417,7 +1915,7 @@ export default function SettingsPage() {
           )}
 
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Account</h3>
-          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden divide-y divide-border/50">
             <button
               onClick={signOut}
               className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
@@ -1431,7 +1929,54 @@ export default function SettingsPage() {
               </div>
               <span className="material-symbols-outlined text-muted-foreground ml-auto">chevron_right</span>
             </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
+            >
+              <div className="size-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                <span className="material-symbols-outlined text-[20px]">delete_forever</span>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-bold text-sm text-red-500">Delete Account</span>
+                <span className="text-xs text-muted-foreground">Permanently remove your account and data</span>
+              </div>
+              <span className="material-symbols-outlined text-muted-foreground ml-auto">chevron_right</span>
+            </button>
           </Card>
+
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/40 backdrop-blur-sm px-4" onClick={() => setShowDeleteConfirm(false)}>
+              <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-3">
+                  <div className="size-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                    <span className="material-symbols-outlined text-[24px]">delete_forever</span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-base text-foreground">Delete Account?</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">This cannot be undone</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Your account, business profile, clients, jobs, and all associated data will be permanently deleted.
+                </p>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={deleteAccount}
+                    disabled={deletingAccount}
+                    className="flex-[2] py-3 rounded-2xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 disabled:opacity-50 transition-colors"
+                  >
+                    {deletingAccount ? "Deleting…" : "Yes, Delete Everything"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
       </div>

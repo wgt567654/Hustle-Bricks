@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getBusinessId } from "@/lib/supabase/get-business";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 type Tag = "residential" | "commercial" | "vip";
 
@@ -350,11 +351,10 @@ export default function ClientsPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Address <span className="normal-case font-normal text-muted-foreground/60">(optional)</span></label>
-                <input
-                  type="text"
-                  placeholder="123 Main St, Springfield"
+                <AddressAutocomplete
                   value={form.address}
-                  onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                  onChange={(v) => setForm((f) => ({ ...f, address: v }))}
+                  placeholder="123 Main St, Springfield"
                   className="flex h-12 w-full rounded-xl border border-border bg-transparent px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
               </div>

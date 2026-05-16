@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Barlow, Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import InstallPrompt from "@/components/InstallPrompt";
 
 const barlow = Barlow({
   variable: "--font-barlow",
@@ -58,6 +60,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <ServiceWorkerRegistration />
+          <InstallPrompt />
         </ThemeProvider>
       </body>
     </html>

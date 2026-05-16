@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { STATUS_HEX } from "@/lib/status-colors";
 import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 type Tag = "residential" | "commercial" | "vip";
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
@@ -996,8 +997,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Address</label>
-                <input type="text" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30" />
+                <AddressAutocomplete
+                  value={form.address}
+                  onChange={(v) => setForm((f) => ({ ...f, address: v }))}
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

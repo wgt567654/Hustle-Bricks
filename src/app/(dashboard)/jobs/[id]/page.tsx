@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
+import { useVoiceNote } from "@/hooks/useVoiceNote";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -162,6 +163,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [editServiceType, setEditServiceType] = useState<string>("");
   const [editSaving, setEditSaving] = useState(false);
 
+  const voice = useVoiceNote();
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setEditNotes((prev) => prev ? prev + " " + text : text);
+  }, []);
+
   // Send invoice
   const [invoiceSent, setInvoiceSent] = useState(false);
 
@@ -169,6 +175,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [uploadingPhoto, setUploadingPhoto] = useState<"before" | "after" | null>(null);
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
+
+  // Upsell suggestions
+  const [upsellSuggestions, setUpsellSuggestions] = useState<{ title: string; pitch: string; icon: string }[]>([]);
+  const [upsellLoading, setUpsellLoading] = useState(false);
 
   // Expenses
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -270,6 +280,18 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     }).catch(() => {});
 
     if (status === "completed") {
+      // Fetch upsell suggestions in the background
+      setUpsellLoading(true);
+      fetch("/api/upsell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      })
+        .then((r) => r.json())
+        .then((d) => { if (d.suggestions?.length) setUpsellSuggestions(d.suggestions); })
+        .catch(() => {})
+        .finally(() => setUpsellLoading(false));
+
       // Auto-schedule next recurring job if applicable
       if (job.recurrence_frequency && job.recurrence_interval_days) {
         const baseDate = job.scheduled_at ?? new Date().toISOString();
@@ -1230,6 +1252,43 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       </div>{/* end right column */}
       </div>{/* end two-column body */}
 
+      {/* Upsell suggestions — shown after job is marked complete */}
+      {job.status === "completed" && (upsellLoading || upsellSuggestions.length > 0) && (
+        <div className="px-4 lg:px-6 pb-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="px-4 pt-4 pb-3 flex items-center gap-2.5 border-b border-border/50">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <span className="material-symbols-outlined text-[17px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+                </div>
+                <div>
+                  <p className="text-xs font-extrabold text-foreground">Upsell Ideas</p>
+                  <p className="text-[11px] text-muted-foreground">Suggested follow-ups for {job.clients?.name ?? "this client"}</p>
+                </div>
+              </div>
+              {upsellLoading ? (
+                <div className="flex items-center gap-2 px-4 py-4">
+                  <span className="material-symbols-outlined text-[16px] text-muted-foreground animate-spin">progress_activity</span>
+                  <span className="text-xs text-muted-foreground">Generating suggestions…</span>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {upsellSuggestions.map((s, i) => (
+                    <div key={i} className="flex items-start gap-3 px-4 py-3">
+                      <span className="material-symbols-outlined text-[20px] text-primary mt-0.5 shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-bold text-foreground">{s.title}</span>
+                        <span className="text-xs text-muted-foreground">{s.pitch}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Completed — show collect payment prompt if no modal */}
       {job.status === "completed" && !payModalOpen && (
         <div className="fixed bottom-0 left-0 lg:left-[60px] w-full lg:w-[calc(100%-60px)] z-50 bg-card border-t border-border px-4 pt-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }}>
@@ -1347,14 +1406,34 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
               {/* Notes */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes</label>
+                  {voice.supported && (
+                    <button
+                      type="button"
+                      onClick={() => voice.listening ? voice.stop() : voice.start(handleVoiceTranscript)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                        voice.listening
+                          ? "bg-red-500 text-white animate-pulse"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[15px]">
+                        {voice.listening ? "stop" : "mic"}
+                      </span>
+                      {voice.listening ? "Stop" : "Dictate"}
+                    </button>
+                  )}
+                </div>
                 <textarea
                   rows={4}
                   placeholder="Add job notes…"
-                  value={editNotes}
+                  value={voice.listening && voice.interim ? editNotes + " " + voice.interim : editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
                 />
+                {voice.error && <p className="text-xs text-red-500">{voice.error}</p>}
+                {voice.listening && <p className="text-xs text-primary animate-pulse">Listening… speak your note</p>}
               </div>
 
               <div className="h-2" />

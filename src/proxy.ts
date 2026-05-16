@@ -42,7 +42,13 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/employee-login") ||
     pathname.startsWith("/employee-pending") ||
     pathname.startsWith("/team-portal") ||
-    pathname.startsWith("/api/google-calendar/callback");
+    pathname.startsWith("/api/google-calendar/callback") ||
+    pathname.startsWith("/api/cron") ||
+    pathname.startsWith("/api/sms/webhook") ||
+    pathname.startsWith("/api/weather-alerts") ||
+    pathname.startsWith("/api/quote-public") ||
+    pathname.startsWith("/api/quote-respond") ||
+    pathname.startsWith("/q/");
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();

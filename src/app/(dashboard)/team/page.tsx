@@ -34,12 +34,15 @@ type Role = "admin" | "member" | "sales";
 
 type TeamMember = {
   id: string;
+  user_id: string | null;
   name: string;
   email: string | null;
   role: Role;
   is_active: boolean;
   is_pending: boolean;
   certifications: string[];
+  hourly_rate: number | null;
+  commission_rate: number | null;
 };
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -93,10 +96,12 @@ export default function TeamPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", role: "member" as Role, certifications: [] as string[] });
+  const [editForm, setEditForm] = useState({ name: "", email: "", role: "member" as Role, certifications: [] as string[], hourly_rate: "", commission_rate: "" });
   const [editSaving, setEditSaving] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [confirmDeleteAccountMember, setConfirmDeleteAccountMember] = useState<TeamMember | null>(null);
+  const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
   const [availabilityOpen, setAvailabilityOpen] = useState<Set<string>>(new Set());
   const [memberAvailability, setMemberAvailability] = useState<Record<string, Record<number, { from: string; until: string }>>>({});
   const [savingAvailability, setSavingAvailability] = useState<string | null>(null);
@@ -105,6 +110,11 @@ export default function TeamPage() {
   const [memberDateInput, setMemberDateInput] = useState<Record<string, string>>({});
   const [togglingDateFor, setTogglingDateFor] = useState<string | null>(null);
   const datePickerRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [territoryOpen,    setTerritoryOpen]    = useState<Set<string>>(new Set());
+  const [memberTerritories, setMemberTerritories] = useState<Record<string, string[]>>({});
+  const [territoryInput,   setTerritoryInput]   = useState<Record<string, string>>({});
+  const [savingZip,        setSavingZip]        = useState<string | null>(null);
+  const [zipError,         setZipError]         = useState<Record<string, string>>({});
 
   function copyPortalLink(id: string) {
     navigator.clipboard.writeText(`${window.location.origin}/team-portal/${id}`);
@@ -119,6 +129,8 @@ export default function TeamPage() {
       email: member.email ?? "",
       role: member.role,
       certifications: member.certifications ?? [],
+      hourly_rate: member.hourly_rate != null && member.hourly_rate > 0 ? String(member.hourly_rate) : "",
+      commission_rate: member.commission_rate != null ? String(member.commission_rate) : "",
     });
   }
 
@@ -141,7 +153,7 @@ export default function TeamPage() {
 
       const { data } = await supabase
         .from("team_members")
-        .select("id, name, email, role, is_active, certifications")
+        .select("id, user_id, name, email, role, is_active, certifications, hourly_rate, commission_rate")
         .eq("business_id", business.id)
         .order("name");
 
@@ -172,10 +184,18 @@ export default function TeamPage() {
       }
 
       // Fetch employee availability and blocked dates
-      const [{ data: availData }, { data: blockedData }] = await Promise.all([
+      const [{ data: availData }, { data: blockedData }, { data: terrData }] = await Promise.all([
         supabase.from("employee_availability").select("team_member_id, day_of_week, from_time, until_time").eq("business_id", business.id),
         supabase.from("employee_blocked_dates").select("team_member_id, blocked_date").eq("business_id", business.id),
+        supabase.from("territory_assignments").select("team_member_id, zip_code").eq("business_id", business.id),
       ]);
+
+      const terrMap: Record<string, string[]> = {};
+      for (const row of terrData ?? []) {
+        if (!terrMap[row.team_member_id]) terrMap[row.team_member_id] = [];
+        terrMap[row.team_member_id].push(row.zip_code);
+      }
+      setMemberTerritories(terrMap);
 
       const availMap: Record<string, Record<number, { from: string; until: string }>> = {};
       for (const row of availData ?? []) {
@@ -205,11 +225,11 @@ export default function TeamPage() {
       .from("team_members")
       .update({ is_active: true, is_pending: false })
       .eq("id", id)
-      .select("id, name, email, role, is_active, is_pending, certifications")
+      .select("id, user_id, name, email, role, is_active, is_pending, certifications, hourly_rate, commission_rate")
       .single();
     if (data) {
       setPendingMembers((prev) => prev.filter((m) => m.id !== id));
-      setMembers((prev) => [...prev, { ...data, certifications: data.certifications ?? [] }].sort((a, b) => a.name.localeCompare(b.name)));
+      setMembers((prev) => [...prev, { ...data, user_id: data.user_id ?? null, certifications: data.certifications ?? [], hourly_rate: data.hourly_rate ?? null, commission_rate: data.commission_rate ?? null }].sort((a, b) => a.name.localeCompare(b.name)));
     }
     setApprovingId(null);
   }
@@ -247,12 +267,15 @@ export default function TeamPage() {
     } else {
       const newMember: TeamMember = {
         id: data.id,
+        user_id: null,
         name: form.name.trim(),
         email: form.email.trim() || null,
         role: form.role,
         is_active: true,
         is_pending: false,
         certifications: form.certifications,
+        hourly_rate: null,
+        commission_rate: null,
       };
       setMembers((prev) => [...prev, newMember].sort((a, b) => a.name.localeCompare(b.name)));
       setForm(EMPTY_FORM);
@@ -265,16 +288,20 @@ export default function TeamPage() {
     if (!editMember) return;
     setEditSaving(true);
     const supabase = createClient();
+    const hourly_rate = editForm.hourly_rate ? parseFloat(editForm.hourly_rate) : null;
+    const commission_rate = editForm.commission_rate ? parseFloat(editForm.commission_rate) : null;
     await supabase.from("team_members").update({
       name: editForm.name.trim(),
       email: editForm.email.trim() || null,
       role: editForm.role,
       certifications: editForm.certifications,
+      hourly_rate,
+      commission_rate,
     }).eq("id", editMember.id);
 
     setMembers((prev) => prev.map((m) =>
       m.id === editMember.id
-        ? { ...m, name: editForm.name.trim(), email: editForm.email.trim() || null, role: editForm.role, certifications: editForm.certifications }
+        ? { ...m, name: editForm.name.trim(), email: editForm.email.trim() || null, role: editForm.role, certifications: editForm.certifications, hourly_rate, commission_rate }
         : m
     ));
     setEditSaving(false);
@@ -287,6 +314,19 @@ export default function TeamPage() {
     await supabase.from("team_members").update({ is_active: false }).eq("id", id);
     setMembers((prev) => prev.filter((m) => m.id !== id));
     setDeletingId(null);
+  }
+
+  async function handleDeleteAccount(member: TeamMember) {
+    setDeletingAccountId(member.id);
+    const res = await fetch(`/api/team-members/${member.id}/delete`, { method: "DELETE" });
+    if (res.ok) {
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      setConfirmDeleteAccountMember(null);
+    } else {
+      const { error } = await res.json();
+      alert(error ?? "Could not delete account. Please try again.");
+    }
+    setDeletingAccountId(null);
   }
 
   function toggleAvailDay(memberId: string, day: number) {
@@ -373,6 +413,54 @@ export default function TeamPage() {
         ),
       };
     });
+  }
+
+  async function handleAddZip(memberId: string) {
+    if (!businessId) return;
+    const zip = (territoryInput[memberId] ?? "").trim();
+    if (!/^\d{5}$/.test(zip)) return;
+    setSavingZip(memberId);
+    setZipError((prev) => ({ ...prev, [memberId]: "" }));
+    const supabase = createClient();
+    const { error } = await supabase.from("territory_assignments").insert({
+      business_id: businessId,
+      team_member_id: memberId,
+      zip_code: zip,
+    });
+    if (error) {
+      if (error.code === "23505") {
+        const { data: existing } = await supabase
+          .from("territory_assignments")
+          .select("team_member_id")
+          .eq("business_id", businessId)
+          .eq("zip_code", zip)
+          .maybeSingle();
+        const owner = members.find((m) => m.id === existing?.team_member_id)?.name ?? "another member";
+        setZipError((prev) => ({ ...prev, [memberId]: `ZIP ${zip} is already assigned to ${owner}` }));
+      } else {
+        setZipError((prev) => ({ ...prev, [memberId]: error.message }));
+      }
+    } else {
+      setMemberTerritories((prev) => ({
+        ...prev,
+        [memberId]: [...(prev[memberId] ?? []), zip].sort(),
+      }));
+      setTerritoryInput((prev) => ({ ...prev, [memberId]: "" }));
+    }
+    setSavingZip(null);
+  }
+
+  async function handleRemoveZip(memberId: string, zip: string) {
+    if (!businessId) return;
+    const supabase = createClient();
+    await supabase.from("territory_assignments").delete()
+      .eq("business_id", businessId)
+      .eq("team_member_id", memberId)
+      .eq("zip_code", zip);
+    setMemberTerritories((prev) => ({
+      ...prev,
+      [memberId]: (prev[memberId] ?? []).filter((z) => z !== zip),
+    }));
   }
 
   return (
@@ -504,6 +592,15 @@ export default function TeamPage() {
                               <span className="material-symbols-outlined text-[16px]">person_remove</span>
                               Remove
                             </button>
+                            {member.user_id && (
+                              <button
+                                onClick={() => { setOpenMenuId(null); setConfirmDeleteAccountMember(member); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                                Delete Account
+                              </button>
+                            )}
                           </div>
                         </>
                       )}
@@ -568,6 +665,19 @@ export default function TeamPage() {
                   }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">schedule</span> Hours
+                </button>
+                <Separator orientation="vertical" className="bg-border/50 h-auto" />
+                <button
+                  onClick={() => setTerritoryOpen((prev) => {
+                    const next = new Set(prev);
+                    next.has(member.id) ? next.delete(member.id) : next.add(member.id);
+                    return next;
+                  })}
+                  className={`flex-1 py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 hover:bg-muted/50 ${
+                    territoryOpen.has(member.id) ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">pin_drop</span> Zone
                 </button>
                 <Separator orientation="vertical" className="bg-border/50 h-auto" />
                 <button
@@ -810,6 +920,59 @@ export default function TeamPage() {
                   </div>
                 </div>
               )}
+
+              {/* Territory ZIP panel */}
+              {territoryOpen.has(member.id) && (
+                <div className="border-t border-border/50 px-4 py-3 flex flex-col gap-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Territory ZIP Codes</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="e.g. 90210"
+                      maxLength={5}
+                      value={territoryInput[member.id] ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "").slice(0, 5);
+                        setTerritoryInput((prev) => ({ ...prev, [member.id]: v }));
+                        setZipError((prev) => ({ ...prev, [member.id]: "" }));
+                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddZip(member.id); } }}
+                      className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                    <button
+                      onClick={() => handleAddZip(member.id)}
+                      disabled={!/^\d{5}$/.test(territoryInput[member.id] ?? "") || savingZip === member.id}
+                      className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 disabled:opacity-40 transition-colors shrink-0"
+                    >
+                      {savingZip === member.id ? "…" : "Add"}
+                    </button>
+                  </div>
+                  {zipError[member.id] && (
+                    <p className="text-xs text-red-500">{zipError[member.id]}</p>
+                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {(memberTerritories[member.id] ?? []).map((zip) => (
+                      <div key={zip} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                        {zip}
+                        <button
+                          onClick={() => handleRemoveZip(member.id, zip)}
+                          className="flex size-4 items-center justify-center rounded-full hover:bg-primary/20 transition-colors ml-0.5"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">close</span>
+                        </button>
+                      </div>
+                    ))}
+                    {(memberTerritories[member.id] ?? []).length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">No ZIP codes yet. Add ZIPs this person covers.</p>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Jobs in these ZIPs are highlighted on the{" "}
+                    <a href="/territories" className="text-primary underline-offset-2 hover:underline">Zone Map</a>.
+                  </p>
+                </div>
+              )}
             </Card>
           );
         })}
@@ -997,12 +1160,81 @@ export default function TeamPage() {
                 </div>
               </div>
 
+              <div className="flex gap-3">
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Hourly Rate</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editForm.hourly_rate}
+                      onChange={(e) => setEditForm((f) => ({ ...f, hourly_rate: e.target.value }))}
+                      placeholder="0.00"
+                      className="flex h-12 w-full rounded-xl border border-border bg-transparent pl-7 pr-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Commission %</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={editForm.commission_rate}
+                      onChange={(e) => setEditForm((f) => ({ ...f, commission_rate: e.target.value }))}
+                      placeholder="Business default"
+                      className="flex h-12 w-full rounded-xl border border-border bg-transparent pl-3 pr-7 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </div>
+
               <button
                 onClick={handleSaveEdit}
                 disabled={editSaving || !editForm.name.trim()}
                 className="w-full mt-1 rounded-xl font-bold py-3.5 text-sm bg-primary text-white shadow-md hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
               >
                 {editSaving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Modal */}
+      {confirmDeleteAccountMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmDeleteAccountMember(null)} />
+          <div className="relative w-full max-w-sm bg-background rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="flex size-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/40">
+                <span className="material-symbols-outlined text-[28px] text-red-500" style={{ fontVariationSettings: "'FILL' 1" }}>delete_forever</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-extrabold text-foreground">Delete Account?</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This permanently deletes <span className="font-semibold text-foreground">{confirmDeleteAccountMember.name}&apos;s</span> login. They will not be able to log back in.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDeleteAccountMember(null)}
+                className="flex-1 rounded-xl border border-border py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteAccount(confirmDeleteAccountMember)}
+                disabled={deletingAccountId === confirmDeleteAccountMember.id}
+                className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                {deletingAccountId === confirmDeleteAccountMember.id ? "Deleting…" : "Delete Account"}
               </button>
             </div>
           </div>

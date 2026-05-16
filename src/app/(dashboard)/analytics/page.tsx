@@ -515,13 +515,29 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>Analytics</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Revenue, pipeline, and performance</p>
         </div>
-        <button
-          onClick={() => router.push("/reports/payroll")}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
-        >
-          <span className="material-symbols-outlined text-[15px]">badge</span>
-          Payroll
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => router.push("/reports/profitability")}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[15px]">trending_up</span>
+            Profit
+          </button>
+          <button
+            onClick={() => router.push("/reports/commission")}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[15px]">emoji_events</span>
+            Commission
+          </button>
+          <button
+            onClick={() => router.push("/reports/payroll")}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[15px]">badge</span>
+            Payroll
+          </button>
+        </div>
       </div>
 
       {/* Time filter */}

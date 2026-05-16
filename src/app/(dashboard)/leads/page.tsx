@@ -22,8 +22,18 @@ type Lead = {
   preferred_time: string | null;
   custom_field_values: Record<string, unknown> | null;
   estimated_value: number | null;
+  referral_job_id: string | null;
   created_at: string;
+  ai_score: number | null;
+  ai_score_label: "hot" | "warm" | "cool" | "cold" | null;
 };
+
+const SCORE_CONFIG = {
+  hot:  { label: "Hot",  bg: "bg-red-500/10",    color: "#ef4444", dot: "bg-red-500"    },
+  warm: { label: "Warm", bg: "bg-amber-500/10",  color: "#f59e0b", dot: "bg-amber-500"  },
+  cool: { label: "Cool", bg: "bg-blue-500/10",   color: "#3b82f6", dot: "bg-blue-500"   },
+  cold: { label: "Cold", bg: "bg-gray-400/10",   color: "#9ca3af", dot: "bg-gray-400"   },
+} as const;
 
 const STAGES: { value: LeadStage; label: string; color: string; bg: string; icon: string }[] = [
   { value: "new",       label: "New",       color: "#6b7280", bg: "bg-gray-500/10",   icon: "person_add" },
@@ -39,7 +49,8 @@ const BLANK: Omit<Lead, "id" | "created_at"> = {
   name: "", phone: "", phone_alt: "", email: "", address: "", stage: "new",
   source: null, notes: "", rapport_notes: null, service_notes: null,
   preferred_date: null, preferred_time: null, custom_field_values: null,
-  estimated_value: null,
+  estimated_value: null, referral_job_id: null,
+  ai_score: null, ai_score_label: null,
 };
 
 export default function LeadsPage() {
@@ -56,6 +67,8 @@ export default function LeadsPage() {
   const [converting, setConverting] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [scoring, setScoring] = useState(false);
+  const [scoringProgress, setScoringProgress] = useState<{ done: number; total: number } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -98,6 +111,9 @@ export default function LeadsPage() {
       preferred_time: lead.preferred_time,
       custom_field_values: lead.custom_field_values,
       estimated_value: lead.estimated_value,
+      referral_job_id: lead.referral_job_id,
+      ai_score: lead.ai_score,
+      ai_score_label: lead.ai_score_label,
     });
     setModalOpen(true);
   }
@@ -129,6 +145,30 @@ export default function LeadsPage() {
   async function updateStage(leadId: string, stage: LeadStage) {
     await supabase.from("leads").update({ stage }).eq("id", leadId);
     setLeads((prev) => prev.map((l) => l.id === leadId ? { ...l, stage } : l));
+  }
+
+  async function scoreAll() {
+    const unscored = leads.filter((l) => l.ai_score == null && l.stage !== "lost" && l.stage !== "won");
+    if (unscored.length === 0) return;
+    setScoring(true);
+    setScoringProgress({ done: 0, total: unscored.length });
+    for (let i = 0; i < unscored.length; i++) {
+      const lead = unscored[i];
+      try {
+        const res = await fetch("/api/lead-score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId: lead.id }),
+        });
+        if (res.ok) {
+          const { score, label } = await res.json() as { score: number; label: Lead["ai_score_label"] };
+          setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, ai_score: score, ai_score_label: label } : l));
+        }
+      } catch { /* non-fatal */ }
+      setScoringProgress({ done: i + 1, total: unscored.length });
+    }
+    setScoring(false);
+    setScoringProgress(null);
   }
 
   async function deleteLead(leadId: string) {
@@ -184,13 +224,27 @@ export default function LeadsPage() {
             {leads.length} prospect{leads.length !== 1 ? "s" : ""} · ${totalPipeline.toFixed(0)} pipeline
           </p>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-1.5 bg-primary text-white text-sm font-bold px-3 py-2 rounded-xl shadow-sm active:scale-95 transition-transform"
-        >
-          <span className="material-symbols-outlined text-[16px]">add</span>
-          Add Lead
-        </button>
+        <div className="flex items-center gap-2">
+          {leads.some((l) => l.ai_score == null && l.stage !== "lost" && l.stage !== "won") && (
+            <button
+              onClick={scoreAll}
+              disabled={scoring}
+              className="flex items-center gap-1.5 bg-violet-600 text-white text-sm font-bold px-3 py-2 rounded-xl shadow-sm active:scale-95 transition-transform disabled:opacity-60"
+            >
+              <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+              {scoring
+                ? scoringProgress ? `${scoringProgress.done}/${scoringProgress.total}` : "Scoring…"
+                : "AI Score"}
+            </button>
+          )}
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-1.5 bg-primary text-white text-sm font-bold px-3 py-2 rounded-xl shadow-sm active:scale-95 transition-transform"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            Add Lead
+          </button>
+        </div>
       </div>
 
       {/* Pipeline summary */}
@@ -251,7 +305,7 @@ export default function LeadsPage() {
             {stageFilter === "all" ? "No leads yet" : `No ${stageFilter} leads`}
           </p>
           <p className="text-xs text-muted-foreground">
-            {stageFilter === "all" ? "Add your first prospect to start tracking your pipeline." : "Try a different stage filter."}
+            {stageFilter === "all" ? "Add your first prospect, or field crew can log neighbor leads directly from a job." : "Try a different stage filter."}
           </p>
           {stageFilter === "all" && (
             <button
@@ -287,11 +341,25 @@ export default function LeadsPage() {
                           </span>
                           {stage.label}
                         </span>
-                        {lead.source && (
+                        {lead.ai_score != null && lead.ai_score_label && (() => {
+                          const sc = SCORE_CONFIG[lead.ai_score_label];
+                          return (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${sc.bg}`} style={{ color: sc.color }}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                              {sc.label} · {lead.ai_score}
+                            </span>
+                          );
+                        })()}
+                        {lead.source === "Neighbor Referral" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600">
+                            <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>handshake</span>
+                            Neighbor Referral
+                          </span>
+                        ) : lead.source ? (
                           <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                             {lead.source}
                           </span>
-                        )}
+                        ) : null}
                         {apptDate && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600">
                             <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>event</span>

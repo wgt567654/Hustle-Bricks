@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/send-review-requests",
+      "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/cron/new-lead-notify",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/quote-follow-ups",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/rebooking-campaign",
+      "schedule": "0 12 * * *"
+    }
+  ]
+}

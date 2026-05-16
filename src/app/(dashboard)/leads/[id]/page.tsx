@@ -59,7 +59,19 @@ type Lead = {
   custom_field_values: Record<string, unknown> | null;
   estimated_value: number | null;
   created_at: string;
+  ai_score: number | null;
+  ai_score_label: "hot" | "warm" | "cool" | "cold" | null;
+  ai_score_reason: string | null;
+  ai_score_actions: string[] | null;
+  ai_score_updated_at: string | null;
 };
+
+const SCORE_CONFIG = {
+  hot:  { label: "Hot",  color: "#ef4444", bg: "bg-red-50 border-red-200",    dot: "bg-red-500"    },
+  warm: { label: "Warm", color: "#f59e0b", bg: "bg-amber-50 border-amber-200", dot: "bg-amber-500"  },
+  cool: { label: "Cool", color: "#3b82f6", bg: "bg-blue-50 border-blue-200",   dot: "bg-blue-500"   },
+  cold: { label: "Cold", color: "#9ca3af", bg: "bg-gray-50 border-gray-200",   dot: "bg-gray-400"   },
+} as const;
 
 type CustomField = {
   id: string;
@@ -128,6 +140,12 @@ export default function LeadDetailPage() {
   // Converting to client
   const [converting, setConverting] = useState(false);
 
+  // AI scoring
+  const [rescoring, setRescoring] = useState(false);
+  const [scoreData, setScoreData] = useState<{
+    score: number; label: Lead["ai_score_label"]; reason: string; actions: string[];
+  } | null>(null);
+
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -140,6 +158,14 @@ export default function LeadDetailPage() {
       if (!leadData) { router.replace("/leads"); return; }
       const l = leadData as Lead;
       setLead(l);
+      if (l.ai_score != null && l.ai_score_label) {
+        setScoreData({
+          score: l.ai_score,
+          label: l.ai_score_label,
+          reason: l.ai_score_reason ?? "",
+          actions: l.ai_score_actions ?? [],
+        });
+      }
       setForm({
         name: l.name,
         phone: l.phone,
@@ -335,6 +361,23 @@ export default function LeadDetailPage() {
     setConverting(false);
   }
 
+  async function rescore() {
+    if (!lead) return;
+    setRescoring(true);
+    try {
+      const res = await fetch("/api/lead-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScoreData(data);
+      }
+    } catch { /* non-fatal */ }
+    setRescoring(false);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -378,6 +421,62 @@ export default function LeadDetailPage() {
           <span className="material-symbols-outlined text-[18px]">{editing ? "check" : "edit"}</span>
         </button>
       </div>
+
+      {/* ── AI Score card ── */}
+      {scoreData ? (() => {
+        const sc = SCORE_CONFIG[scoreData.label ?? "cool"];
+        return (
+          <div className={`rounded-2xl border p-4 flex flex-col gap-3 ${sc.bg}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/80 shadow-sm">
+                  <span className="material-symbols-outlined text-[18px]" style={{ color: sc.color, fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">AI Lead Score</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-2xl font-extrabold" style={{ color: sc.color }}>{scoreData.score}</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/60`} style={{ color: sc.color }}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                      {sc.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={rescore}
+                disabled={rescoring}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/70 border border-white/50 text-xs font-bold text-muted-foreground hover:text-foreground active:scale-95 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[13px]">{rescoring ? "hourglass_empty" : "refresh"}</span>
+                {rescoring ? "Scoring…" : "Re-score"}
+              </button>
+            </div>
+            {scoreData.reason && (
+              <p className="text-xs text-foreground/80 leading-relaxed">{scoreData.reason}</p>
+            )}
+            {scoreData.actions && scoreData.actions.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {scoreData.actions.map((action, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                    <span className="material-symbols-outlined text-[13px] mt-0.5 shrink-0" style={{ color: sc.color }}>arrow_right</span>
+                    {action}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })() : (
+        <button
+          onClick={rescore}
+          disabled={rescoring}
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-violet-50 border border-violet-200 text-violet-700 text-sm font-bold active:scale-95 transition-all disabled:opacity-50"
+        >
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+          {rescoring ? "Analyzing lead…" : "Score this lead with AI"}
+        </button>
+      )}
 
       {/* ── Two-column layout on desktop ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

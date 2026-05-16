@@ -14,6 +14,7 @@ type Quote = {
   status: QuoteStatus;
   total: number;
   created_at: string;
+  sent_at: string | null;
   notes: string | null;
   clients: { name: string; tag: string } | null;
   quote_line_items: { description: string }[];
@@ -42,6 +43,7 @@ export default function SalesPage() {
   const [activeFilter, setActiveFilter] = useState<"active" | "won" | "lost">("active");
   const [actingId, setActingId] = useState<string | null>(null);
   const [currency, setCurrency] = useState("USD");
+  const [staleQuoteDays, setStaleQuoteDays] = useState(7);
 
   useEffect(() => {
     async function load() {
@@ -51,17 +53,18 @@ export default function SalesPage() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id, currency")
+        .select("id, currency, stale_quote_days")
         .eq("owner_id", user.id)
         .single();
 
       if (!business) return;
       setBusinessId(business.id);
       setCurrency(business.currency ?? "USD");
+      setStaleQuoteDays((business as unknown as { stale_quote_days: number | null }).stale_quote_days ?? 7);
 
       const { data } = await supabase
         .from("quotes")
-        .select("id, status, total, created_at, notes, clients(name, tag), quote_line_items(description)")
+        .select("id, status, total, created_at, sent_at, notes, clients(name, tag), quote_line_items(description)")
         .eq("business_id", business.id)
         .order("created_at", { ascending: false });
 
@@ -71,9 +74,15 @@ export default function SalesPage() {
     load();
   }, []);
 
+  const now = Date.now();
+  const staleMs = staleQuoteDays * 24 * 60 * 60 * 1000;
+
   const activeQuotes = quotes.filter((q) => q.status === "draft" || q.status === "sent");
   const wonQuotes = quotes.filter((q) => q.status === "accepted");
   const lostQuotes = quotes.filter((q) => q.status === "declined");
+  const stalledQuotes = quotes.filter(
+    (q) => q.status === "sent" && q.sent_at && now - new Date(q.sent_at).getTime() > staleMs
+  );
 
   const pipelineValue = activeQuotes.reduce((s, q) => s + q.total, 0);
   const decidedCount = wonQuotes.length + lostQuotes.length;
@@ -82,6 +91,10 @@ export default function SalesPage() {
   const displayedQuotes =
     activeFilter === "active" ? activeQuotes :
     activeFilter === "won" ? wonQuotes : lostQuotes;
+
+  function isStalled(q: Quote) {
+    return q.status === "sent" && q.sent_at != null && now - new Date(q.sent_at).getTime() > staleMs;
+  }
 
   async function updateStatus(quoteId: string, status: QuoteStatus) {
     setActingId(quoteId);
@@ -149,6 +162,25 @@ export default function SalesPage() {
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Sales Pipeline</h1>
         <p className="text-sm text-muted-foreground">Track quotes and close deals.</p>
       </div>
+
+      {/* Stalled alert banner */}
+      {!loading && stalledQuotes.length > 0 && (
+        <button
+          onClick={() => setActiveFilter("active")}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-left"
+        >
+          <span className="material-symbols-outlined text-red-500 text-[20px] shrink-0">timer</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-red-700 dark:text-red-300">
+              {stalledQuotes.length} stalled quote{stalledQuotes.length !== 1 ? "s" : ""} — no response in {staleQuoteDays}+ days
+            </p>
+            <p className="text-[11px] text-red-600/80 dark:text-red-400/80">
+              {formatCurrencyRounded(stalledQuotes.reduce((s, q) => s + q.total, 0), currency)} at risk
+            </p>
+          </div>
+          <span className="material-symbols-outlined text-red-400 text-[16px]">chevron_right</span>
+        </button>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
@@ -229,7 +261,8 @@ export default function SalesPage() {
 
               <div className="flex items-center justify-between">
                 {quote.status === "draft" && <Badge variant="secondary" className="bg-muted text-muted-foreground border-0">Draft</Badge>}
-                {quote.status === "sent" && <Badge variant="secondary" className="bg-primary/10 text-primary border-0">Quote Sent</Badge>}
+                {quote.status === "sent" && !isStalled(quote) && <Badge variant="secondary" className="bg-primary/10 text-primary border-0">Quote Sent</Badge>}
+                {quote.status === "sent" && isStalled(quote) && <Badge variant="secondary" className="bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-0 flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">timer</span>Stalled</Badge>}
                 {quote.status === "accepted" && <Badge variant="secondary" className="icon-green  border-0">Won ✓</Badge>}
                 {quote.status === "declined" && <Badge variant="secondary" className="bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-0">Lost</Badge>}
 

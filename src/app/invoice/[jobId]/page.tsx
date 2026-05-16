@@ -36,6 +36,9 @@ type InvoiceJob = {
     contact_phone: string | null;
     stripe_connect_account_id: string | null;
     stripe_connect_status: string | null;
+    financing_enabled: boolean | null;
+    financing_url: string | null;
+    financing_min_amount: number | null;
   } | null;
   clients: {
     name: string;
@@ -77,7 +80,7 @@ export default async function InvoicePage({
   const { data, error } = await supabase
     .from("jobs")
     .select(
-      "id, status, total, scheduled_at, notes, signature_url, businesses(name, currency, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, stripe_connect_account_id, stripe_connect_status), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
+      "id, status, total, scheduled_at, notes, signature_url, businesses(name, currency, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, stripe_connect_account_id, stripe_connect_status, financing_enabled, financing_url, financing_min_amount), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
     )
     .eq("id", jobId)
     .single();
@@ -365,6 +368,34 @@ export default async function InvoicePage({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Financing option — shown only when unpaid, financing is configured, and total qualifies */}
+        {!isPaid &&
+          job.businesses?.financing_enabled &&
+          job.businesses.financing_url &&
+          job.total >= (job.businesses.financing_min_amount ?? 500) && (
+          <div className="mb-8 rounded-2xl bg-blue-50 border border-blue-200 overflow-hidden">
+            <div className="px-5 py-3 bg-blue-100 border-b border-blue-200">
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Pay Over Time</p>
+            </div>
+            <div className="px-5 py-4 flex flex-col gap-3">
+              <p className="text-sm text-blue-800 leading-relaxed">
+                Can&apos;t pay the full amount upfront? Finance this job with low monthly payments — quick 2-minute application, instant decision.
+              </p>
+              <a
+                href={job.businesses.financing_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm text-center hover:bg-blue-700 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Apply for Financing
+              </a>
             </div>
           </div>
         )}

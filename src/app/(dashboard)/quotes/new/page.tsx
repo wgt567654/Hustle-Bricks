@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/currency";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 type Service = {
   id: string;
@@ -541,11 +542,10 @@ export default function QuoteBuilder() {
                   onChange={(e) => setNewClientForm((f) => ({ ...f, email: e.target.value }))}
                   className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
-                <input
-                  type="text"
-                  placeholder="Address"
+                <AddressAutocomplete
                   value={newClientForm.address}
-                  onChange={(e) => setNewClientForm((f) => ({ ...f, address: e.target.value }))}
+                  onChange={(v) => setNewClientForm((f) => ({ ...f, address: v }))}
+                  placeholder="Address"
                   className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
                 <select
