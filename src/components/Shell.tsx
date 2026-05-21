@@ -325,7 +325,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           style={{
             background: "var(--card)",
             width: sidebarExpanded ? 220 : 60,
-            transition: sidebarExpanded ? "none" : "width 200ms ease-in-out",
+            transition: "width 200ms ease-in-out",
           }}
         >
           {/* Logo */}
