@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useEffect, useState, useRef } from "react";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -55,27 +54,79 @@ async function geocode(address: string): Promise<[number, number] | null> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function makePin(color: string) {
-  return L.divIcon({
-    html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35)"></div>`,
-    className: "",
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-  });
+function buildMapStyle(layer: "satellite" | "street"): maplibregl.StyleSpecification {
+  const tiles = layer === "satellite"
+    ? ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"]
+    : [
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ];
+  return {
+    version: 8,
+    sources: {
+      "base-tiles": {
+        type: "raster",
+        tiles,
+        tileSize: 256,
+        attribution: layer === "satellite" ? "Tiles &copy; Esri" : "&copy; OpenStreetMap contributors",
+        maxzoom: 19,
+      },
+    },
+    layers: [
+      { id: "background", type: "background", paint: { "background-color": "#1a1a2e" } },
+      { id: "base-layer", type: "raster", source: "base-tiles" },
+    ],
+  };
+}
+
+function makePinEl(color: string): HTMLElement {
+  const el = document.createElement("div");
+  el.style.cssText = `width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer;`;
+  return el;
 }
 
 export default function TerritoryMapContent() {
   const router = useRouter();
+
   const [pins, setPins] = useState<Pin[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
-  const [center, setCenter] = useState<[number, number]>([39.5, -98.35]);
-  const [zoom, setZoom] = useState(4);
   const [filterMember, setFilterMember] = useState<string>("all");
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
+  const [mapLayer, setMapLayer] = useState<"satellite" | "street">("street");
+  const [mapLoaded, setMapLoaded] = useState(false);
 
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+
+  // Map init
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: buildMapStyle("street"),
+      center: [-98.35, 39.5],
+      zoom: 4,
+      attributionControl: false,
+    });
+
+    mapRef.current = map;
+    map.on("load", () => { map.resize(); setMapLoaded(true); });
+
+    return () => {
+      markersRef.current.forEach((m) => m.remove());
+      map.remove();
+      mapRef.current = null;
+      setMapLoaded(false);
+    };
+  }, []);
+
+  // Data loading
   useEffect(() => {
     async function load() {
       const supabase = createClient();
@@ -83,10 +134,7 @@ export default function TerritoryMapContent() {
       if (!user) return;
 
       const { data: bizList } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .limit(1);
+        .from("businesses").select("id").eq("owner_id", user.id).limit(1);
       const business = bizList?.[0];
       if (!business) return;
 
@@ -98,15 +146,10 @@ export default function TerritoryMapContent() {
           .not("status", "eq", "cancelled")
           .order("created_at", { ascending: false }),
         supabase
-          .from("team_members")
-          .select("id, name")
-          .eq("business_id", business.id)
-          .eq("is_active", true)
-          .eq("is_pending", false)
-          .order("name"),
+          .from("team_members").select("id, name")
+          .eq("business_id", business.id).eq("is_active", true).eq("is_pending", false).order("name"),
         supabase
-          .from("territory_assignments")
-          .select("team_member_id, zip_code")
+          .from("territory_assignments").select("team_member_id, zip_code")
           .eq("business_id", business.id),
       ]);
 
@@ -148,11 +191,10 @@ export default function TerritoryMapContent() {
         setProgress(i + 1);
         if (coords) {
           newPins.push({ job, lat: coords[0], lng: coords[1], memberId });
-          if (memberId) {
-            const m = memberById.get(memberId);
-            if (m) m.jobCount++;
+          if (memberId) { const m = memberById.get(memberId); if (m) m.jobCount++; }
+          if (newPins.length === 1 && mapRef.current) {
+            mapRef.current.flyTo({ center: [coords[1], coords[0]], zoom: 11, duration: 800 });
           }
-          if (newPins.length === 1) { setCenter(coords); setZoom(11); }
         }
         setPins([...newPins]);
         if (i < withAddress.length - 1) await sleep(1100);
@@ -164,154 +206,219 @@ export default function TerritoryMapContent() {
     load();
   }, []);
 
-  const filtered =
-    filterMember === "all"        ? pins :
-    filterMember === "unassigned" ? pins.filter((p) => !p.memberId) :
-                                    pins.filter((p) => p.memberId === filterMember);
+  // Markers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
 
-  function pinColor(pin: Pin): string {
-    if (!pin.memberId) return UNASSIGNED_COLOR;
-    return members.find((m) => m.id === pin.memberId)?.color ?? UNASSIGNED_COLOR;
-  }
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    const filtered =
+      filterMember === "all" ? pins :
+      filterMember === "unassigned" ? pins.filter((p) => !p.memberId) :
+      pins.filter((p) => p.memberId === filterMember);
+
+    filtered.forEach((pin) => {
+      const color = pin.memberId
+        ? (members.find((m) => m.id === pin.memberId)?.color ?? UNASSIGNED_COLOR)
+        : UNASSIGNED_COLOR;
+
+      const el = makePinEl(color);
+      el.addEventListener("click", (e) => { e.stopPropagation(); setSelectedPin(pin); });
+
+      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([pin.lng, pin.lat])
+        .addTo(map);
+      markersRef.current.push(marker);
+    });
+  }, [mapLoaded, pins, filterMember, members]);
+
+  // Tile layer switching — markers survive style changes (they're DOM elements)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    setMapLoaded(false);
+    map.setStyle(buildMapStyle(mapLayer));
+    map.once("style.load", () => setMapLoaded(true));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapLayer]);
 
   const membersWithZips = members.filter((m) => m.zips.length > 0);
   const unassignedCount = pins.filter((p) => !p.memberId).length;
 
-  return (
-    <div className="flex flex-col h-screen max-h-screen overflow-hidden">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-3 flex flex-col gap-3 shrink-0 bg-background border-b border-border">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Territory Zones</h1>
-            <p className="text-xs text-muted-foreground">
-              {loading ? "Loading…" : geocoding ? `Plotting ${progress}/${total}…` : `${pins.length} jobs mapped`}
-            </p>
-          </div>
-          {geocoding && (
-            <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${total > 0 ? (progress / total) * 100 : 0}%` }}
-              />
-            </div>
-          )}
-        </div>
+  const glassStyle = { background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" } as const;
+  const chipActive   = { background: "rgba(255,255,255,0.95)", color: "#111" } as const;
+  const chipInactive = { background: "rgba(0,0,0,0.40)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", color: "rgba(255,255,255,0.85)" } as const;
 
-        {/* Filter pills */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-none">
-          <button onClick={() => setFilterMember("all")}>
-            <span className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors whitespace-nowrap ${filterMember === "all" ? "bg-primary text-white border-primary" : "border-border text-muted-foreground bg-card hover:bg-muted"}`}>
-              All ({pins.length})
-            </span>
-          </button>
-          {membersWithZips.map((m) => (
-            <button key={m.id} onClick={() => setFilterMember(m.id)}>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors whitespace-nowrap flex items-center gap-1.5 ${filterMember === m.id ? "text-white border-transparent" : "border-border text-foreground bg-card hover:bg-muted"}`}
-                style={filterMember === m.id ? { background: m.color, borderColor: m.color } : {}}
-              >
-                <span className="size-2 rounded-full shrink-0" style={{ background: m.color }} />
-                {m.name.split(" ")[0]} ({m.jobCount})
-              </span>
-            </button>
-          ))}
-          {unassignedCount > 0 && (
-            <button onClick={() => setFilterMember("unassigned")}>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors whitespace-nowrap ${filterMember === "unassigned" ? "bg-gray-500 text-white border-transparent" : "border-border text-muted-foreground bg-card hover:bg-muted"}`}>
-                No Zone ({unassignedCount})
-              </span>
-            </button>
-          )}
-        </div>
-      </div>
+  const selectedMember = selectedPin?.memberId ? members.find((m) => m.id === selectedPin.memberId) : null;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", overflow: "hidden", touchAction: "none" }}>
 
       {/* Map */}
-      <div className="flex-1 min-h-0 relative">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-muted-foreground">Loading…</p>
+      <div ref={mapContainerRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
+          <p className="text-sm text-muted-foreground">Loading map…</p>
+        </div>
+      )}
+
+      {/* Floating overlays */}
+      <div className="absolute inset-0 pointer-events-none">
+
+        {/* Top bar */}
+        <div className="absolute top-3 left-3 right-3 z-[400] flex flex-col gap-2 pointer-events-none">
+
+          {/* Row 1: back + title */}
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => router.back()}
+              className="size-9 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-all"
+              style={glassStyle}
+            >
+              <span className="material-symbols-outlined text-[18px] text-white">arrow_back</span>
+            </button>
+            <div className="flex-1 flex items-center justify-between px-3 py-2 rounded-2xl" style={glassStyle}>
+              <div>
+                <span className="text-sm font-extrabold text-white leading-tight block">Territory Zones</span>
+                <span className="text-[10px] text-white/70 leading-tight">
+                  {loading ? "Loading…" : geocoding ? `Plotting ${progress}/${total}…` : `${pins.length} jobs mapped`}
+                </span>
+              </div>
+              {geocoding && (
+                <div className="w-20 h-1.5 rounded-full bg-white/20 overflow-hidden ml-3">
+                  <div className="h-full rounded-full bg-white transition-all"
+                    style={{ width: `${total > 0 ? (progress / total) * 100 : 0}%` }} />
+                </div>
+              )}
+            </div>
           </div>
-        ) : pins.length === 0 && !geocoding ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
-            <span className="material-symbols-outlined text-[56px] text-muted-foreground/30">pin_drop</span>
-            <p className="text-sm font-medium text-muted-foreground">No jobs with addresses to plot</p>
-            <p className="text-xs text-muted-foreground/60">
-              Add addresses to clients and assign ZIPs on the{" "}
-              <a href="/team" className="text-primary underline-offset-2 hover:underline">Team page</a>
-            </p>
-          </div>
-        ) : (
-          <MapContainer
-            center={center}
-            zoom={zoom}
-            style={{ height: "100%", width: "100%" }}
-            zoomControl={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {filtered.map((pin) => (
-              <Marker key={pin.job.id} position={[pin.lat, pin.lng]} icon={makePin(pinColor(pin))}>
-                <Popup>
-                  <div style={{ minWidth: 180 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
-                      {pin.job.job_line_items[0]?.description ?? "Service Job"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                      {pin.job.clients?.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
-                      {pin.job.clients?.address}
-                    </div>
-                    {pin.memberId ? (
-                      <div style={{ fontSize: 11, fontWeight: 700, color: pinColor(pin), marginBottom: 6 }}>
-                        Zone: {members.find((m) => m.id === pin.memberId)?.name}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 11, color: UNASSIGNED_COLOR, marginBottom: 6 }}>
-                        No territory assigned
-                      </div>
-                    )}
-                    <button
-                      onClick={() => router.push(`/jobs/${pin.job.id}`)}
-                      style={{ width: "100%", padding: "6px 0", background: "#007AFF", color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                    >
-                      View Job →
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
+
+          {/* Row 2: filter pills */}
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none pointer-events-auto">
+            <button
+              onClick={() => setFilterMember("all")}
+              className="shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95"
+              style={filterMember === "all" ? chipActive : chipInactive}
+            >
+              All ({pins.length})
+            </button>
+            {membersWithZips.map((m) => (
+              <button key={m.id}
+                onClick={() => setFilterMember(m.id)}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95"
+                style={filterMember === m.id ? { background: m.color, color: "white" } : chipInactive}
+              >
+                <span className="size-2 rounded-full shrink-0"
+                  style={{ background: filterMember === m.id ? "rgba(255,255,255,0.7)" : m.color }} />
+                {m.name.split(" ")[0]} ({m.jobCount})
+              </button>
             ))}
-          </MapContainer>
+            {unassignedCount > 0 && (
+              <button
+                onClick={() => setFilterMember("unassigned")}
+                className="shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95"
+                style={filterMember === "unassigned" ? { background: UNASSIGNED_COLOR, color: "white" } : chipInactive}
+              >
+                No Zone ({unassignedCount})
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Satellite / Street toggle */}
+        <div className="absolute bottom-14 left-3 z-[400] flex rounded-xl overflow-hidden shadow-lg border border-white/20 pointer-events-auto">
+          <button
+            onClick={() => setMapLayer("satellite")}
+            className={`px-2.5 py-1 text-xs font-bold transition-colors ${mapLayer === "satellite" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}
+          >
+            Satellite
+          </button>
+          <button
+            onClick={() => setMapLayer("street")}
+            className={`px-2.5 py-1 text-xs font-bold transition-colors ${mapLayer === "street" ? "bg-primary text-white" : "bg-background/90 text-muted-foreground hover:bg-background"}`}
+          >
+            Street
+          </button>
+        </div>
+
+        {/* Bottom legend */}
+        {(membersWithZips.length > 0 || unassignedCount > 0) && (
+          <div
+            className="absolute bottom-0 left-0 right-0 z-[400] pointer-events-auto px-4 py-3 flex items-center gap-4 flex-wrap"
+            style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
+          >
+            {membersWithZips.map((m) => (
+              <div key={m.id} className="flex items-center gap-1.5">
+                <div className="size-3 rounded-full border-2 shrink-0" style={{ background: m.color, borderColor: "rgba(255,255,255,0.5)" }} />
+                <span className="text-xs text-white/80 font-medium">{m.name}</span>
+                <span className="text-[10px] text-white/40">({m.zips.length} ZIP{m.zips.length !== 1 ? "s" : ""})</span>
+              </div>
+            ))}
+            {unassignedCount > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div className="size-3 rounded-full border-2 shrink-0" style={{ background: UNASSIGNED_COLOR, borderColor: "rgba(255,255,255,0.5)" }} />
+                <span className="text-xs text-white/80 font-medium">No zone</span>
+              </div>
+            )}
+            {membersWithZips.length === 0 && (
+              <span className="text-xs text-white/60">
+                Assign ZIP codes on the{" "}
+                <a href="/team" className="text-primary underline-offset-2 hover:underline">Team page</a>{" "}
+                to color-code these pins by territory.
+              </span>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Legend */}
-      {(membersWithZips.length > 0 || unassignedCount > 0) && (
-        <div className="shrink-0 px-4 py-3 bg-background border-t border-border flex items-center gap-4 flex-wrap">
-          {membersWithZips.map((m) => (
-            <div key={m.id} className="flex items-center gap-1.5">
-              <div className="size-3 rounded-full border-2 border-white shadow-sm" style={{ background: m.color }} />
-              <span className="text-xs text-muted-foreground font-medium">{m.name}</span>
-              <span className="text-[10px] text-muted-foreground/50">({m.zips.length} ZIP{m.zips.length !== 1 ? "s" : ""})</span>
+      {/* Job bottom sheet */}
+      {selectedPin && (
+        <div
+          className="fixed inset-0 z-[2000]"
+          style={{ background: "rgba(0,0,0,0.25)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
+          onClick={() => setSelectedPin(null)}
+        >
+          <div
+            className="absolute bottom-0 left-0 w-full bg-background rounded-t-[28px] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1 px-4">
+              <div className="w-9 h-1 rounded-full bg-muted-foreground/25" />
             </div>
-          ))}
-          {unassignedCount > 0 && (
-            <div className="flex items-center gap-1.5">
-              <div className="size-3 rounded-full border-2 border-white shadow-sm" style={{ background: UNASSIGNED_COLOR }} />
-              <span className="text-xs text-muted-foreground font-medium">No zone</span>
+            <div className="px-5 pt-3 pb-10">
+              {selectedMember ? (
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="size-2 rounded-full inline-block shrink-0" style={{ background: selectedMember.color }} />
+                  <span className="text-xs font-semibold" style={{ color: selectedMember.color }}>{selectedMember.name}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="size-2 rounded-full inline-block shrink-0" style={{ background: UNASSIGNED_COLOR }} />
+                  <span className="text-xs font-semibold text-muted-foreground">No territory</span>
+                </div>
+              )}
+              <p className="text-base font-bold text-foreground mb-0.5">
+                {selectedPin.job.job_line_items[0]?.description ?? "Service Job"}
+              </p>
+              <p className="text-sm text-muted-foreground mb-0.5">{selectedPin.job.clients?.name}</p>
+              <p className="text-xs text-muted-foreground/60 mb-5">{selectedPin.job.clients?.address}</p>
+              {!selectedMember && (
+                <p className="text-xs text-muted-foreground/50 mb-4">
+                  <a href="/team" className="text-primary underline-offset-2 hover:underline">Assign ZIP codes on the Team page</a> to add this to a territory.
+                </p>
+              )}
+              <button
+                onClick={() => router.push(`/jobs/${selectedPin.job.id}`)}
+                className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm active:scale-95 transition-all"
+              >
+                View Job →
+              </button>
             </div>
-          )}
-          {membersWithZips.length === 0 && (
-            <span className="text-xs text-muted-foreground">
-              Assign ZIP codes on the{" "}
-              <a href="/team" className="text-primary underline-offset-2 hover:underline">Team page</a>{" "}
-              to color-code these pins by territory.
-            </span>
-          )}
-          <span className="text-xs text-muted-foreground/50 ml-auto">OpenStreetMap</span>
+          </div>
         </div>
       )}
     </div>
