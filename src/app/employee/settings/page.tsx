@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 
+type Teammate = { id: string; name: string; email: string | null; role: string | null };
+
 export default function EmployeeSettingsPage() {
+  const router = useRouter();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
@@ -14,6 +18,7 @@ export default function EmployeeSettingsPage() {
   const [editingAddress, setEditingAddress] = useState(false);
   const [addressInput, setAddressInput] = useState("");
   const [savingAddress, setSavingAddress] = useState(false);
+  const [teammates, setTeammates] = useState<Teammate[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -22,12 +27,21 @@ export default function EmployeeSettingsPage() {
       if (!user) return;
       const { data } = await supabase
         .from("team_members")
-        .select("id, home_address")
+        .select("id, business_id, home_address")
         .eq("user_id", user.id)
         .single();
       if (data) {
         setMemberId(data.id);
-        setHomeAddress(data.home_address ?? "");
+        setHomeAddress((data as unknown as { home_address: string | null }).home_address ?? "");
+
+        const { data: teamData } = await supabase
+          .from("team_members")
+          .select("id, name, email, role")
+          .eq("business_id", (data as unknown as { business_id: string }).business_id)
+          .eq("is_active", true)
+          .neq("id", data.id)
+          .order("name");
+        setTeammates((teamData ?? []) as Teammate[]);
       }
     }
     load();
@@ -118,6 +132,59 @@ export default function EmployeeSettingsPage() {
             </button>
           )}
         </Card>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Communication</h3>
+        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          <button
+            onClick={() => router.push("/employee/messages")}
+            className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
+          >
+            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>chat</span>
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="font-bold text-sm text-foreground">Messages</span>
+              <span className="text-xs text-muted-foreground">Direct line to your manager</span>
+            </div>
+            <span className="material-symbols-outlined text-muted-foreground ml-auto">chevron_right</span>
+          </button>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">My Team</h3>
+        {teammates.length === 0 ? (
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <div className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">No other active team members yet</p>
+            </div>
+          </Card>
+        ) : (
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden divide-y divide-border/50">
+            {teammates.map((tm) => (
+              <div key={tm.id} className="p-4 flex items-center gap-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="font-bold text-sm text-foreground">{tm.name}</span>
+                  <span className="text-xs text-muted-foreground capitalize">{tm.role ?? "Team Member"}</span>
+                </div>
+                {tm.email && (
+                  <a
+                    href={`mailto:${tm.email}`}
+                    className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">mail</span>
+                  </a>
+                )}
+              </div>
+            ))}
+          </Card>
+        )}
       </section>
 
       <section className="flex flex-col gap-3">

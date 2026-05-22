@@ -20,6 +20,7 @@ type Job = {
 };
 
 type TimeEntry = {
+  job_id: string | null;
   clocked_in_at: string;
   clocked_out_at: string | null;
   odometer_start: number | null;
@@ -199,8 +200,9 @@ export default function EmployeeAnalyticsPage() {
           .order("scheduled_at", { ascending: false }),
         supabase
           .from("time_entries")
-          .select("clocked_in_at, clocked_out_at, odometer_start, odometer_end")
-          .eq("employee_id", member.id),
+          .select("job_id, clocked_in_at, clocked_out_at, odometer_start, odometer_end")
+          .eq("employee_id", member.id)
+          .order("clocked_in_at", { ascending: false }),
         supabase
           .from("payments")
           .select("amount, method, status, job_id")
@@ -465,6 +467,58 @@ export default function EmployeeAnalyticsPage() {
               </div>
             </Card>
           )}
+
+          {/* Mileage Trip Log */}
+          {(() => {
+            const tripEntries = filteredEntries.filter(
+              (e) => e.odometer_start != null && e.odometer_end != null && e.odometer_end > e.odometer_start
+            );
+            if (tripEntries.length === 0) return null;
+            const jobMap = new Map(jobs.map((j) => [j.id, j]));
+            return (
+              <Card className="rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-border/50">
+                  <p className="font-bold text-sm text-foreground">Mileage Log</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {tripEntries.length} trip{tripEntries.length !== 1 ? "s" : ""} · {Math.round(milesFromEntries(filteredEntries))} mi total
+                  </p>
+                </div>
+                <div className="divide-y divide-border/40">
+                  {tripEntries.map((entry, i) => {
+                    const miles = entry.odometer_end! - entry.odometer_start!;
+                    const job = entry.job_id ? jobMap.get(entry.job_id) : null;
+                    const clientName = job?.clients?.name ?? null;
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-4 py-3">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                          <span
+                            className="material-symbols-outlined text-[16px] text-primary"
+                            style={{ fontVariationSettings: "'FILL' 1" }}
+                          >
+                            directions_car
+                          </span>
+                        </div>
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="text-sm font-semibold text-foreground">
+                            {fmtDate(entry.clocked_in_at)}
+                          </span>
+                          {clientName && (
+                            <span className="text-xs text-muted-foreground truncate">{clientName}</span>
+                          )}
+                          <span className="text-xs text-muted-foreground/60">
+                            {entry.odometer_start?.toLocaleString()} → {entry.odometer_end?.toLocaleString()} mi
+                          </span>
+                        </div>
+                        <span className="text-sm font-extrabold text-foreground shrink-0">
+                          +{miles} mi
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })()}
 
           {/* Empty state */}
           {filteredJobs.length === 0 && (

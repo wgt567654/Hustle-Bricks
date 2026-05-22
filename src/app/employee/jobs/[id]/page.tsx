@@ -132,6 +132,15 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
   const [intelSaving, setIntelSaving] = useState(false);
   const [intelSuccess, setIntelSuccess] = useState(false);
 
+  // Expense log
+  const [expenses, setExpenses] = useState<{ id: string; description: string; amount: number; category: string; created_at: string }[]>([]);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [expenseDesc, setExpenseDesc] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("materials");
+  const [expenseSaving, setExpenseSaving] = useState(false);
+  const [expenseSuccess, setExpenseSuccess] = useState(false);
+
   // Signature
   const [sigModalOpen, setSigModalOpen] = useState(false);
   const [sigSaving, setSigSaving] = useState(false);
@@ -178,13 +187,21 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       setPayAmount(j.total.toFixed(2));
       setActiveEntry(entryData as TimeEntry | null);
 
-      const { data: invData } = await supabase
-        .from("inventory_items")
-        .select("id, name, category, quantity")
-        .eq("business_id", j.business_id)
-        .eq("is_active", true)
-        .order("name");
+      const [{ data: invData }, { data: expenseData }] = await Promise.all([
+        supabase
+          .from("inventory_items")
+          .select("id, name, category, quantity")
+          .eq("business_id", j.business_id)
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("expenses")
+          .select("id, description, amount, category, created_at")
+          .eq("job_id", id)
+          .order("created_at"),
+      ]);
       setInventoryItems((invData ?? []) as { id: string; name: string; category: string; quantity: number }[]);
+      setExpenses((expenseData ?? []) as { id: string; description: string; amount: number; category: string; created_at: string }[]);
 
       setLoading(false);
     }
@@ -450,6 +467,31 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     setIntelSuccess(true);
     setIntelOpen(false);
     setTimeout(() => setIntelSuccess(false), 3000);
+  }
+
+  async function submitExpense() {
+    if (!job || !expenseDesc.trim() || !expenseAmount) return;
+    setExpenseSaving(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("expenses")
+      .insert({
+        job_id: job.id,
+        business_id: job.business_id,
+        description: expenseDesc.trim(),
+        amount: parseFloat(expenseAmount),
+        category: expenseCategory,
+      })
+      .select("id, description, amount, category, created_at")
+      .single();
+    if (data) setExpenses((prev) => [...prev, data as { id: string; description: string; amount: number; category: string; created_at: string }]);
+    setExpenseDesc("");
+    setExpenseAmount("");
+    setExpenseCategory("materials");
+    setExpenseSaving(false);
+    setExpenseSuccess(true);
+    setExpenseOpen(false);
+    setTimeout(() => setExpenseSuccess(false), 3000);
   }
 
   async function submitReferral() {
@@ -1031,6 +1073,104 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
       )}
+
+      {/* ── Expense Log ── */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Log an Expense</h2>
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+
+          {/* Existing expenses */}
+          {expenses.length > 0 && (
+            <div className="divide-y divide-border/40">
+              {expenses.map((e) => (
+                <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
+                    <span className="material-symbols-outlined text-[15px] text-orange-500" style={{ fontVariationSettings: "'FILL' 1" }}>receipt_long</span>
+                  </div>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="text-sm font-semibold text-foreground">{e.description}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{e.category}</span>
+                  </div>
+                  <span className="text-sm font-bold text-foreground shrink-0">${e.amount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!expenseOpen ? (
+            <button
+              onClick={() => setExpenseOpen(true)}
+              className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-muted/30 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px] text-muted-foreground">add_circle</span>
+              <span className="text-sm font-semibold text-muted-foreground">
+                {expenseSuccess ? "Expense logged!" : "Log an out-of-pocket expense"}
+              </span>
+              {expenseSuccess && (
+                <span className="material-symbols-outlined text-[16px] text-green-500 ml-auto" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              )}
+            </button>
+          ) : (
+            <div className="p-4 flex flex-col gap-3 border-t border-border/40">
+              <div className="flex gap-2">
+                <div className="flex flex-col gap-1.5 flex-[2]">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Sandpaper from Home Depot"
+                    value={expenseDesc}
+                    onChange={(e) => setExpenseDesc(e.target.value)}
+                    className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Amount ($)</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  className="h-11 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {[
+                    { value: "materials", label: "Materials" },
+                    { value: "fuel",      label: "Fuel"      },
+                    { value: "labor",     label: "Labor"     },
+                    { value: "other",     label: "Other"     },
+                  ].map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExpenseOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-border text-muted-foreground font-bold text-sm hover:bg-muted/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitExpense}
+                  disabled={expenseSaving || !expenseDesc.trim() || !expenseAmount}
+                  className="flex-[2] py-3 rounded-xl bg-orange-500 text-white font-bold text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {expenseSaving ? "Saving…" : "Log Expense"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── Competitor Intel ── */}
       <div className="flex flex-col gap-3">

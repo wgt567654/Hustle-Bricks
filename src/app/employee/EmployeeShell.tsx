@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
@@ -11,6 +12,11 @@ const NAV = [
   { href: "/employee/schedule",     label: "Schedule",  icon: "calendar_month", exact: false },
   { href: "/employee/analytics",    label: "My Stats",  icon: "leaderboard",   exact: false },
   { href: "/employee/settings",     label: "Settings",  icon: "settings",      exact: false },
+];
+
+const SIDEBAR_NAV = [
+  ...NAV.filter((n) => n.href !== "/employee/settings"),
+  { href: "/employee/messages", label: "Messages", icon: "chat", exact: false },
 ];
 
 export default function EmployeeShell({
@@ -22,8 +28,20 @@ export default function EmployeeShell({
 }) {
   const pathname = usePathname();
   const router   = useRouter();
+  const { theme, setTheme } = useTheme();
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const isMapPage = pathname === "/employee/canvassing";
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setSettingsOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [settingsOpen]);
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;
@@ -76,7 +94,7 @@ export default function EmployeeShell({
 
           {/* Nav items */}
           <nav className="flex flex-col gap-0.5 flex-1 py-2 px-2">
-            {NAV.map(({ href, label, icon, exact }) => {
+            {SIDEBAR_NAV.map(({ href, label, icon, exact }) => {
               const active = isActive(href, exact);
               return (
                 <Link
@@ -102,6 +120,107 @@ export default function EmployeeShell({
               );
             })}
           </nav>
+
+          <div className="h-px bg-border/40 mx-2 shrink-0" />
+
+          {/* Notifications + Settings pinned at bottom */}
+          <div className="flex flex-col gap-0.5 py-2 px-2">
+            <Link
+              href="/employee/notifications"
+              className={`flex items-center gap-3 h-10 rounded-xl px-[11px] transition-colors active:scale-95 ${
+                isActive("/employee/notifications", false) ? "bg-primary/10" : "hover:bg-muted/60"
+              }`}
+            >
+              <span
+                className="material-symbols-outlined text-[22px] shrink-0"
+                style={{
+                  color: isActive("/employee/notifications", false) ? "var(--color-primary)" : "var(--muted-foreground)",
+                  fontVariationSettings: isActive("/employee/notifications", false) ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                }}
+              >
+                notifications
+              </span>
+              <span className={`whitespace-nowrap text-sm font-semibold transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"} ${isActive("/employee/notifications", false) ? "text-primary" : "text-muted-foreground"}`}>
+                Alerts
+              </span>
+            </Link>
+
+            <button
+              onClick={() => setSettingsOpen((v) => !v)}
+              className="flex items-center gap-3 h-10 rounded-xl px-[11px] hover:bg-muted/60 transition-colors active:scale-95 w-full text-left"
+            >
+              <span
+                className="material-symbols-outlined text-[22px] shrink-0"
+                style={{
+                  color: "var(--muted-foreground)",
+                  fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0",
+                }}
+              >
+                settings
+              </span>
+              <span className={`whitespace-nowrap text-sm font-semibold text-muted-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}>
+                Settings
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── SETTINGS PANEL ── */}
+      {settingsOpen && (
+        <div className="fixed inset-0 z-40 lg:left-[60px]">
+          <div className="absolute inset-0" onClick={() => setSettingsOpen(false)} />
+          <div className="absolute lg:left-3 lg:bottom-14 right-3 bottom-20 w-72 max-w-[calc(100vw-24px)]">
+            <div ref={settingsRef} className="rounded-2xl overflow-hidden glass-panel animate-in-down">
+              <div className="px-3 pt-3 pb-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">Appearance</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["light", "dark", "system"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTheme(t)}
+                      className={`flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
+                        theme === t
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <span
+                        className="material-symbols-outlined text-[17px]"
+                        style={{ fontVariationSettings: theme === t ? "'FILL' 1" : "'FILL' 0" }}
+                      >
+                        {t === "light" ? "light_mode" : t === "dark" ? "dark_mode" : "brightness_auto"}
+                      </span>
+                      <span className="capitalize">{t}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-px bg-border/40" />
+              <button
+                onClick={() => { setSettingsOpen(false); router.push("/employee/settings"); }}
+                className="flex w-full items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
+              >
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-foreground">
+                  <span className="material-symbols-outlined text-[14px]">tune</span>
+                </div>
+                <span className="font-medium text-sm text-foreground flex-1">Account Settings</span>
+                <span className="material-symbols-outlined text-muted-foreground/40 text-[15px]">chevron_right</span>
+              </button>
+
+              <div className="h-px bg-border/40" />
+              <button
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors text-left"
+              >
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-500">
+                  <span className="material-symbols-outlined text-[14px]">logout</span>
+                </div>
+                <span className="font-medium text-sm text-red-500 flex-1">Sign Out</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -126,12 +245,29 @@ export default function EmployeeShell({
             </div>
           </div>
 
-          <button
-            onClick={handleSignOut}
-            className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90"
-          >
-            <span className="material-symbols-outlined text-[19px]">logout</span>
-          </button>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/employee/notifications"
+              className={`flex size-8 items-center justify-center rounded-full transition-all active:scale-90 ${
+                pathname === "/employee/notifications"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <span
+                className="material-symbols-outlined text-[19px]"
+                style={{ fontVariationSettings: pathname === "/employee/notifications" ? "'FILL' 1" : "'FILL' 0" }}
+              >
+                notifications
+              </span>
+            </Link>
+            <button
+              onClick={handleSignOut}
+              className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all active:scale-90"
+            >
+              <span className="material-symbols-outlined text-[19px]">logout</span>
+            </button>
+          </div>
         </div>
       </header>
 

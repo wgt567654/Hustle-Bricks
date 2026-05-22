@@ -23,6 +23,32 @@ type TimeEntry = {
   clocked_out_at: string | null;
 };
 
+type WeatherDay = { date: string; weathercode: number; precipitation_sum: number; hasRisk: boolean };
+
+function wmoLabel(code: number): string {
+  if (code === 0) return "Clear";
+  if (code <= 2) return "Mostly Clear";
+  if (code === 3) return "Overcast";
+  if (code <= 48) return "Foggy";
+  if (code <= 55) return "Drizzle";
+  if (code <= 65) return "Rain";
+  if (code <= 77) return "Snow";
+  if (code <= 82) return "Showers";
+  if (code <= 86) return "Snow Showers";
+  return "Thunderstorm";
+}
+
+function wmoIcon(code: number): string {
+  if (code === 0) return "light_mode";
+  if (code <= 2) return "partly_cloudy_day";
+  if (code === 3) return "cloud";
+  if (code <= 48) return "foggy";
+  if (code <= 55) return "water_drop";
+  if (code <= 82) return "rainy";
+  if (code <= 86) return "weather_snowy";
+  return "thunderstorm";
+}
+
 function formatTime(dateStr: string | null) {
   if (!dateStr) return "";
   return new Date(dateStr).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -39,6 +65,7 @@ export default function EmployeeHomePage() {
   const [clockingOut, setClockingOut] = useState(false);
   const [odometerStart, setOdometerStart] = useState("");
   const [odometerEnd, setOdometerEnd] = useState("");
+  const [todayWeather, setTodayWeather] = useState<WeatherDay | null>(null);
 
   const now = new Date();
   const greeting =
@@ -63,6 +90,28 @@ export default function EmployeeHomePage() {
       setEmployeeId(tm.id);
       setBusinessId(tm.business_id);
 
+      // Fetch weather in parallel with jobs
+      const weatherPromise = supabase
+        .from("businesses")
+        .select("service_areas, city")
+        .eq("id", tm.business_id)
+        .single()
+        .then(async ({ data: biz }) => {
+          if (!biz) return;
+          const areas: string[] = (biz as unknown as { service_areas: string[] | null }).service_areas ?? [];
+          const legacyCity = (biz as unknown as { city: string | null }).city;
+          const allAreas = areas.length > 0 ? areas : legacyCity ? [legacyCity] : [];
+          if (!allAreas.length) return;
+          const params = new URLSearchParams();
+          allAreas.forEach((a) => params.append("city", a));
+          const res = await fetch(`/api/weather-alerts?${params}`);
+          if (!res.ok) return;
+          const json = await res.json() as { risk: WeatherDay[] };
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const todayData = json.risk.find((d) => d.date === todayStr);
+          if (todayData) setTodayWeather(todayData);
+        });
+
       const startOfToday = new Date(now);
       startOfToday.setHours(0, 0, 0, 0);
       const endOfToday = new Date(now);
@@ -85,6 +134,7 @@ export default function EmployeeHomePage() {
           .order("clocked_in_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
+        weatherPromise,
       ]);
 
       const rawJobs = (todayJobs as unknown as Job[]) ?? [];
@@ -170,6 +220,41 @@ export default function EmployeeHomePage() {
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground">{greeting}</h1>
         <p className="text-sm text-muted-foreground">{todayLabel}</p>
       </div>
+
+      {/* Weather widget */}
+      {todayWeather && (
+        <div
+          className={`rounded-2xl px-4 py-3 flex items-center gap-3 border ${
+            todayWeather.hasRisk
+              ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
+              : "bg-muted/40 border-border"
+          }`}
+        >
+          <span
+            className={`material-symbols-outlined text-[28px] shrink-0 ${
+              todayWeather.hasRisk ? "text-amber-500" : "text-muted-foreground"
+            }`}
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
+            {wmoIcon(todayWeather.weathercode)}
+          </span>
+          <div className="flex flex-col flex-1 min-w-0">
+            <span className={`font-bold text-sm ${todayWeather.hasRisk ? "text-amber-800 dark:text-amber-300" : "text-foreground"}`}>
+              {wmoLabel(todayWeather.weathercode)} today
+            </span>
+            {todayWeather.precipitation_sum > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {todayWeather.precipitation_sum.toFixed(1)} mm precipitation expected
+              </span>
+            )}
+          </div>
+          {todayWeather.hasRisk && (
+            <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+              Weather Alert
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Clock in/out card */}
       {!loading && (

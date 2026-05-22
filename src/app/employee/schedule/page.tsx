@@ -16,6 +16,7 @@ type Job = {
 };
 
 type GroupedJobs = { label: string; jobs: Job[] }[];
+type HistoryJob = Job & { total: number };
 type AvailDay = { from: string; until: string };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -112,11 +113,14 @@ function groupJobs(jobs: Job[]): GroupedJobs {
 
 export default function EmployeeSchedulePage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"jobs" | "hours">("jobs");
+  const [tab, setTab] = useState<"jobs" | "history" | "hours">("jobs");
 
   // Jobs
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historyJobs, setHistoryJobs] = useState<HistoryJob[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   // Identity
   const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
@@ -258,7 +262,44 @@ export default function EmployeeSchedulePage() {
     setTogglingDate(false);
   }
 
+  useEffect(() => {
+    if (tab === "history" && teamMemberId && !historyLoaded && !historyLoading) {
+      loadHistory();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, teamMemberId]);
+
+  async function loadHistory() {
+    if (historyLoaded || !teamMemberId) return;
+    setHistoryLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("jobs")
+      .select("id, status, scheduled_at, total, notes, route_order, clients(name, address), job_line_items(description)")
+      .eq("assigned_member_id", teamMemberId)
+      .in("status", ["completed", "cancelled"])
+      .order("scheduled_at", { ascending: false, nullsFirst: false })
+      .limit(100);
+    setHistoryJobs((data as unknown as HistoryJob[]) ?? []);
+    setHistoryLoading(false);
+    setHistoryLoaded(true);
+  }
+
+  function groupHistoryJobs(jobs: HistoryJob[]): { label: string; jobs: HistoryJob[] }[] {
+    const groups: Record<string, HistoryJob[]> = {};
+    for (const job of jobs) {
+      const d = job.scheduled_at ? new Date(job.scheduled_at) : null;
+      const label = d
+        ? d.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+        : "Unknown Date";
+      groups[label] = groups[label] ?? [];
+      groups[label].push(job);
+    }
+    return Object.keys(groups).map((label) => ({ label, jobs: groups[label] }));
+  }
+
   const grouped = groupJobs(jobs);
+  const historyGrouped = groupHistoryJobs(historyJobs);
   const todayKey = dateKey(new Date());
 
   return (
@@ -272,19 +313,27 @@ export default function EmployeeSchedulePage() {
       <div className="flex rounded-2xl bg-muted/60 p-1 gap-1">
         <button
           onClick={() => setTab("jobs")}
-          className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all active:scale-95 ${
+          className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all active:scale-95 ${
             tab === "jobs" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
           }`}
         >
-          Upcoming Jobs
+          Upcoming
+        </button>
+        <button
+          onClick={() => { setTab("history"); loadHistory(); }}
+          className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all active:scale-95 ${
+            tab === "history" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+          }`}
+        >
+          History
         </button>
         <button
           onClick={() => setTab("hours")}
-          className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all active:scale-95 ${
+          className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all active:scale-95 ${
             tab === "hours" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
           }`}
         >
-          My Availability
+          Availability
         </button>
       </div>
 
@@ -362,6 +411,87 @@ export default function EmployeeSchedulePage() {
                   </div>
                 </button>
               ))}
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* ── History tab ── */}
+      {tab === "history" && (
+        <>
+          {historyLoading && (
+            <p className="text-sm text-muted-foreground text-center py-10">Loading…</p>
+          )}
+
+          {!historyLoading && historyJobs.length === 0 && (
+            <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl border border-dashed border-border">
+              <span className="material-symbols-outlined text-[48px] text-muted-foreground/30">
+                history
+              </span>
+              <p className="text-sm font-semibold text-muted-foreground">No completed jobs yet</p>
+              <p className="text-xs text-muted-foreground/60">Jobs you finish will appear here</p>
+            </div>
+          )}
+
+          {historyGrouped.map(({ label, jobs: groupJobs }) => (
+            <div key={label} className="flex flex-col gap-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</h2>
+
+              {groupJobs.map((job) => {
+                const isCompleted = job.status === "completed";
+                return (
+                  <button
+                    key={job.id}
+                    onClick={() => router.push(`/employee/jobs/${job.id}`)}
+                    className="w-full rounded-2xl border border-border bg-card shadow-sm p-4 flex items-start gap-3 text-left hover:border-primary/30 active:scale-[0.99] transition-all"
+                  >
+                    <div className="flex size-10 items-center justify-center rounded-xl shrink-0 mt-0.5"
+                      style={{ background: isCompleted ? "var(--color-status-completed, #22c55e)1a" : "var(--muted)" }}>
+                      <span
+                        className="material-symbols-outlined text-[18px]"
+                        style={{
+                          fontVariationSettings: "'FILL' 1",
+                          color: isCompleted ? "var(--color-status-completed, #22c55e)" : "var(--muted-foreground)",
+                        }}
+                      >
+                        {isCompleted ? "check_circle" : "cancel"}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col flex-1 min-w-0 gap-0.5">
+                      <span className="font-bold text-foreground text-sm leading-snug truncate">
+                        {job.job_line_items[0]?.description ?? "Job"}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">{job.clients?.name ?? ""}</span>
+                      {job.clients?.address && (
+                        <span className="text-xs text-muted-foreground/70 truncate">{job.clients.address}</span>
+                      )}
+                      {job.scheduled_at && (
+                        <span className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(job.scheduled_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      {job.total > 0 && (
+                        <span className="text-sm font-extrabold text-foreground">
+                          ${job.total.toFixed(0)}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isCompleted
+                            ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {isCompleted ? "Done" : "Cancelled"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ))}
         </>
