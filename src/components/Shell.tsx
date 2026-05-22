@@ -34,7 +34,7 @@ const MORE_GROUPS = [
       { href: "/inventory", label: "Inventory", icon: "inventory_2",    ownerOnly: true  },
       { href: "/team",        label: "Team",       icon: "badge",          ownerOnly: true  },
       { href: "/territories", label: "Territories", icon: "pin_drop",       ownerOnly: true  },
-      { href: "/heatmap",      label: "Heat Map",     icon: "thermostat",     ownerOnly: true  },
+      { href: "/heatmap",      label: "Heat Map",     icon: "whatshot",       ownerOnly: true  },
       { href: "/intel",        label: "Intel",        icon: "visibility",     ownerOnly: true  },
     ],
   },
@@ -53,7 +53,7 @@ const SIDEBAR_NAV = [
   { href: "/inventory", label: "Inventory", icon: "inventory_2",    exact: false, ownerOnly: true  },
   { href: "/team",        label: "Team",        icon: "badge",          exact: false, ownerOnly: true  },
   { href: "/territories", label: "Territories", icon: "pin_drop",       exact: false, ownerOnly: true  },
-  { href: "/heatmap",      label: "Heat Map",     icon: "thermostat",     exact: false, ownerOnly: true  },
+  { href: "/heatmap",      label: "Heat Map",     icon: "whatshot",       exact: false, ownerOnly: true  },
   { href: "/intel",        label: "Intel",        icon: "visibility",     exact: false, ownerOnly: true  },
 ];
 
