@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendSMS } from "@/lib/sms";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // The three follow-up steps: [step number, delay in hours, message builder]
 const STEPS: [number, number, (firstName: string, bizName: string) => string][] = [
   [1, 24,  (n, b) => `Hi ${n}, just checking in on the quote we sent from ${b}. Any questions? We're happy to walk you through it!`],
@@ -15,6 +10,10 @@ const STEPS: [number, number, (firstName: string, bizName: string) => string][] 
 ];
 
 export async function GET(req: NextRequest) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
