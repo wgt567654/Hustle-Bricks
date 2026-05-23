@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import Anthropic from "@anthropic-ai/sdk";
+import { sendSMS } from "@/lib/sms";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,42 +24,44 @@ export async function POST(req: NextRequest) {
   const twilioSid = formData.get("MessageSid") as string | null;
 
   if (!fromPhone || !toPhone || !body) {
-    return twiml(); // always return valid TwiML so Twilio doesn't retry
+    return twiml();
   }
 
   // Find the business that owns this Twilio number.
-  // Falls back to TWILIO_FROM_NUMBER env var for single-number deployments.
   const twilioFromEnv = process.env.TWILIO_FROM_NUMBER ?? "";
   const { data: business } = await supabaseAdmin
     .from("businesses")
-    .select("id")
+    .select("id, name, ai_sms_enabled")
     .or(`twilio_number.eq.${toPhone},twilio_number.eq.${twilioFromEnv}`)
     .limit(1)
     .maybeSingle();
 
-  // If no explicit match, fall back to env-number match across all businesses
   let businessId: string | null = business?.id ?? null;
+  let aiEnabled: boolean = (business as { ai_sms_enabled?: boolean } | null)?.ai_sms_enabled ?? false;
+  const bizName: string = (business as { name?: string } | null)?.name ?? "";
+
   if (!businessId && twilioFromEnv && toPhone === twilioFromEnv) {
-    // Single-number setup: assign to the business whose number matches env
     const { data: anyBiz } = await supabaseAdmin
       .from("businesses")
-      .select("id")
+      .select("id, name, ai_sms_enabled")
       .limit(1)
       .maybeSingle();
     businessId = anyBiz?.id ?? null;
+    aiEnabled = (anyBiz as { ai_sms_enabled?: boolean } | null)?.ai_sms_enabled ?? false;
   }
 
   if (!businessId) return twiml();
 
-  // Find client by their phone number (normalized)
+  // Find client by their phone number
   const normalized = normalizePhone(fromPhone);
   const { data: client } = await supabaseAdmin
     .from("clients")
-    .select("id")
+    .select("id, name")
     .eq("business_id", businessId)
     .eq("phone", normalized ?? fromPhone)
     .maybeSingle();
 
+  // Log inbound message
   await supabaseAdmin.from("sms_messages").insert({
     business_id: businessId,
     client_id:   client?.id ?? null,
@@ -66,10 +70,126 @@ export async function POST(req: NextRequest) {
     to_phone:    toPhone,
     body:        body.trim(),
     twilio_sid:  twilioSid,
-    read_at:     null, // unread until owner opens thread
+    read_at:     null,
   });
 
+  // Always honour STOP/opt-out without AI involvement
+  const upperBody = body.trim().toUpperCase();
+  if (["STOP", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(upperBody)) {
+    return twiml();
+  }
+
+  // AI auto-response if enabled and Anthropic key is present
+  if (aiEnabled && process.env.ANTHROPIC_API_KEY && client) {
+    await generateAndSendAIReply({
+      businessId,
+      bizName,
+      client: client as { id: string; name: string },
+      fromPhone: normalized ?? fromPhone,
+      inboundMessage: body.trim(),
+    });
+  }
+
   return twiml();
+}
+
+async function generateAndSendAIReply({
+  businessId,
+  bizName,
+  client,
+  fromPhone,
+  inboundMessage,
+}: {
+  businessId: string;
+  bizName: string;
+  client: { id: string; name: string };
+  fromPhone: string;
+  inboundMessage: string;
+}) {
+  // Gather context: upcoming jobs and recent conversation
+  const now = new Date().toISOString();
+  const sevenDaysAhead = new Date(Date.now() + 7 * 86_400_000).toISOString();
+
+  const [{ data: upcomingJobs }, { data: recentMessages }] = await Promise.all([
+    supabaseAdmin
+      .from("jobs")
+      .select("id, status, total, scheduled_at, service_type, notes")
+      .eq("business_id", businessId)
+      .eq("client_id", client.id)
+      .in("status", ["scheduled", "in_progress"])
+      .gte("scheduled_at", now)
+      .lte("scheduled_at", sevenDaysAhead)
+      .order("scheduled_at", { ascending: true })
+      .limit(3),
+    supabaseAdmin
+      .from("sms_messages")
+      .select("direction, body, created_at")
+      .eq("business_id", businessId)
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false })
+      .limit(6),
+  ]);
+
+  type JobContext = { id: string; status: string; total: number; scheduled_at: string | null; service_type: string | null; notes: string | null };
+  type MsgContext = { direction: string; body: string; created_at: string };
+
+  const jobs = (upcomingJobs as unknown as JobContext[]) ?? [];
+  const messages = ((recentMessages as unknown as MsgContext[]) ?? []).reverse();
+
+  const jobsSummary = jobs.length
+    ? jobs.map((j) => {
+        const time = j.scheduled_at
+          ? new Date(j.scheduled_at).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+          : "TBD";
+        return `- ${j.service_type ?? "Service"} on ${time} (status: ${j.status})`;
+      }).join("\n")
+    : "No upcoming jobs scheduled.";
+
+  const conversationHistory = messages.map((m) => ({
+    role: (m.direction === "outbound" ? "assistant" : "user") as "user" | "assistant",
+    content: m.body,
+  }));
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const systemPrompt =
+    `You are a friendly, professional assistant for ${bizName}, a home services business. ` +
+    `You are texting with ${client.name}. Keep replies SHORT (1-3 sentences max) and conversational — this is SMS. ` +
+    `Never make up information. If you don't know something (like exact pricing), say you'll have the owner follow up. ` +
+    `If they want to reschedule or cancel, tell them you'll pass it along and someone will confirm. ` +
+    `Do not mention you are an AI.\n\n` +
+    `Client's upcoming jobs:\n${jobsSummary}`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 200,
+      system: systemPrompt,
+      messages: [
+        ...conversationHistory,
+        { role: "user", content: inboundMessage },
+      ],
+    });
+
+    const replyText = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => (b as { type: "text"; text: string }).text)
+      .join(" ")
+      .trim();
+
+    if (replyText) {
+      await sendSMS({
+        to: fromPhone,
+        body: replyText,
+        businessId,
+        clientId: client.id,
+        metadata: { type: "ai_sms_reply" },
+      });
+    }
+  } catch (err) {
+    console.error("[sms-webhook] AI reply error:", err);
+    // Fail silently — the inbound message is already logged, owner sees it in inbox
+  }
 }
 
 function twiml() {

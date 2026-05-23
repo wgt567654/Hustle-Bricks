@@ -280,6 +280,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     }).catch(() => {});
 
     if (status === "completed") {
+      // Auto-send invoice to client via SMS + email
+      fetch("/api/invoice/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      }).catch(() => {});
+
       // Fetch upsell suggestions in the background
       setUpsellLoading(true);
       fetch("/api/upsell", {
@@ -384,6 +391,15 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jobId: job.id }),
     }).catch(() => {});
+
+    // Auto-dispatch if a time was just set and no member is assigned yet
+    if (updates.scheduled_at && !job.assigned_member_id) {
+      fetch("/api/dispatch/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      }).catch(() => {});
+    }
 
     setEditSaving(false);
     setEditModalOpen(false);

@@ -71,6 +71,10 @@ export default function SettingsPage() {
   const [leadNotify, setLeadNotify] = useState(false);
   const [followUpEnabled, setFollowUpEnabled] = useState(false);
   const [rebookingEnabled, setRebookingEnabled] = useState(false);
+  const [autoInvoiceEnabled, setAutoInvoiceEnabled] = useState(true);
+  const [paymentRemindersEnabled, setPaymentRemindersEnabled] = useState(true);
+  const [morningBriefingEnabled, setMorningBriefingEnabled] = useState(false);
+  const [aiSmsEnabled, setAiSmsEnabled] = useState(false);
   const [savingAutomation, setSavingAutomation] = useState<string | null>(null);
 
   // Rebooking threshold
@@ -190,11 +194,15 @@ export default function SettingsPage() {
         setReviewRequests(biz2.review_requests_enabled ?? false);
         setLeadNotify(biz2.lead_notify_enabled ?? false);
         setGoogleReviewUrl(biz2.google_review_url ?? "");
-        const biz3 = business as unknown as { follow_up_enabled: boolean | null; stale_quote_days: number | null; rebooking_enabled: boolean | null; rebooking_after_days: number | null };
+        const biz3 = business as unknown as { follow_up_enabled: boolean | null; stale_quote_days: number | null; rebooking_enabled: boolean | null; rebooking_after_days: number | null; auto_invoice_enabled: boolean | null; payment_reminders_enabled: boolean | null; morning_briefing_enabled: boolean | null; ai_sms_enabled: boolean | null };
         setFollowUpEnabled(biz3.follow_up_enabled ?? false);
         setStaleQuoteDays(biz3.stale_quote_days != null ? String(biz3.stale_quote_days) : "7");
         setRebookingEnabled(biz3.rebooking_enabled ?? false);
         setRebookingAfterDays(biz3.rebooking_after_days != null ? String(biz3.rebooking_after_days) : "60");
+        setAutoInvoiceEnabled(biz3.auto_invoice_enabled ?? true);
+        setPaymentRemindersEnabled(biz3.payment_reminders_enabled ?? true);
+        setMorningBriefingEnabled(biz3.morning_briefing_enabled ?? false);
+        setAiSmsEnabled(biz3.ai_sms_enabled ?? false);
 
         // Financing
         const biz4 = business as unknown as { financing_enabled: boolean | null; financing_partner: string | null; financing_url: string | null; financing_min_amount: number | null };
@@ -427,7 +435,7 @@ export default function SettingsPage() {
   }
 
   async function toggleAutomation(
-    key: "sms_reminders_enabled" | "smart_scheduling_enabled" | "review_requests_enabled" | "lead_notify_enabled" | "follow_up_enabled" | "rebooking_enabled",
+    key: "sms_reminders_enabled" | "smart_scheduling_enabled" | "review_requests_enabled" | "lead_notify_enabled" | "follow_up_enabled" | "rebooking_enabled" | "auto_invoice_enabled" | "payment_reminders_enabled" | "morning_briefing_enabled" | "ai_sms_enabled",
     current: boolean
   ) {
     const setters: Record<string, (v: boolean) => void> = {
@@ -437,6 +445,10 @@ export default function SettingsPage() {
       lead_notify_enabled: setLeadNotify,
       follow_up_enabled: setFollowUpEnabled,
       rebooking_enabled: setRebookingEnabled,
+      auto_invoice_enabled: setAutoInvoiceEnabled,
+      payment_reminders_enabled: setPaymentRemindersEnabled,
+      morning_briefing_enabled: setMorningBriefingEnabled,
+      ai_sms_enabled: setAiSmsEnabled,
     };
     setters[key]?.(!current);
     if (!businessId) return;
@@ -1286,6 +1298,10 @@ export default function SettingsPage() {
               { label: "Lead Speed-to-Contact", sub: "Auto-text new leads within minutes of submission", key: "lead_notify_enabled" as const, value: leadNotify },
               { label: "Quote Follow-Up Sequence", sub: "Auto-text clients at 24hrs, 72hrs, and 7 days after a quote is sent", key: "follow_up_enabled" as const, value: followUpEnabled },
               { label: "Rebooking Campaign", sub: `Auto-text past clients who haven't booked in ${rebookingAfterDays} days to bring them back`, key: "rebooking_enabled" as const, value: rebookingEnabled },
+              { label: "Auto Invoice on Completion", sub: "Automatically text and email the client their invoice link the moment a job is marked complete", key: "auto_invoice_enabled" as const, value: autoInvoiceEnabled },
+              { label: "Payment Reminder Sequence", sub: "Auto-text unpaid invoices at 3, 7, and 14 days after job completion until paid", key: "payment_reminders_enabled" as const, value: paymentRemindersEnabled },
+              { label: "Morning Briefing", sub: "Receive a daily SMS at 7am with today's jobs, pending quotes, and unpaid invoices", key: "morning_briefing_enabled" as const, value: morningBriefingEnabled },
+              { label: "AI SMS Auto-Reply", sub: "Claude AI reads client texts and replies with job context (time, status, reschedule requests) — you stay in control via inbox", key: "ai_sms_enabled" as const, value: aiSmsEnabled },
             ]).map((item, i) => (
               <div key={item.key}>
                 {i > 0 && <Separator className="bg-border/50" />}

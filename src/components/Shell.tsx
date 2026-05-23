@@ -8,10 +8,10 @@ import { createClient } from '@/lib/supabase/client';
 import { STATUS_HEX } from '@/lib/status-colors';
 
 const NAV = [
-  { href: "/jobs",            label: "Jobs",     icon: "work",           exact: false, ownerOnly: false },
+  { href: "/jobs",            label: "Jobs",      icon: "work",           exact: false, ownerOnly: false },
   { href: "/analytics",       label: "Analytics", icon: "leaderboard",    exact: false, ownerOnly: true  },
-  { href: "/canvassing",      label: "Map",      icon: "map",            exact: false, ownerOnly: false },
-  { href: "/calendar",        label: "Schedule", icon: "calendar_month", exact: false, ownerOnly: false },
+  { href: "/canvassing",      label: "Map",       icon: "map",            exact: false, ownerOnly: false },
+  { href: "/calendar",        label: "Schedule",  icon: "calendar_month", exact: false, ownerOnly: false },
   { href: "/messages",        label: "Team Chat", icon: "forum",          exact: false, ownerOnly: true  },
 ];
 
@@ -711,6 +711,27 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── FLOATING ASSISTANT BUTTON — owners only, not on assistant page ── */}
+      {isOwner && !pathname.startsWith("/assistant") && (
+        <Link
+          href="/assistant"
+          className="fixed z-50 flex items-center justify-center rounded-2xl bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all lg:bottom-6 lg:right-6"
+          style={{
+            width: 52,
+            height: 52,
+            bottom: isStandalone
+              ? "calc(5.5rem + env(safe-area-inset-bottom, 0px))"
+              : "calc(5rem + env(safe-area-inset-bottom, 0px))",
+            right: 16,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
+          }}
+        >
+          <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+            auto_awesome
+          </span>
+        </Link>
       )}
 
       {/* ── BOTTOM NAVIGATION — floating pill, mobile only ── */}

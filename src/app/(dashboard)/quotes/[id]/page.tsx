@@ -161,6 +161,15 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       );
     }
 
+    // Notify client with booking link via email (fire-and-forget)
+    if (job && quote.client_id) {
+      fetch("/api/email/send-booking-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: quote.client_id }),
+      }).catch(() => {});
+    }
+
     setActing(false);
 
     if (job) {
