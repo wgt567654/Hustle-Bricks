@@ -39,6 +39,7 @@ async function buildNotifications(): Promise<Note[]> {
     { data: recentJobs },
     { data: openEntry },
     { data: todayJobs },
+    { data: managerMessages },
   ] = await Promise.all([
     supabase
       .from("jobs")
@@ -64,6 +65,14 @@ async function buildNotifications(): Promise<Note[]> {
       .gte("scheduled_at", todayStart.toISOString())
       .lte("scheduled_at", todayEnd.toISOString())
       .order("scheduled_at"),
+    supabase
+      .from("team_messages")
+      .select("id, content, created_at")
+      .eq("team_member_id", tm.id)
+      .eq("sender_role", "owner")
+      .gte("created_at", sevenDaysAgo.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1),
   ]);
 
   const notes: Note[] = [];
@@ -79,6 +88,20 @@ async function buildNotifications(): Promise<Note[]> {
       body: `You still have an open clock-in from ${clockedInAt.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}. Tap to go to today's page and clock out.`,
       href: "/employee",
       timestamp: clockedInAt.toISOString(),
+    });
+  }
+
+  // Manager messages
+  const latestManagerMsg = (managerMessages ?? [])[0] as { id: string; content: string; created_at: string } | undefined;
+  if (latestManagerMsg) {
+    notes.push({
+      id: "manager-message",
+      icon: "mark_unread_chat_alt",
+      iconColor: "text-primary",
+      title: "New message from your manager",
+      body: latestManagerMsg.content.length > 80 ? latestManagerMsg.content.slice(0, 80) + "…" : latestManagerMsg.content,
+      href: "/employee/messages",
+      timestamp: latestManagerMsg.created_at,
     });
   }
 

@@ -116,14 +116,6 @@ export default function TeamPage() {
   const [savingZip,        setSavingZip]        = useState<string | null>(null);
   const [zipError,         setZipError]         = useState<Record<string, string>>({});
 
-  // Team messaging
-  type TeamMessage = { id: string; sender_role: "owner" | "employee"; content: string; created_at: string };
-  const [msgMember, setMsgMember] = useState<TeamMember | null>(null);
-  const [msgThread, setMsgThread] = useState<TeamMessage[]>([]);
-  const [msgLoading, setMsgLoading] = useState(false);
-  const [msgText, setMsgText] = useState("");
-  const [msgSending, setMsgSending] = useState(false);
-  const msgBottomRef = useRef<HTMLDivElement>(null);
 
   function copyPortalLink(id: string) {
     navigator.clipboard.writeText(`${window.location.origin}/team-portal/${id}`);
@@ -131,37 +123,6 @@ export default function TeamPage() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
-  async function openMessageThread(member: TeamMember) {
-    setMsgMember(member);
-    setMsgThread([]);
-    setMsgLoading(true);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("team_messages")
-      .select("id, sender_role, content, created_at")
-      .eq("team_member_id", member.id)
-      .order("created_at", { ascending: true });
-    setMsgThread((data ?? []) as TeamMessage[]);
-    setMsgLoading(false);
-  }
-
-  async function sendOwnerMessage() {
-    if (!msgMember || !businessId || !msgText.trim() || msgSending) return;
-    setMsgSending(true);
-    const supabase = createClient();
-    const content = msgText.trim();
-    setMsgText("");
-    const { data } = await supabase
-      .from("team_messages")
-      .insert({ team_member_id: msgMember.id, business_id: businessId, sender_role: "owner", content })
-      .select("id, sender_role, content, created_at")
-      .single();
-    if (data) setMsgThread((prev) => [...prev, data as TeamMessage]);
-    setMsgSending(false);
-  }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { msgBottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgThread]);
 
   function openEdit(member: TeamMember) {
     setEditMember(member);
@@ -628,7 +589,7 @@ export default function TeamPage() {
                             </button>
                             {member.user_id && (
                               <button
-                                onClick={() => { setOpenMenuId(null); openMessageThread(member); }}
+                                onClick={() => { setOpenMenuId(null); router.push(`/messages/${member.id}`); }}
                                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[16px]">chat</span>
@@ -1289,79 +1250,6 @@ export default function TeamPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Remove Confirmation Modal */}
-      {/* ── Team Messages Drawer ── */}
-      {msgMember && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={() => setMsgMember(null)} />
-          <div className="fixed bottom-0 right-0 top-0 z-50 w-full max-w-md flex flex-col bg-background border-l border-border shadow-2xl">
-            {/* Header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-border/50 shrink-0">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary text-sm font-extrabold shrink-0">
-                {getInitials(msgMember.name)}
-              </div>
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="font-bold text-sm text-foreground">{msgMember.name}</span>
-                <span className="text-xs text-muted-foreground capitalize">{ROLE_LABELS[msgMember.role]}</span>
-              </div>
-              <button
-                onClick={() => setMsgMember(null)}
-                className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            {/* Thread */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2">
-              {msgLoading && <p className="text-sm text-muted-foreground text-center py-10">Loading…</p>}
-              {!msgLoading && msgThread.length === 0 && (
-                <div className="flex flex-col items-center gap-2 py-16 text-center">
-                  <span className="material-symbols-outlined text-[40px] text-muted-foreground/30">chat</span>
-                  <p className="text-sm text-muted-foreground">No messages yet. Say hi!</p>
-                </div>
-              )}
-              {msgThread.map((msg) => {
-                const isMe = msg.sender_role === "owner";
-                return (
-                  <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[78%] flex flex-col gap-0.5 ${isMe ? "items-end" : "items-start"}`}>
-                      <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"}`}>
-                        {msg.content}
-                      </div>
-                      <span className="text-[10px] text-muted-foreground/50 px-1">
-                        {isMe ? "You" : msgMember.name.split(" ")[0]} · {new Date(msg.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={msgBottomRef} />
-            </div>
-
-            {/* Input */}
-            <div className="px-5 py-4 border-t border-border/50 shrink-0 flex items-end gap-2">
-              <textarea
-                value={msgText}
-                onChange={(e) => setMsgText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendOwnerMessage(); } }}
-                placeholder={`Message ${msgMember.name.split(" ")[0]}…`}
-                rows={1}
-                className="flex-1 resize-none rounded-2xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring max-h-32 overflow-y-auto"
-                style={{ lineHeight: "1.5" }}
-              />
-              <button
-                onClick={sendOwnerMessage}
-                disabled={!msgText.trim() || msgSending}
-                className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white disabled:opacity-40 active:scale-90 transition-all"
-              >
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
-              </button>
-            </div>
-          </div>
-        </>
       )}
 
       {confirmRemoveId && (

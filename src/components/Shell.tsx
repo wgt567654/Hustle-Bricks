@@ -12,6 +12,7 @@ const NAV = [
   { href: "/analytics",       label: "Analytics", icon: "leaderboard",    exact: false, ownerOnly: true  },
   { href: "/canvassing",      label: "Map",      icon: "map",            exact: false, ownerOnly: false },
   { href: "/calendar",        label: "Schedule", icon: "calendar_month", exact: false, ownerOnly: false },
+  { href: "/messages",        label: "Team Chat", icon: "forum",          exact: false, ownerOnly: true  },
 ];
 
 const MORE_GROUPS = [
@@ -27,7 +28,7 @@ const MORE_GROUPS = [
   {
     label: "Business",
     items: [
-      { href: "/inbox",     label: "Inbox",     icon: "chat",           ownerOnly: false },
+      { href: "/inbox",     label: "Client Replies", icon: "chat",      ownerOnly: false },
       { href: "/clients",   label: "Clients",   icon: "group",          ownerOnly: false },
       { href: "/leads",     label: "Leads",     icon: "person_search",  ownerOnly: false },
       { href: "/plans",     label: "Plans",     icon: "autorenew",      ownerOnly: false },
@@ -42,7 +43,7 @@ const MORE_GROUPS = [
 
 const SIDEBAR_NAV = [
   ...NAV,
-  { href: "/inbox",     label: "Inbox",     icon: "chat",            exact: false, ownerOnly: false },
+  { href: "/inbox",      label: "Client Replies", icon: "chat",       exact: false, ownerOnly: false },
   { href: "/payments",        label: "Payments", icon: "attach_money",     exact: false, ownerOnly: false },
   { href: "/reports/mileage",        label: "Mileage",       icon: "local_gas_station", exact: false, ownerOnly: true  },
   { href: "/reports/profitability", label: "Profitability", icon: "trending_up",       exact: false, ownerOnly: true  },
@@ -86,7 +87,7 @@ async function fetchNotifications(): Promise<Notification[]> {
 
   const staleThreshold = new Date(now.getTime() - staleQuoteDays * 24 * 60 * 60 * 1000);
 
-  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }, { data: pendingMembers }, { data: newLeads }, { data: pendingBookings }, { data: stalledQuotes }, { data: unreadSms }] = await Promise.all([
+  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }, { data: pendingMembers }, { data: newLeads }, { data: pendingBookings }, { data: stalledQuotes }, { data: unreadSms }, { data: employeeMessages }] = await Promise.all([
     supabase.from("jobs").select("id, total, clients(name), payments(id)")
       .eq("business_id", business.id).eq("status", "completed"),
     supabase.from("jobs").select("id, scheduled_at, job_line_items(description), clients(name)")
@@ -110,6 +111,9 @@ async function fetchNotifications(): Promise<Notification[]> {
       .lt("sent_at", staleThreshold.toISOString()),
     supabase.from("sms_messages").select("id, clients(name)")
       .eq("business_id", business.id).eq("direction", "inbound").is("read_at", null),
+    supabase.from("team_messages").select("id, team_member_id, team_members(name)")
+      .eq("business_id", business.id).eq("sender_role", "employee")
+      .eq("is_read", false),
   ]);
 
   const notes: Notification[] = [];
@@ -191,6 +195,21 @@ async function fetchNotifications(): Promise<Notification[]> {
       title: `${pending.length} employee${pending.length !== 1 ? "s" : ""} awaiting approval`,
       subtitle: pending.length === 1 ? `${pending[0].name} wants to join your team` : "Review and approve new team members",
       href: "/team",
+    });
+  }
+
+  // Employee messages
+  const empMsgs = (employeeMessages ?? []) as unknown as { id: string; team_member_id: string; team_members: { name: string } | null }[];
+  if (empMsgs.length > 0) {
+    const senderNames = [...new Set(empMsgs.map((m) => m.team_members?.name).filter(Boolean))].slice(0, 2) as string[];
+    notes.push({
+      id: "employee-messages",
+      icon: "chat",
+      iconColor: "#2E6A8E",
+      iconBg: "icon-primary",
+      title: `${empMsgs.length} message${empMsgs.length !== 1 ? "s" : ""} from your team`,
+      subtitle: senderNames.length > 0 ? `From ${senderNames.join(", ")}${empMsgs.length > senderNames.length ? " and others" : ""}` : "Open Messages to reply",
+      href: "/messages",
     });
   }
 

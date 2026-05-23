@@ -287,7 +287,7 @@ export default function PlansPage() {
         {loading && <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>}
 
         {!loading && filtered.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-12 text-center">
+          <div className="col-span-full flex flex-col items-center gap-2 py-12 text-center">
             <span className="material-symbols-outlined text-[48px] text-muted-foreground/40">autorenew</span>
             <p className="text-sm font-medium text-muted-foreground">No plans yet</p>
             <p className="text-xs text-muted-foreground/60">Tap + to create a recurring service plan</p>
