@@ -18,25 +18,33 @@ const NAV = [
 const MORE_GROUPS = [
   {
     label: "Money",
+    icon: "payments",
     items: [
-      { href: "/payments",          label: "Payments",   icon: "attach_money",     ownerOnly: false },
-      { href: "/reports/mileage",        label: "Mileage",       icon: "local_gas_station", ownerOnly: true  },
+      { href: "/payments",              label: "Payments",      icon: "attach_money",      ownerOnly: false },
+      { href: "/reports/mileage",       label: "Mileage",       icon: "local_gas_station", ownerOnly: true  },
       { href: "/reports/profitability", label: "Profitability", icon: "trending_up",       ownerOnly: true  },
       { href: "/reports/commission",    label: "Commission",    icon: "emoji_events",      ownerOnly: true  },
     ],
   },
   {
-    label: "Business",
+    label: "Clients",
+    icon: "group",
     items: [
-      { href: "/inbox",     label: "Client Replies", icon: "chat",      ownerOnly: false },
-      { href: "/clients",   label: "Clients",   icon: "group",          ownerOnly: false },
-      { href: "/leads",     label: "Leads",     icon: "person_search",  ownerOnly: false },
-      { href: "/plans",     label: "Plans",     icon: "autorenew",      ownerOnly: false },
-      { href: "/inventory", label: "Inventory", icon: "inventory_2",    ownerOnly: true  },
-      { href: "/team",        label: "Team",       icon: "badge",          ownerOnly: true  },
-      { href: "/territories", label: "Territories", icon: "pin_drop",       ownerOnly: true  },
-      { href: "/heatmap",      label: "Heat Map",     icon: "whatshot",       ownerOnly: true  },
-      { href: "/intel",        label: "Intel",        icon: "visibility",     ownerOnly: true  },
+      { href: "/inbox",   label: "Replies",  icon: "chat",         ownerOnly: false },
+      { href: "/clients", label: "Clients",  icon: "group",        ownerOnly: false },
+      { href: "/leads",   label: "Leads",    icon: "person_search",ownerOnly: false },
+      { href: "/plans",   label: "Plans",    icon: "autorenew",    ownerOnly: false },
+    ],
+  },
+  {
+    label: "Tools",
+    icon: "build",
+    items: [
+      { href: "/inventory",  label: "Inventory",   icon: "inventory_2", ownerOnly: true  },
+      { href: "/team",       label: "Team",         icon: "badge",       ownerOnly: true  },
+      { href: "/territories",label: "Territories",  icon: "pin_drop",    ownerOnly: true  },
+      { href: "/heatmap",    label: "Heat Map",     icon: "whatshot",    ownerOnly: true  },
+      { href: "/intel",      label: "Intel",        icon: "visibility",  ownerOnly: true  },
     ],
   },
 ];
@@ -671,43 +679,58 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
             <div className="flex justify-center pt-3">
               <div className="w-8 h-1 rounded-full bg-muted-foreground/25" />
             </div>
-            <div className="flex flex-col px-4 pt-3 pb-8 gap-0">
-              {MORE_GROUPS.map((group, gi) => (
-                <div key={group.label}>
-                  {gi > 0 && <div className="h-px bg-black/[0.06] my-1" />}
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 px-1 pt-2 pb-1">
-                    {group.label}
-                  </p>
-                  <div className="grid grid-cols-3 gap-0">
-                    {group.items.filter((item) => !item.ownerOnly || isOwner).map(({ href, label, icon }) => {
-                      const active = pathname === href || pathname.startsWith(href + "/");
-                      return (
-                        <button
-                          key={href}
-                          onClick={() => router.push(href)}
-                          className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl active:scale-95 transition-all duration-150 hover:bg-black/[0.04]"
-                        >
-                          <span
-                            className="material-symbols-outlined text-[22px]"
+            <div className="flex flex-col px-4 pt-2 pb-8 gap-4">
+              {MORE_GROUPS.map((group) => {
+                const visibleItems = group.items.filter((item) => !item.ownerOnly || isOwner);
+                if (visibleItems.length === 0) return null;
+                return (
+                  <div key={group.label}>
+                    <div className="flex items-center gap-1.5 px-1 pb-2">
+                      <span
+                        className="material-symbols-outlined text-[14px]"
+                        style={{ color: "var(--muted-foreground)", fontVariationSettings: "'FILL' 1, 'wght' 500" }}
+                      >
+                        {group.icon}
+                      </span>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                        {group.label}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {visibleItems.map(({ href, label, icon }) => {
+                        const active = pathname === href || pathname.startsWith(href + "/");
+                        return (
+                          <button
+                            key={href}
+                            onClick={() => { router.push(href); setMoreOpen(false); }}
+                            className="flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-95 transition-all duration-150"
                             style={{
-                              color: active ? "var(--color-primary)" : "var(--muted-foreground)",
-                              fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                              background: active ? "var(--color-primary)" : "var(--muted)/40",
+                              backgroundColor: active ? "var(--color-primary)" : "rgba(128,128,128,0.08)",
                             }}
                           >
-                            {icon}
-                          </span>
-                          <span
-                            className="text-[10px] leading-none font-semibold"
-                            style={{ color: active ? "var(--color-primary)" : "var(--muted-foreground)" }}
-                          >
-                            {label}
-                          </span>
-                        </button>
-                      );
-                    })}
+                            <span
+                              className="material-symbols-outlined text-[22px] shrink-0"
+                              style={{
+                                color: active ? "#fff" : "var(--muted-foreground)",
+                                fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                              }}
+                            >
+                              {icon}
+                            </span>
+                            <span
+                              className="text-[13px] font-semibold leading-tight text-left"
+                              style={{ color: active ? "#fff" : "var(--foreground)" }}
+                            >
+                              {label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
