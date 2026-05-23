@@ -638,10 +638,10 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
               {isOwner && (
                 <div className="px-4 py-2.5 border-t border-border/40">
                   <button
-                    onClick={() => { setOpen(false); router.push("/payments"); }}
+                    onClick={() => { setOpen(false); router.push("/notifications"); }}
                     className="w-full text-center text-xs font-semibold text-primary hover:underline py-0.5"
                   >
-                    View all activity →
+                    View all notifications →
                   </button>
                 </div>
               )}
