@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { buildGoogleMapsRouteUrls } from "@/lib/routeOptimizer";
 
@@ -461,6 +462,15 @@ export default function EmployeeHomePage() {
           );
         })}
       </div>
+
+      {/* Lead capture FAB */}
+      <Link
+        href="/employee/leads/new"
+        className="fixed bottom-24 right-4 z-50 lg:hidden flex size-14 items-center justify-center rounded-full bg-primary text-white active:scale-90 transition-all"
+        style={{ boxShadow: "0 4px 16px color-mix(in srgb, var(--color-primary) 40%, transparent)" }}
+      >
+        <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+      </Link>
 
     </div>
   );

@@ -188,6 +188,38 @@ export default function EmployeeSettingsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Resources</h3>
+        <Card className="rounded-2xl border-border shadow-sm overflow-hidden divide-y divide-border/50">
+          <button
+            onClick={() => router.push("/employee/inventory")}
+            className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
+          >
+            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>inventory_2</span>
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="font-bold text-sm text-foreground">Inventory</span>
+              <span className="text-xs text-muted-foreground">Browse available equipment and supplies</span>
+            </div>
+            <span className="material-symbols-outlined text-muted-foreground ml-auto">chevron_right</span>
+          </button>
+          <button
+            onClick={() => router.push("/employee/quotes")}
+            className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
+          >
+            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>request_quote</span>
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="font-bold text-sm text-foreground">My Quotes</span>
+              <span className="text-xs text-muted-foreground">Draft quotes submitted for manager review</span>
+            </div>
+            <span className="material-symbols-outlined text-muted-foreground ml-auto">chevron_right</span>
+          </button>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Account</h3>
         <Card className="rounded-2xl border-border shadow-sm overflow-hidden divide-y divide-border/50">
           <button

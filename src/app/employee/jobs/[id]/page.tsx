@@ -18,6 +18,7 @@ type Job = {
   after_photo_url: string | null;
   business_id: string;
   clients: {
+    id: string;
     name: string;
     phone: string | null;
     email: string | null;
@@ -168,7 +169,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       const [{ data: jobData }, { data: entryData }] = await Promise.all([
         supabase
           .from("jobs")
-          .select("id, status, scheduled_at, total, notes, before_photo_url, after_photo_url, business_id, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
+          .select("id, status, scheduled_at, total, notes, before_photo_url, after_photo_url, business_id, clients(id, name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
           .eq("id", id)
           .eq("assigned_member_id", tm.id)
           .single(),
@@ -565,7 +566,13 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
           <span className="font-extrabold text-lg text-foreground leading-tight truncate">
             {job.job_line_items[0]?.description ?? "Job"}
           </span>
-          <span className="text-xs text-muted-foreground">{job.clients?.name ?? ""}</span>
+          {job.clients?.id ? (
+            <a href={`/employee/clients/${job.clients.id}`} className="text-xs text-primary font-semibold hover:underline">
+              {job.clients.name}
+            </a>
+          ) : (
+            <span className="text-xs text-muted-foreground">{job.clients?.name ?? ""}</span>
+          )}
         </div>
         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${meta.bg}`} style={{ color: meta.color }}>
           {meta.label}

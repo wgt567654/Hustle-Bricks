@@ -16,6 +16,7 @@ type Job = {
   status: string;
   total: number;
   scheduled_at: string | null;
+  completed_at: string | null;
   clients: { name: string } | null;
 };
 
@@ -182,7 +183,7 @@ export default function EmployeeAnalyticsPage() {
 
       const { data: member } = await supabase
         .from("team_members")
-        .select("id, businesses(commission_rate)")
+        .select("id, commission_rate, businesses(commission_rate)")
         .eq("user_id", user.id)
         .eq("is_active", true)
         .single();
@@ -190,12 +191,14 @@ export default function EmployeeAnalyticsPage() {
 
       const rawBiz = (member as unknown as { businesses: { commission_rate: number } | { commission_rate: number }[] | null }).businesses;
       const biz = Array.isArray(rawBiz) ? rawBiz[0] ?? null : rawBiz;
-      if (biz?.commission_rate) setCommissionRate(Number(biz.commission_rate));
+      const memberRate = (member as unknown as { commission_rate: number | null }).commission_rate;
+      const effectiveRate = memberRate ?? biz?.commission_rate ?? 5;
+      setCommissionRate(Number(effectiveRate));
 
       const [{ data: jobsData }, { data: entriesData }, { data: paymentsData }] = await Promise.all([
         supabase
           .from("jobs")
-          .select("id, status, total, scheduled_at, clients(name)")
+          .select("id, status, total, scheduled_at, completed_at, clients(name)")
           .eq("assigned_member_id", member.id)
           .order("scheduled_at", { ascending: false }),
         supabase
@@ -519,6 +522,44 @@ export default function EmployeeAnalyticsPage() {
               </Card>
             );
           })()}
+
+          {/* Commission Breakdown */}
+          {completedJobs.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Commission Breakdown</h3>
+              <div className="rounded-2xl border border-border shadow-sm overflow-hidden bg-card">
+                <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground">{commissionRate}% commission rate</span>
+                </div>
+                <div className="divide-y divide-border/50">
+                  {completedJobs.map((job) => {
+                    const earned = (job.total ?? 0) * commissionRate / 100;
+                    const dateStr = job.completed_at ?? job.scheduled_at;
+                    return (
+                      <div key={job.id} className="px-4 py-3 flex items-center gap-3">
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="text-sm font-semibold text-foreground truncate">
+                            {job.clients?.name ?? "Client"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{fmtDate(dateStr)}</span>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className="text-xs text-muted-foreground">${(job.total ?? 0).toFixed(0)} job</span>
+                          <span className="text-sm font-bold text-foreground">+${earned.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="px-4 py-3 border-t border-border/50 flex items-center justify-between bg-muted/30">
+                  <span className="text-sm font-bold text-foreground">Est. total payout</span>
+                  <span className="text-base font-extrabold text-foreground">
+                    ${completedJobs.reduce((s, j) => s + (j.total ?? 0) * commissionRate / 100, 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Empty state */}
           {filteredJobs.length === 0 && (

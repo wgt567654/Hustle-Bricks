@@ -16,7 +16,9 @@ const NAV = [
 
 const SIDEBAR_NAV = [
   ...NAV.filter((n) => n.href !== "/employee/settings"),
-  { href: "/employee/messages", label: "Messages", icon: "chat", exact: false },
+  { href: "/employee/messages",  label: "Messages", icon: "chat",          exact: false },
+  { href: "/employee/quotes",    label: "Quotes",   icon: "request_quote", exact: false },
+  { href: "/employee/inventory", label: "Inventory", icon: "inventory_2",  exact: false },
 ];
 
 export default function EmployeeShell({

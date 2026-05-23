@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import dynamic from "next/dynamic";
 
 const CanvassingMap = dynamic(
@@ -15,7 +16,16 @@ const CanvassingMap = dynamic(
 );
 
 export default function EmployeeCanvassingPage() {
-  // Employees capture lead info (name, phone, notes) before booking.
-  // The lead saves to the owner's leads list. No quote creation access.
-  return <CanvassingMap onBookNow={() => {}} captureLeadOnBook />;
+  return (
+    <div className="relative w-full h-full">
+      <CanvassingMap onBookNow={() => {}} captureLeadOnBook />
+      <Link
+        href="/employee/leads/new"
+        className="fixed bottom-6 right-4 z-[2001] flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg active:scale-90 transition-all"
+        style={{ boxShadow: "0 4px 16px color-mix(in srgb, var(--color-primary) 40%, transparent)" }}
+      >
+        <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+      </Link>
+    </div>
+  );
 }
