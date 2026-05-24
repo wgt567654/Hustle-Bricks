@@ -1,5 +1,5 @@
 // HustleBricks Service Worker — network-first with offline fallback
-const CACHE = 'hustlebricks-v1';
+const CACHE = 'hustlebricks-v3';
 const OFFLINE_URL = '/offline';
 
 // Pre-cache offline page on install
@@ -35,18 +35,9 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
-    // Navigation: network-first, fall back to offline page
+    // Navigation: always network-first, never cache HTML (it changes on every deploy)
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful navigation responses
-          const clone = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, clone));
-          return response;
-        })
-        .catch(() =>
-          caches.match(request).then((cached) => cached ?? caches.match(OFFLINE_URL))
-        )
+      fetch(request).catch(() => caches.match(OFFLINE_URL))
     );
     return;
   }
