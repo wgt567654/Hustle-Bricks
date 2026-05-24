@@ -1307,7 +1307,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Completed — show collect payment prompt if no modal */}
       {job.status === "completed" && !payModalOpen && (
-        <div className="fixed bottom-0 left-0 lg:left-[60px] w-full lg:w-[calc(100%-60px)] z-50 bg-card border-t border-border px-4 pt-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }}>
+        <div className="fixed bottom-0 left-0 w-full z-50 bg-card border-t border-border px-4 pt-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
           <div className="max-w-xl mx-auto lg:max-w-none lg:max-w-3xl flex gap-3">
             <button
               onClick={() => setPayModalOpen(true)}
@@ -1328,7 +1328,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Action bar */}
       {(job.status === "scheduled" || job.status === "in_progress") && (
-        <div className="fixed bottom-0 left-0 lg:left-[60px] w-full lg:w-[calc(100%-60px)] z-50 bg-card border-t border-border px-4 pt-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }}>
+        <div className="fixed bottom-0 left-0 w-full z-50 bg-card border-t border-border px-4 pt-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
           <div className="max-w-xl mx-auto lg:max-w-none lg:max-w-3xl flex gap-3">
             {job.status === "scheduled" && (
               <button

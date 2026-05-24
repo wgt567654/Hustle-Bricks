@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { SERVICE_TYPES, MessageType, DEFAULT_TEMPLATES, interpolateTemplate as _interpolate } from "@/lib/messageTemplates";
+import { BUSINESS_TYPE_OPTIONS } from "@/lib/businessTypes";
 import CityAutocomplete from "@/components/CityAutocomplete";
 
 export default function SettingsPage() {
@@ -28,11 +29,37 @@ export default function SettingsPage() {
   // Service areas (weather alerts)
   const [serviceAreas, setServiceAreas] = useState<string[]>([]);
 
+  // Logo
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
   // Contact info fields
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [editingContact, setEditingContact] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
+
+  // Address & website
+  const [businessAddress, setBusinessAddress] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [editingAddressWeb, setEditingAddressWeb] = useState(false);
+  const [savingAddressWeb, setSavingAddressWeb] = useState(false);
+
+  // Invoice message
+  const [invoiceMessage, setInvoiceMessage] = useState("");
+  const [editingInvoiceMessage, setEditingInvoiceMessage] = useState(false);
+  const [savingInvoiceMessage, setSavingInvoiceMessage] = useState(false);
+
+  // Terms & conditions
+  const [termsAndConditions, setTermsAndConditions] = useState("");
+  const [editingTerms, setEditingTerms] = useState(false);
+  const [savingTerms, setSavingTerms] = useState(false);
+
+  // Business type
+  const [businessType, setBusinessType] = useState("");
+  const [editingBusinessType, setEditingBusinessType] = useState(false);
+  const [savingBusinessType, setSavingBusinessType] = useState(false);
+  const [businessTypeOpen, setBusinessTypeOpen] = useState(false);
 
   // Employee access code
   const [accessCode, setAccessCode] = useState<string | null>(null);
@@ -179,6 +206,13 @@ export default function SettingsPage() {
         setCheckPayableTo(business.check_payable_to ?? business.name ?? "");
         setContactEmail(business.contact_email ?? "");
         setContactPhone(business.contact_phone ?? "");
+        setLogoUrl((business as unknown as { logo_url: string | null }).logo_url ?? null);
+        const biz5 = business as unknown as { address: string | null; website_url: string | null; invoice_message: string | null; terms_and_conditions: string | null; business_type: string | null };
+        setBusinessAddress(biz5.address ?? "");
+        setWebsiteUrl(biz5.website_url ?? "");
+        setInvoiceMessage(biz5.invoice_message ?? "");
+        setTermsAndConditions(biz5.terms_and_conditions ?? "");
+        setBusinessType(biz5.business_type ?? "");
         const areas = (business as unknown as { service_areas: string[] | null }).service_areas ?? [];
         setServiceAreas(areas.length ? areas : (business as unknown as { city: string | null }).city ? [(business as unknown as { city: string }).city] : []);
         setTaxRate(business.tax_rate != null ? String(business.tax_rate) : "8.00");
@@ -309,6 +343,23 @@ export default function SettingsPage() {
     setDisconnecting(false);
   }
 
+  async function handleLogoUpload(file: File) {
+    if (!businessId) return;
+    setUploadingLogo(true);
+    const supabase = createClient();
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${businessId}/logo.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("business-logos")
+      .upload(path, file, { upsert: true });
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
+      await supabase.from("businesses").update({ logo_url: publicUrl }).eq("id", businessId);
+      setLogoUrl(publicUrl);
+    }
+    setUploadingLogo(false);
+  }
+
   async function saveFinancing() {
     if (!businessId) return;
     setSavingFinancing(true);
@@ -405,6 +456,45 @@ export default function SettingsPage() {
     }).eq("id", businessId);
     setSavingContact(false);
     setEditingContact(false);
+  }
+
+  async function saveAddressWeb() {
+    if (!businessId) return;
+    setSavingAddressWeb(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({
+      address: businessAddress.trim() || null,
+      website_url: websiteUrl.trim() || null,
+    }).eq("id", businessId);
+    setSavingAddressWeb(false);
+    setEditingAddressWeb(false);
+  }
+
+  async function saveInvoiceMessage() {
+    if (!businessId) return;
+    setSavingInvoiceMessage(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ invoice_message: invoiceMessage.trim() || null }).eq("id", businessId);
+    setSavingInvoiceMessage(false);
+    setEditingInvoiceMessage(false);
+  }
+
+  async function saveTerms() {
+    if (!businessId) return;
+    setSavingTerms(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ terms_and_conditions: termsAndConditions.trim() || null }).eq("id", businessId);
+    setSavingTerms(false);
+    setEditingTerms(false);
+  }
+
+  async function saveBusinessType() {
+    if (!businessId) return;
+    setSavingBusinessType(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({ business_type: businessType || null }).eq("id", businessId);
+    setSavingBusinessType(false);
+    setEditingBusinessType(false);
   }
 
   async function saveTax() {
@@ -660,25 +750,134 @@ export default function SettingsPage() {
   const hasPaymentMethods = venmoUsername || cashappTag || checkPayableTo;
   const hasContactInfo = contactEmail || contactPhone;
 
+  type Section = "company" | "billing" | "team" | "account" | "scheduling" | "automations" | "payments" | "messages" | "pipeline" | "canvassing" | "share";
+  const NAV_GLOBAL: { id: Section; label: string; icon: string }[] = [
+    { id: "company", label: "Company", icon: "store" },
+    { id: "billing", label: "Billing", icon: "credit_card" },
+    { id: "team", label: "Team & Access", icon: "group" },
+    { id: "account", label: "Account", icon: "manage_accounts" },
+  ];
+  const NAV_CONFIG: { id: Section; label: string; icon: string }[] = [
+    { id: "scheduling", label: "Scheduling", icon: "calendar_month" },
+    { id: "automations", label: "Automations", icon: "auto_awesome" },
+    { id: "payments", label: "Payments", icon: "payments" },
+    { id: "messages", label: "Messages", icon: "sms" },
+    { id: "pipeline", label: "Pipeline", icon: "trending_up" },
+    { id: "canvassing", label: "Canvassing", icon: "map" },
+    { id: "share", label: "Share Form", icon: "share" },
+  ];
+  const ALL_NAV = [...NAV_GLOBAL, ...NAV_CONFIG];
+  const SECTION_META: Record<Section, { label: string; desc: string }> = {
+    company: { label: "Company", desc: "Business name, service areas, and contact info." },
+    billing: { label: "Billing", desc: "Stripe Connect, subscription plan, tax and pay rates." },
+    team: { label: "Team & Access", desc: "Employee access code." },
+    account: { label: "Account", desc: "Sign out or delete your account." },
+    scheduling: { label: "Scheduling", desc: "Available days, hours, and crew size." },
+    automations: { label: "Automations", desc: "Toggle automated SMS workflows." },
+    payments: { label: "Payments", desc: "Payment methods on invoices and customer financing." },
+    messages: { label: "Messages", desc: "Customize SMS templates for each service type." },
+    pipeline: { label: "Pipeline", desc: "Configure stalled quote thresholds." },
+    canvassing: { label: "Canvassing", desc: "Custom fields for canvassing bookings." },
+    share: { label: "Share Form", desc: "Links and embed code for your quote request form." },
+  };
+  const [activeSection, setActiveSection] = useState<Section>(
+    () => (searchParams.get("sec") as Section | null) ?? "company"
+  );
+
   return (
-    <div className="flex flex-col gap-4 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-2xl pb-32 lg:pb-8">
-      <div className="flex flex-col gap-0.5 mb-1">
-        <h1 className="text-xl font-extrabold tracking-tight text-foreground">Settings</h1>
-        <p className="text-xs text-muted-foreground">Manage your business profile and account.</p>
-      </div>
+    <div className="flex min-h-screen bg-background">
 
-      <div className="flex flex-col gap-5">
+      {/* Left Sidebar — desktop only */}
+      <aside className="hidden lg:flex flex-col w-56 shrink-0 border-r border-border/60 sticky top-0 h-screen overflow-y-auto">
+        <div className="px-4 pt-5 pb-2">
+          <h2 className="text-base font-extrabold tracking-tight text-foreground">Settings</h2>
+        </div>
+        <nav className="flex flex-col px-2 pb-6">
+          <p className="px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Global Settings</p>
+          {NAV_GLOBAL.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                activeSection === item.id
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-foreground/70 hover:bg-muted/60 hover:text-foreground"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[17px]">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+          <p className="px-2 pt-5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Feature Configurations</p>
+          {NAV_CONFIG.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                activeSection === item.id
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-foreground/70 hover:bg-muted/60 hover:text-foreground"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[17px]">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
 
-        {/* Business Profile */}
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Mobile tab bar */}
+        <div className="lg:hidden sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/60 px-4 pt-3 pb-2">
+          <h1 className="text-lg font-extrabold tracking-tight text-foreground mb-2">Settings</h1>
+          <div className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {ALL_NAV.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveSection(item.id)}
+                className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+                  activeSection === item.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop section header */}
+        <div className="hidden lg:flex flex-col gap-0.5 px-8 py-5 border-b border-border/40">
+          <h1 className="text-lg font-extrabold tracking-tight text-foreground">{SECTION_META[activeSection].label}</h1>
+          <p className="text-xs text-muted-foreground">{SECTION_META[activeSection].desc}</p>
+        </div>
+
+        <div className="flex flex-col gap-5 px-4 lg:px-8 py-5 max-w-2xl pb-32 lg:pb-8">
+
+        {activeSection === "company" && (
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Business Profile</h3>
-          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          <Card className="rounded-2xl border-border shadow-sm overflow-visible">
             <div className="p-4 flex flex-col gap-4">
               {editingName ? (
                 <div className="flex items-center gap-3">
-                  <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/20 shrink-0">
-                    <span className="material-symbols-outlined text-[32px]">store</span>
-                  </div>
+                  <label className="relative size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/20 shrink-0 cursor-pointer group overflow-hidden">
+                    <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }} />
+                    {logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logoUrl} alt="Logo" className="size-full object-contain rounded-2xl" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[32px]">store</span>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                      {uploadingLogo
+                        ? <span className="material-symbols-outlined text-white text-[20px] animate-spin">progress_activity</span>
+                        : <span className="material-symbols-outlined text-white text-[20px]">photo_camera</span>}
+                    </div>
+                  </label>
                   <input
                     autoFocus
                     value={nameInput}
@@ -695,9 +894,20 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-4">
-                  <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/20 shrink-0">
-                    <span className="material-symbols-outlined text-[32px]">store</span>
-                  </div>
+                  <label className="relative size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/20 shrink-0 cursor-pointer group overflow-hidden">
+                    <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }} />
+                    {logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logoUrl} alt="Logo" className="size-full object-contain rounded-2xl" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[32px]">store</span>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                      {uploadingLogo
+                        ? <span className="material-symbols-outlined text-white text-[20px] animate-spin">progress_activity</span>
+                        : <span className="material-symbols-outlined text-white text-[20px]">photo_camera</span>}
+                    </div>
+                  </label>
                   <div className="flex flex-col flex-1">
                     <h4 className="font-bold text-foreground">{loading ? "Loading…" : businessName}</h4>
                     <span className="text-sm text-muted-foreground">{userEmail}</span>
@@ -705,6 +915,79 @@ export default function SettingsPage() {
                   <button onClick={() => setEditingName(true)} className="text-primary text-sm font-bold shrink-0">Edit</button>
                 </div>
               )}
+
+              <div className="border-t border-border/50 pt-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[18px] text-muted-foreground">category</span>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Business Type</p>
+                    <p className="text-sm text-foreground font-medium mt-0.5">{businessType || <span className="text-muted-foreground/60 italic">Not set</span>}</p>
+                  </div>
+                </div>
+                {editingBusinessType ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={businessType}
+                        onChange={(e) => { setBusinessType(e.target.value); setBusinessTypeOpen(true); }}
+                        onFocus={() => setBusinessTypeOpen(true)}
+                        onBlur={() => setTimeout(() => setBusinessTypeOpen(false), 150)}
+                        placeholder="Type or select…"
+                        className="rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 w-40"
+                      />
+                      {businessTypeOpen && (
+                        <div className="absolute right-0 top-full mt-1 z-50 w-52 max-h-52 overflow-y-auto rounded-xl border border-border bg-popover shadow-lg">
+                          {(() => {
+                            const q = businessType.toLowerCase();
+                            const matches = BUSINESS_TYPE_OPTIONS.filter((o) => o.toLowerCase().includes(q));
+                            const isExact = BUSINESS_TYPE_OPTIONS.some((o) => o.toLowerCase() === q);
+                            return (
+                              <>
+                                {matches.map((opt) => (
+                                  <button
+                                    key={opt}
+                                    onMouseDown={() => { setBusinessType(opt); setBusinessTypeOpen(false); }}
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors"
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                                {businessType && !isExact && (
+                                  <>
+                                    {matches.length > 0 && <div className="border-t border-border/50" />}
+                                    <button
+                                      onMouseDown={() => setBusinessTypeOpen(false)}
+                                      className="w-full text-left px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted/60 transition-colors"
+                                    >
+                                      Use &ldquo;{businessType}&rdquo;
+                                    </button>
+                                    <button
+                                      onMouseDown={() => { setBusinessType("Other"); setBusinessTypeOpen(false); }}
+                                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors"
+                                    >
+                                      Other
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={saveBusinessType} disabled={savingBusinessType} className="text-sm font-bold text-[var(--color-status-completed)] disabled:opacity-50">
+                      {savingBusinessType ? "…" : "Save"}
+                    </button>
+                    <button onClick={() => setEditingBusinessType(false)} className="text-sm font-bold text-muted-foreground">Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setEditingBusinessType(true)} className="text-primary text-sm font-bold shrink-0">
+                    {businessType ? "Edit" : "Set"}
+                  </button>
+                )}
+              </div>
             </div>
           </Card>
 
@@ -751,9 +1034,11 @@ export default function SettingsPage() {
             </div>
           </Card>
         </section>
+        )}
 
-        {/* Employee Access Code */}
+        {activeSection === "team" && (
         <section className="flex flex-col gap-3">
+        {/* Employee Access Code */}
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Employee Access</h3>
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
             <div className="p-4 flex flex-col gap-4">
@@ -802,9 +1087,11 @@ export default function SettingsPage() {
             </div>
           </Card>
         </section>
+        )}
 
-        {/* Contact Info */}
+        {activeSection === "company" && (
         <section className="flex flex-col gap-3">
+        {/* Contact Info */}
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Contact Info</h3>
             {!editingContact && (
@@ -911,9 +1198,253 @@ export default function SettingsPage() {
             </Card>
           )}
         </section>
+        )}
 
-        {/* Payment Methods */}
+        {activeSection === "company" && (
         <section className="flex flex-col gap-3">
+          {/* Address & Website */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Address &amp; Website</h3>
+            {!editingAddressWeb && (
+              <button onClick={() => setEditingAddressWeb(true)} className="text-xs font-bold text-primary">
+                {businessAddress || websiteUrl ? "Edit" : "Set up"}
+              </button>
+            )}
+          </div>
+
+          {editingAddressWeb ? (
+            <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+              <div className="p-4 flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px]">location_on</span>
+                    Business Address
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="123 Main St, City, State 00000"
+                    value={businessAddress}
+                    onChange={(e) => setBusinessAddress(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px]">language</span>
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://yourbusiness.com"
+                    value={websiteUrl}
+                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => setEditingAddressWeb(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-sm font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveAddressWeb}
+                    disabled={savingAddressWeb}
+                    className="flex-[2] py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {savingAddressWeb ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+              {!businessAddress && !websiteUrl ? (
+                <button
+                  onClick={() => setEditingAddressWeb(true)}
+                  className="w-full p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                    <span className="material-symbols-outlined text-[20px]">location_on</span>
+                  </div>
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="font-bold text-sm text-foreground">Add address &amp; website</span>
+                    <span className="text-xs text-muted-foreground">Shown on invoices</span>
+                  </div>
+                  <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
+                </button>
+              ) : (
+                <div className="flex flex-col divide-y divide-border/50">
+                  {businessAddress && (
+                    <div className="p-4 flex items-center gap-3">
+                      <div className="size-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[20px] text-muted-foreground">location_on</span>
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <span className="font-bold text-sm text-foreground">Address</span>
+                        <span className="text-xs text-muted-foreground">{businessAddress}</span>
+                      </div>
+                    </div>
+                  )}
+                  {websiteUrl && (
+                    <div className="p-4 flex items-center gap-3">
+                      <div className="size-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[20px] text-muted-foreground">language</span>
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <span className="font-bold text-sm text-foreground">Website</span>
+                        <span className="text-xs text-muted-foreground">{websiteUrl.replace(/^https?:\/\//, "")}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
+        </section>
+        )}
+
+        {activeSection === "company" && (
+        <section className="flex flex-col gap-3">
+          {/* Invoice / Estimate Message */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Invoice Message</h3>
+            {!editingInvoiceMessage && (
+              <button onClick={() => setEditingInvoiceMessage(true)} className="text-xs font-bold text-primary">
+                {invoiceMessage ? "Edit" : "Set up"}
+              </button>
+            )}
+          </div>
+
+          {editingInvoiceMessage ? (
+            <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+              <div className="p-4 flex flex-col gap-4">
+                <p className="text-xs text-muted-foreground">A personal note shown at the bottom of every invoice and quote.</p>
+                <textarea
+                  rows={4}
+                  placeholder="Thank you for your business! Payment due within 30 days."
+                  value={invoiceMessage}
+                  onChange={(e) => setInvoiceMessage(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditingInvoiceMessage(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-sm font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveInvoiceMessage}
+                    disabled={savingInvoiceMessage}
+                    className="flex-[2] py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {savingInvoiceMessage ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+              {!invoiceMessage ? (
+                <button
+                  onClick={() => setEditingInvoiceMessage(true)}
+                  className="w-full p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                    <span className="material-symbols-outlined text-[20px]">chat_bubble</span>
+                  </div>
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="font-bold text-sm text-foreground">Add invoice message</span>
+                    <span className="text-xs text-muted-foreground">A note shown on every invoice &amp; quote</span>
+                  </div>
+                  <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
+                </button>
+              ) : (
+                <div className="p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Message</p>
+                  <p className="text-sm text-foreground leading-relaxed">{invoiceMessage}</p>
+                </div>
+              )}
+            </Card>
+          )}
+        </section>
+        )}
+
+        {activeSection === "company" && (
+        <section className="flex flex-col gap-3">
+          {/* Terms & Conditions */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Terms &amp; Conditions</h3>
+            {!editingTerms && (
+              <button onClick={() => setEditingTerms(true)} className="text-xs font-bold text-primary">
+                {termsAndConditions ? "Edit" : "Set up"}
+              </button>
+            )}
+          </div>
+
+          {editingTerms ? (
+            <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+              <div className="p-4 flex flex-col gap-4">
+                <p className="text-xs text-muted-foreground">Shown at the bottom of invoices and quotes. Clients can expand to read the full text.</p>
+                <textarea
+                  rows={6}
+                  placeholder="Payment is due within 30 days of invoice date. Late payments subject to 1.5% monthly interest…"
+                  value={termsAndConditions}
+                  onChange={(e) => setTermsAndConditions(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditingTerms(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-border text-sm font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveTerms}
+                    disabled={savingTerms}
+                    className="flex-[2] py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {savingTerms ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+              {!termsAndConditions ? (
+                <button
+                  onClick={() => setEditingTerms(true)}
+                  className="w-full p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                    <span className="material-symbols-outlined text-[20px]">gavel</span>
+                  </div>
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="font-bold text-sm text-foreground">Add terms &amp; conditions</span>
+                    <span className="text-xs text-muted-foreground">Collapsible section on invoices &amp; quotes</span>
+                  </div>
+                  <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
+                </button>
+              ) : (
+                <div className="p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Terms</p>
+                  <p className="text-sm text-foreground leading-relaxed line-clamp-3">{termsAndConditions}</p>
+                  {termsAndConditions.length > 180 && (
+                    <button onClick={() => setEditingTerms(true)} className="mt-1 text-xs font-bold text-primary">Show full</button>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
+        </section>
+        )}
+
+        {activeSection === "payments" && (
+        <section className="flex flex-col gap-3">
+        {/* Payment Methods */}
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Payment Methods</h3>
             {!editingPayments && (
@@ -1054,9 +1585,11 @@ export default function SettingsPage() {
             </Card>
           )}
         </section>
+        )}
 
-        {/* Financial & Billing */}
+        {activeSection === "billing" && (
         <section className="flex flex-col gap-3">
+        {/* Financial & Billing */}
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Financial & Billing</h3>
           <Card className="rounded-2xl border-border shadow-sm flex flex-col divide-y divide-border/50">
             {/* Stripe Connect — real status */}
@@ -1286,9 +1819,11 @@ export default function SettingsPage() {
             </div>
           </Card>
         </section>
+        )}
 
-        {/* Automations */}
+        {activeSection === "automations" && (
         <section className="flex flex-col gap-3">
+        {/* Automations */}
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Automations</h3>
           <Card className="rounded-2xl border-border shadow-sm flex flex-col overflow-hidden">
             {([
@@ -1427,9 +1962,11 @@ export default function SettingsPage() {
             </Card>
           )}
         </section>
+        )}
 
-        {/* Sales Pipeline */}
+        {activeSection === "pipeline" && (
         <section className="flex flex-col gap-3">
+        {/* Sales Pipeline */}
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Sales Pipeline</h3>
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
             <div className="flex flex-col border-border/50">
@@ -1473,9 +2010,11 @@ export default function SettingsPage() {
             </div>
           </Card>
         </section>
+        )}
 
-        {/* Message Templates */}
+        {activeSection === "messages" && (
         <section className="flex flex-col gap-3">
+        {/* Message Templates */}
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Message Templates</h3>
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
             <div className="p-4 flex flex-col gap-4">
@@ -1567,9 +2106,9 @@ export default function SettingsPage() {
             </div>
           </Card>
         </section>
+        )}
 
-        {/* Scheduling Availability */}
-        {(() => {
+        {activeSection === "scheduling" && (() => {
           const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
           const HOURS = Array.from({ length: 14 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`); // 06:00–19:00
           return (
@@ -1661,8 +2200,7 @@ export default function SettingsPage() {
           );
         })()}
 
-        {/* Share Your Form */}
-        {businessId && (() => {
+        {activeSection === "share" && businessId && (() => {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
           const formUrl = `${appUrl}/quote-request/${businessId}`;
           const iframeCode = `<iframe\n  src="${formUrl}"\n  width="100%"\n  height="750"\n  style="border:none;border-radius:16px;display:block;"\n  loading="lazy"\n></iframe>`;
@@ -1735,8 +2273,9 @@ export default function SettingsPage() {
           );
         })()}
 
-        {/* Customer Financing */}
+        {activeSection === "payments" && (
         <section className="flex flex-col gap-3">
+        {/* Customer Financing */}
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Customer Financing</h3>
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
             <div className="p-4 flex flex-col gap-4">
@@ -1844,8 +2383,9 @@ export default function SettingsPage() {
             </div>
           </Card>
         </section>
+        )}
 
-        {/* Account */}
+        {activeSection === "canvassing" && (
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Canvassing Fields</h3>
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
@@ -1929,7 +2469,11 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </section>
+        )}
 
+        {activeSection === "account" && (
+        <section className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Account</h3>
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden divide-y divide-border/50">
             <button
@@ -1994,7 +2538,9 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+        )}
 
+        </div>
       </div>
     </div>
   );

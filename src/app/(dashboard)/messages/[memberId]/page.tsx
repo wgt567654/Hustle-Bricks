@@ -542,7 +542,7 @@ export default function MemberThreadPage() {
   });
 
   return (
-    <div className="flex flex-col h-[calc(100svh-3.5rem-env(safe-area-inset-bottom,0px)-3.75rem)] max-w-xl mx-auto lg:h-[100svh]">
+    <div className="flex flex-col h-[calc(100svh-3.5rem-2.5rem-env(safe-area-inset-top,0px))] max-w-xl mx-auto">
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/50 shrink-0">

@@ -6,64 +6,71 @@ import { useEffect, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { createClient } from '@/lib/supabase/client';
 import { STATUS_HEX } from '@/lib/status-colors';
+import GlobalSearch from '@/components/GlobalSearch';
 
-const NAV = [
-  { href: "/jobs",            label: "Jobs",      icon: "work",           exact: false, ownerOnly: false },
-  { href: "/analytics",       label: "Analytics", icon: "leaderboard",    exact: false, ownerOnly: true  },
-  { href: "/canvassing",      label: "Map",       icon: "map",            exact: false, ownerOnly: false },
-  { href: "/calendar",        label: "Schedule",  icon: "calendar_month", exact: false, ownerOnly: false },
-  { href: "/messages",        label: "Team Chat", icon: "forum",          exact: false, ownerOnly: true  },
-];
+type NavSubItem = { href: string; label: string; icon: string; ownerOnly?: boolean };
+type NavGroup = { label: string; icon: string; ownerOnly?: boolean; items: NavSubItem[] };
 
-const MORE_GROUPS = [
+const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Money",
-    icon: "payments",
+    label: "Jobs",
+    icon: "work",
     items: [
-      { href: "/payments",              label: "Payments",      icon: "attach_money",      ownerOnly: false },
-      { href: "/reports/mileage",       label: "Mileage",       icon: "local_gas_station", ownerOnly: true  },
-      { href: "/reports/profitability", label: "Profitability", icon: "trending_up",       ownerOnly: true  },
-      { href: "/reports/commission",    label: "Commission",    icon: "emoji_events",      ownerOnly: true  },
+      { href: "/jobs",     label: "All Jobs",  icon: "list_alt"       },
+      { href: "/calendar", label: "Calendar",  icon: "calendar_month" },
+      { href: "/bookings", label: "Bookings",  icon: "book_online"    },
     ],
   },
   {
     label: "Clients",
     icon: "group",
     items: [
-      { href: "/inbox",   label: "Replies",  icon: "chat",         ownerOnly: false },
-      { href: "/clients", label: "Clients",  icon: "group",        ownerOnly: false },
-      { href: "/leads",   label: "Leads",    icon: "person_search",ownerOnly: false },
-      { href: "/plans",   label: "Plans",    icon: "autorenew",    ownerOnly: false },
+      { href: "/clients", label: "Clients", icon: "contacts"      },
+      { href: "/leads",   label: "Leads",   icon: "person_search" },
+      { href: "/inbox",   label: "Inbox",   icon: "chat"          },
+      { href: "/plans",   label: "Plans",   icon: "autorenew"     },
     ],
   },
   {
-    label: "Tools",
-    icon: "build",
+    label: "Sales",
+    icon: "trending_up",
     items: [
-      { href: "/inventory",  label: "Inventory",   icon: "inventory_2", ownerOnly: true  },
-      { href: "/team",       label: "Team",         icon: "badge",       ownerOnly: true  },
-      { href: "/territories",label: "Territories",  icon: "pin_drop",    ownerOnly: true  },
-      { href: "/heatmap",    label: "Heat Map",     icon: "whatshot",    ownerOnly: true  },
-      { href: "/intel",      label: "Intel",        icon: "visibility",  ownerOnly: true  },
+      { href: "/sales",     label: "Pipeline", icon: "trending_up"   },
+      { href: "/quotes",    label: "Quotes",   icon: "request_quote" },
+      { href: "/payments",  label: "Payments", icon: "attach_money"  },
     ],
   },
-];
-
-const SIDEBAR_NAV = [
-  ...NAV,
-  { href: "/inbox",      label: "Client Replies", icon: "chat",       exact: false, ownerOnly: false },
-  { href: "/payments",        label: "Payments", icon: "attach_money",     exact: false, ownerOnly: false },
-  { href: "/reports/mileage",        label: "Mileage",       icon: "local_gas_station", exact: false, ownerOnly: true  },
-  { href: "/reports/profitability", label: "Profitability", icon: "trending_up",       exact: false, ownerOnly: true  },
-  { href: "/reports/commission",    label: "Commission",    icon: "emoji_events",      exact: false, ownerOnly: true  },
-  { href: "/clients",    label: "Clients",   icon: "group",          exact: false, ownerOnly: false },
-  { href: "/leads",     label: "Leads",     icon: "person_search",  exact: false, ownerOnly: false },
-  { href: "/plans",     label: "Plans",     icon: "autorenew",      exact: false, ownerOnly: false },
-  { href: "/inventory", label: "Inventory", icon: "inventory_2",    exact: false, ownerOnly: true  },
-  { href: "/team",        label: "Team",        icon: "badge",          exact: false, ownerOnly: true  },
-  { href: "/territories", label: "Territories", icon: "pin_drop",       exact: false, ownerOnly: true  },
-  { href: "/heatmap",      label: "Heat Map",     icon: "whatshot",       exact: false, ownerOnly: true  },
-  { href: "/intel",        label: "Intel",        icon: "visibility",     exact: false, ownerOnly: true  },
+  {
+    label: "Team",
+    icon: "badge",
+    ownerOnly: true,
+    items: [
+      { href: "/team",        label: "Members",    icon: "badge"    },
+      { href: "/messages",    label: "Chat",       icon: "forum"    },
+      { href: "/territories", label: "Territories",icon: "pin_drop" },
+    ],
+  },
+  {
+    label: "Reports",
+    icon: "bar_chart",
+    ownerOnly: true,
+    items: [
+      { href: "/analytics",            label: "Analytics",    icon: "leaderboard"       },
+      { href: "/reports/mileage",      label: "Mileage",      icon: "local_gas_station" },
+      { href: "/reports/profitability",label: "Profitability",icon: "trending_up"       },
+      { href: "/reports/commission",   label: "Commission",   icon: "emoji_events"      },
+    ],
+  },
+  {
+    label: "Field",
+    icon: "map",
+    items: [
+      { href: "/canvassing", label: "Map",       icon: "map"         },
+      { href: "/heatmap",    label: "Heat Map",  icon: "whatshot",   ownerOnly: true },
+      { href: "/intel",      label: "Intel",     icon: "visibility", ownerOnly: true },
+      { href: "/inventory",  label: "Inventory", icon: "inventory_2",ownerOnly: true },
+    ],
+  },
 ];
 
 type Notification = {
@@ -92,10 +99,13 @@ async function fetchNotifications(): Promise<Notification[]> {
   const now = new Date();
   const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
   const endOfToday   = new Date(now); endOfToday.setHours(23, 59, 59, 999);
-
   const staleThreshold = new Date(now.getTime() - staleQuoteDays * 24 * 60 * 60 * 1000);
 
-  const [{ data: completedJobs }, { data: todayJobs }, { data: inProgressJobs }, { data: pendingMembers }, { data: newLeads }, { data: pendingBookings }, { data: stalledQuotes }, { data: unreadSms }, { data: employeeMessages }] = await Promise.all([
+  const [
+    { data: completedJobs }, { data: todayJobs }, { data: inProgressJobs },
+    { data: pendingMembers }, { data: newLeads }, { data: pendingBookings },
+    { data: stalledQuotes }, { data: unreadSms }, { data: employeeMessages },
+  ] = await Promise.all([
     supabase.from("jobs").select("id, total, clients(name), payments(id)")
       .eq("business_id", business.id).eq("status", "completed"),
     supabase.from("jobs").select("id, scheduled_at, job_line_items(description), clients(name)")
@@ -120,13 +130,11 @@ async function fetchNotifications(): Promise<Notification[]> {
     supabase.from("sms_messages").select("id, clients(name)")
       .eq("business_id", business.id).eq("direction", "inbound").is("read_at", null),
     supabase.from("team_messages").select("id, team_member_id, team_members(name)")
-      .eq("business_id", business.id).eq("sender_role", "employee")
-      .eq("is_read", false),
+      .eq("business_id", business.id).eq("sender_role", "employee").eq("is_read", false),
   ]);
 
   const notes: Notification[] = [];
 
-  // Pending booking requests from client portal
   const bookings = (pendingBookings ?? []) as unknown as { id: string; requested_date: string; requested_time: string; clients: { name: string } | null }[];
   if (bookings.length > 0) {
     const first = bookings[0];
@@ -146,7 +154,6 @@ async function fetchNotifications(): Promise<Notification[]> {
     });
   }
 
-  // New leads from quote-request form
   const leads = (newLeads ?? []) as { id: string; name: string }[];
   if (leads.length > 0) {
     notes.push({
@@ -160,7 +167,6 @@ async function fetchNotifications(): Promise<Notification[]> {
     });
   }
 
-  // Unread SMS messages
   const unread = (unreadSms ?? []) as unknown as { id: string; clients: { name: string } | null }[];
   if (unread.length > 0) {
     const senderNames = [...new Set(unread.map((m) => m.clients?.name).filter(Boolean))].slice(0, 2);
@@ -175,7 +181,6 @@ async function fetchNotifications(): Promise<Notification[]> {
     });
   }
 
-  // Stalled quotes
   const stalled = (stalledQuotes ?? []) as unknown as { id: string; total: number; sent_at: string; clients: { name: string } | null }[];
   if (stalled.length > 0) {
     const totalValue = stalled.reduce((s, q) => s + (q.total ?? 0), 0);
@@ -192,7 +197,6 @@ async function fetchNotifications(): Promise<Notification[]> {
     });
   }
 
-  // Pending employee approvals
   const pending = (pendingMembers ?? []) as { id: string; name: string }[];
   if (pending.length > 0) {
     notes.push({
@@ -206,7 +210,6 @@ async function fetchNotifications(): Promise<Notification[]> {
     });
   }
 
-  // Employee messages
   const empMsgs = (employeeMessages ?? []) as unknown as { id: string; team_member_id: string; team_members: { name: string } | null }[];
   if (empMsgs.length > 0) {
     const senderNames = [...new Set(empMsgs.map((m) => m.team_members?.name).filter(Boolean))].slice(0, 2) as string[];
@@ -269,27 +272,34 @@ async function fetchNotifications(): Promise<Notification[]> {
 export default function Shell({ children, role = "owner" }: { children: React.ReactNode; role?: string }) {
   const pathname    = usePathname();
   const router      = useRouter();
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const { theme, setTheme } = useTheme();
   const [open,            setOpen]            = useState(false);
   const [settingsOpen,    setSettingsOpen]    = useState(false);
-  const [moreOpen,        setMoreOpen]        = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading,       setLoading]       = useState(false);
-  const [loaded,        setLoaded]        = useState(false);
-  const [isStandalone,  setIsStandalone]  = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loaded,  setLoaded]  = useState(false);
   const drawerRef   = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setIsStandalone(window.matchMedia("(display-mode: standalone)").matches);
-  }, []);
+  const isOwner   = role === "owner";
+  const isMapPage = pathname === "/canvassing" || pathname.startsWith("/canvassing/")
+    || pathname === "/map" || pathname.startsWith("/map/");
 
-  function isActive(href: string, exact: boolean) {
-    if (exact) return pathname === href;
-    return pathname === href || pathname.startsWith(href + "/");
-  }
+  const visibleGroups = NAV_GROUPS.filter(g => !g.ownerOnly || isOwner);
+
+  const activeGroup = visibleGroups.find(g =>
+    g.items.some(item => pathname === item.href || pathname.startsWith(item.href + "/"))
+  );
+
+  const visibleSubItems = (activeGroup?.items ?? []).filter(item => !item.ownerOnly || isOwner);
+  const hasSubNav = !isMapPage && visibleSubItems.length > 1;
+
+  useEffect(() => {
+    setLoaded(false);
+    setOpen(false);
+    setSettingsOpen(false);
+  }, [pathname]);
 
   async function openPanel() {
     setOpen(true);
@@ -320,13 +330,6 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
     return () => document.removeEventListener("mousedown", handler);
   }, [settingsOpen]);
 
-  useEffect(() => {
-    setLoaded(false);
-    setOpen(false);
-    setSettingsOpen(false);
-    setMoreOpen(false);
-  }, [pathname]);
-
   async function handleSignOut() {
     setSettingsOpen(false);
     const supabase = createClient();
@@ -334,54 +337,151 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
     window.location.href = "/";
   }
 
-  const unreadCount        = notifications.length;
-  const isOwner            = role === "owner";
-  const visibleNav         = NAV.filter((n) => !n.ownerOnly || isOwner);
-  const visibleSidebarNav  = SIDEBAR_NAV.filter((n) => !n.ownerOnly || isOwner);
-  const isMapPage          = pathname === "/map" || pathname.startsWith("/map/") || pathname === "/canvassing" || pathname.startsWith("/canvassing/") || pathname === "/territories" || pathname.startsWith("/territories/");
+  const unreadCount = notifications.length;
 
   return (
-    <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
+    <div className="relative flex flex-col min-h-screen w-full overflow-x-hidden">
 
-      {/* ── DESKTOP SIDEBAR — lg+ only, hidden on map ── */}
+      {/* ── TOP NAVIGATION BAR ── */}
+      {!isMapPage && (
+        <header
+          className="sticky top-0 z-[450] border-b border-border/40 bg-background/[0.95] backdrop-blur-[16px] backdrop-saturate-[1.4]"
+          style={{
+            paddingTop: "env(safe-area-inset-top, 0px)",
+            WebkitBackdropFilter: "blur(16px) saturate(1.4)",
+          }}
+        >
+          <div className="flex items-center h-14 px-3 gap-2">
+
+            {/* Logo */}
+            <Link href="/jobs" className="flex items-center gap-2 shrink-0 mr-1">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary select-none">
+                <svg viewBox="0 0 22 13" className="w-[18px] h-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                  <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                  <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                  <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                  <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
+                </svg>
+              </div>
+              <span
+                className="hidden sm:block text-[13px] font-extrabold tracking-wide uppercase text-foreground"
+                style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
+              >
+                Hustle Bricks
+              </span>
+            </Link>
+
+            {/* Category tabs — horizontal scrollable */}
+            <nav className="flex-1 flex items-center overflow-x-auto scrollbar-none gap-0.5 min-w-0">
+              {visibleGroups.map((group) => {
+                const active = activeGroup?.label === group.label;
+                const firstVisible = group.items.find(i => !i.ownerOnly || isOwner) ?? group.items[0];
+                return (
+                  <Link
+                    key={group.label}
+                    href={firstVisible.href}
+                    className={`flex items-center gap-1.5 h-9 px-3 rounded-xl whitespace-nowrap text-sm font-semibold transition-all active:scale-95 shrink-0 ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    }`}
+                  >
+                    <span
+                      className="material-symbols-outlined text-[16px] shrink-0"
+                      style={{ fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0" }}
+                    >
+                      {group.icon}
+                    </span>
+                    <span className="hidden md:block">{group.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Right action buttons */}
+            <div className="flex items-center gap-1 shrink-0">
+              <GlobalSearch />
+
+              {isOwner && !pathname.startsWith("/assistant") && (
+                <Link
+                  href="/assistant"
+                  className="flex size-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/60 transition-all active:scale-95"
+                >
+                  <span
+                    className="material-symbols-outlined text-[20px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    auto_awesome
+                  </span>
+                </Link>
+              )}
+              <button
+                onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
+                className="relative flex size-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/60 transition-all active:scale-95"
+              >
+                <span
+                  className="material-symbols-outlined text-[20px]"
+                  style={{ fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  notifications
+                </span>
+                {(!open || !loaded) && (
+                  <span className="absolute top-2 right-2 size-[6px] rounded-full bg-[var(--color-status-in-progress)]" />
+                )}
+              </button>
+              <button
+                onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
+                className="flex size-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/60 transition-all active:scale-95"
+              >
+                <span
+                  className="material-symbols-outlined text-[20px]"
+                  style={{ fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  settings
+                </span>
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* ── DESKTOP SIDEBAR — sub-items of active category, lg+ only ── */}
       {!isMapPage && (
         <div
           onMouseEnter={() => setSidebarExpanded(true)}
           onMouseLeave={() => setSidebarExpanded(false)}
-          className="hidden lg:flex flex-col fixed left-0 top-0 h-screen z-40 border-r border-border/40 overflow-hidden"
+          className="hidden lg:flex flex-col fixed left-0 z-40 border-r border-border/40 overflow-hidden"
           style={{
             background: "var(--card)",
+            top: "calc(3.5rem + env(safe-area-inset-top, 0px))",
+            height: "calc(100vh - 3.5rem - env(safe-area-inset-top, 0px))",
             width: sidebarExpanded ? 220 : 60,
             transition: "width 200ms ease-in-out",
           }}
         >
-          {/* Logo */}
-          <div className="flex items-center h-14 shrink-0 px-[14px] gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary select-none">
-              <svg viewBox="0 0 22 13" className="w-[18px] h-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Top row — 2 bricks */}
-                <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-                <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-                {/* Bottom row — offset bond (half + full + half) */}
-                <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-                <rect x="7"  y="7.5" width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-                <rect x="18" y="7.5" width="4"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
-              </svg>
-            </div>
-            <span
-              className={`whitespace-nowrap text-[13px] font-extrabold tracking-wide uppercase text-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}
-              style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
-            >
-              Hustle Bricks
-            </span>
-          </div>
+          {activeGroup && (
+            <>
+              <div className="flex items-center h-10 shrink-0 px-[14px] gap-3">
+                <span
+                  className="material-symbols-outlined text-[18px] shrink-0"
+                  style={{ color: "var(--color-primary)", fontVariationSettings: "'FILL' 1, 'wght' 500" }}
+                >
+                  {activeGroup.icon}
+                </span>
+                <span
+                  className={`whitespace-nowrap text-[11px] font-extrabold tracking-widest uppercase text-muted-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}
+                >
+                  {activeGroup.label}
+                </span>
+              </div>
+              <div className="h-px bg-border/40 mx-2 shrink-0" />
+            </>
+          )}
 
-          <div className="h-px bg-border/40 mx-2 shrink-0" />
-
-          {/* Nav items */}
           <nav className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto py-2 px-2 scrollbar-none">
-            {visibleSidebarNav.map(({ href, label, icon, exact }) => {
-              const active = isActive(href, exact);
+            {visibleSubItems.map(({ href, label, icon }) => {
+              const active = pathname === href || pathname.startsWith(href + "/");
               return (
                 <Link
                   key={href}
@@ -391,7 +491,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                   }`}
                 >
                   <span
-                    className="material-symbols-outlined text-[22px] shrink-0"
+                    className="material-symbols-outlined text-[20px] shrink-0"
                     style={{
                       color: active ? "var(--color-primary)" : "var(--muted-foreground)",
                       fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
@@ -399,102 +499,61 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                   >
                     {icon}
                   </span>
-                  <span className={`whitespace-nowrap text-sm font-semibold transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"} ${active ? "text-primary" : "text-muted-foreground"}`}>
+                  <span
+                    className={`whitespace-nowrap text-sm font-semibold transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"} ${active ? "text-primary" : "text-muted-foreground"}`}
+                  >
                     {label}
                   </span>
                 </Link>
               );
             })}
           </nav>
+        </div>
+      )}
 
-          <div className="h-px bg-border/40 mx-2 shrink-0" />
-
-          {/* Notifications + Settings at bottom */}
-          <div className="flex flex-col gap-0.5 py-2 px-2">
-            <button
-              onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
-              className="flex items-center gap-3 h-10 rounded-xl px-[11px] hover:bg-muted/60 transition-colors active:scale-95 w-full text-left"
-            >
-              <span className="relative shrink-0">
-                <span
-                  className="material-symbols-outlined text-[22px]"
-                  style={{
-                    color: "var(--muted-foreground)",
-                    fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0",
-                  }}
+      {/* ── MOBILE SUB-NAVIGATION BAR — below top bar, hidden on desktop ── */}
+      {hasSubNav && (
+        <div
+          className="lg:hidden sticky z-[440] bg-background/90 border-b border-border/30 backdrop-blur-[12px] backdrop-saturate-[1.4]"
+          style={{
+            top: "calc(3.5rem + env(safe-area-inset-top, 0px))",
+            WebkitBackdropFilter: "blur(12px) saturate(1.4)",
+          }}
+        >
+          <div className="flex items-center px-3 gap-0.5 overflow-x-auto scrollbar-none h-10">
+            {visibleSubItems.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center h-7 px-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all active:scale-95 ${
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  }`}
                 >
-                  notifications
-                </span>
-                {(!open || !loaded) && (
-                  <span className="absolute -top-0.5 -right-0.5 size-[7px] rounded-full bg-[var(--color-status-in-progress)]" />
-                )}
-              </span>
-              <span className={`whitespace-nowrap text-sm font-semibold text-muted-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}>Notifications</span>
-            </button>
-
-            <button
-              onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
-              className="flex items-center gap-3 h-10 rounded-xl px-[11px] hover:bg-muted/60 transition-colors active:scale-95 w-full text-left"
-            >
-              <span
-                className="material-symbols-outlined text-[22px] shrink-0"
-                style={{
-                  color: "var(--muted-foreground)",
-                  fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0",
-                }}
-              >
-                settings
-              </span>
-              <span className={`whitespace-nowrap text-sm font-semibold text-muted-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}>Settings</span>
-            </button>
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* ── STICKY TOP BAR — mobile only, non-map pages ── */}
-      {!isMapPage && (
-        <header
-          className="sticky top-0 z-[450] lg:hidden border-b border-border/40 bg-background/[0.92] backdrop-blur-[16px] backdrop-saturate-[1.4]"
-          style={{
-            paddingTop: "env(safe-area-inset-top, 0px)",
-            WebkitBackdropFilter: "blur(16px) saturate(1.4)",
-          }}
-        >
-          <div className="flex items-center justify-end px-2 h-11">
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
-                className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 active:scale-90 transition-all"
-              >
-                <span
-                  className="material-symbols-outlined text-[17px]"
-                  style={{ fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0" }}
-                >
-                  settings
-                </span>
-              </button>
-              <button
-                onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
-                className="relative flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 active:scale-90 transition-all"
-              >
-                <span
-                  className="material-symbols-outlined text-[17px]"
-                  style={{ fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0" }}
-                >
-                  notifications
-                </span>
-                {(!open || !loaded) && (
-                  <span className="absolute top-1.5 right-1.5 size-[6px] rounded-full bg-[var(--color-status-in-progress)]" />
-                )}
-              </button>
-            </div>
-          </div>
-        </header>
-      )}
-
-      {/* ── FLOATING icon buttons — map page only ── */}
+      {/* ── FLOATING CONTROLS — map page only ── */}
       {isMapPage && (
-        <div className="fixed right-2.5 z-[450] flex items-center gap-1.5 lg:hidden" style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}>
+        <div
+          className="fixed right-2.5 z-[450] flex items-center gap-1.5"
+          style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}
+        >
+          <button
+            onClick={() => router.back()}
+            className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+          >
+            <span className="material-symbols-outlined text-[17px] text-white">arrow_back</span>
+          </button>
           <button
             onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
             className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
@@ -521,14 +580,13 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── SETTINGS PANEL ── */}
       {settingsOpen && (
-        <div className="fixed inset-0 z-40 lg:left-[60px]" style={{ top: "calc(2.75rem + env(safe-area-inset-top, 0px))" }}>
+        <div
+          className="fixed inset-0 z-[460]"
+          style={{ top: isMapPage ? 0 : "calc(3.5rem + env(safe-area-inset-top, 0px))" }}
+        >
           <div className="absolute inset-0" onClick={() => setSettingsOpen(false)} />
-          <div className="absolute right-3 top-2 w-72 max-w-[calc(100vw-24px)] lg:right-auto lg:left-3 lg:top-auto lg:bottom-14">
-            <div
-              ref={settingsRef}
-              className="rounded-2xl overflow-hidden glass-panel animate-in-down"
-            >
-              {/* Appearance */}
+          <div className="absolute right-3 top-2 w-72 max-w-[calc(100vw-24px)] lg:right-3">
+            <div ref={settingsRef} className="rounded-2xl overflow-hidden glass-panel animate-in-down">
               <div className="px-3 pt-3 pb-2.5">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">Appearance</p>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -587,13 +645,13 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── NOTIFICATION DRAWER ── */}
       {open && (
-        <div className="fixed inset-0 z-40 lg:left-[60px]" style={{ top: "calc(2.75rem + env(safe-area-inset-top, 0px))" }}>
+        <div
+          className="fixed inset-0 z-[460]"
+          style={{ top: isMapPage ? 0 : "calc(3.5rem + env(safe-area-inset-top, 0px))" }}
+        >
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
-          <div className="absolute right-3 top-2 w-80 max-w-[calc(100vw-24px)] lg:right-auto lg:left-3 lg:top-3">
-            <div
-              ref={drawerRef}
-              className="rounded-2xl overflow-hidden glass-panel animate-in-down"
-            >
+          <div className="absolute right-3 top-2 w-80 max-w-[calc(100vw-24px)]">
+            <div ref={drawerRef} className="rounded-2xl overflow-hidden glass-panel animate-in-down">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
                 <span className="font-bold text-sm text-foreground">Notifications</span>
                 {unreadCount > 0 && (
@@ -609,7 +667,6 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                     <p className="text-sm text-muted-foreground">Loading…</p>
                   </div>
                 )}
-
                 {!loading && notifications.length === 0 && (
                   <div className="px-4 py-10 flex flex-col items-center gap-2 text-center">
                     <span
@@ -622,7 +679,6 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                     <p className="text-xs text-muted-foreground">No pending actions right now.</p>
                   </div>
                 )}
-
                 {!loading && notifications.map((note) => (
                   <button
                     key={note.id}
@@ -659,166 +715,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 lg:pb-0 lg:ml-[60px]" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom, 0px) + 12px)" }}>{children}</main>
-
-      {/* ── MORE BOTTOM SHEET ── */}
-      {moreOpen && (
-        <div
-          className="fixed inset-0 z-[3000]"
-          style={{ background: "rgba(0,0,0,0.28)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
-          onClick={() => setMoreOpen(false)}
-        >
-          <div
-            className="absolute bottom-0 left-0 w-full rounded-t-[28px] overflow-hidden bg-background/[0.92] backdrop-blur-[24px] backdrop-saturate-[1.6] border-t border-border"
-            style={{
-              WebkitBackdropFilter: "blur(24px) saturate(1.6)",
-              boxShadow: "0 -8px 32px rgba(0,0,0,0.10)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3">
-              <div className="w-8 h-1 rounded-full bg-muted-foreground/25" />
-            </div>
-            <div className="flex flex-col px-4 pt-2 pb-8 gap-4">
-              {MORE_GROUPS.map((group) => {
-                const visibleItems = group.items.filter((item) => !item.ownerOnly || isOwner);
-                if (visibleItems.length === 0) return null;
-                return (
-                  <div key={group.label}>
-                    <div className="flex items-center gap-1.5 px-1 pb-2">
-                      <span
-                        className="material-symbols-outlined text-[14px]"
-                        style={{ color: "var(--muted-foreground)", fontVariationSettings: "'FILL' 1, 'wght' 500" }}
-                      >
-                        {group.icon}
-                      </span>
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                        {group.label}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {visibleItems.map(({ href, label, icon }) => {
-                        const active = pathname === href || pathname.startsWith(href + "/");
-                        return (
-                          <button
-                            key={href}
-                            onClick={() => { router.push(href); setMoreOpen(false); }}
-                            className="flex items-center gap-3 px-4 py-3.5 rounded-2xl active:scale-95 transition-all duration-150"
-                            style={{
-                              background: active ? "var(--color-primary)" : "var(--muted)/40",
-                              backgroundColor: active ? "var(--color-primary)" : "rgba(128,128,128,0.08)",
-                            }}
-                          >
-                            <span
-                              className="material-symbols-outlined text-[22px] shrink-0"
-                              style={{
-                                color: active ? "#fff" : "var(--muted-foreground)",
-                                fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
-                              }}
-                            >
-                              {icon}
-                            </span>
-                            <span
-                              className="text-[13px] font-semibold leading-tight text-left"
-                              style={{ color: active ? "#fff" : "var(--foreground)" }}
-                            >
-                              {label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── FLOATING ASSISTANT BUTTON — owners only, not on assistant page ── */}
-      {isOwner && !pathname.startsWith("/assistant") && (
-        <Link
-          href="/assistant"
-          className="fixed z-50 flex items-center justify-center rounded-2xl bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition-all lg:bottom-6 lg:right-6"
-          style={{
-            width: 52,
-            height: 52,
-            bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))",
-            right: 16,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
-          }}
-        >
-          <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            auto_awesome
-          </span>
-        </Link>
-      )}
-
-      {/* ── BOTTOM NAVIGATION — full-width bar, mobile only ── */}
-      {!isMapPage && (
-        <div className="fixed z-40 lg:hidden left-0 w-full" style={{ bottom: 0 }}>
-          <div
-            className="flex items-center justify-around px-2 bg-background/[0.90] backdrop-blur-[24px] backdrop-saturate-[1.6] border-t border-border"
-            style={{
-              WebkitBackdropFilter: "blur(24px) saturate(1.6)",
-              paddingTop: 12,
-              paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
-            }}
-          >
-            {visibleNav.map(({ href, label, icon, exact }) => {
-              const active = isActive(href, exact);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className="relative flex flex-col items-center justify-center flex-1 gap-1 py-0.5 transition-all duration-150 active:scale-90"
-                >
-                  <span
-                    className="material-symbols-outlined text-[20px]"
-                    style={{
-                      color: active ? "var(--color-primary)" : "var(--muted-foreground)",
-                      fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
-                    }}
-                  >
-                    {icon}
-                  </span>
-                  <span
-                    className="text-[9px] leading-none font-semibold"
-                    style={{ color: active ? "var(--color-primary)" : "var(--muted-foreground)" }}
-                  >
-                    {label}
-                  </span>
-                  {active && (
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-                  )}
-                </Link>
-              );
-            })}
-
-            <button
-              onClick={() => setMoreOpen((v) => !v)}
-              className="relative flex flex-col items-center justify-center flex-1 gap-1 py-0.5 transition-all duration-150 active:scale-90"
-            >
-              <span
-                className="material-symbols-outlined text-[20px]"
-                style={{
-                  color: moreOpen ? "var(--color-primary)" : "var(--muted-foreground)",
-                  fontVariationSettings: moreOpen ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
-                }}
-              >
-                grid_view
-              </span>
-              <span
-                className="text-[9px] leading-none font-semibold"
-                style={{ color: moreOpen ? "var(--color-primary)" : "var(--muted-foreground)" }}
-              >
-                More
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
+      <main className="flex-1 lg:ml-[60px]">{children}</main>
     </div>
   );
 }

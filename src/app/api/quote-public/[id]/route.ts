@@ -19,7 +19,7 @@ export async function GET(
     .from("quotes")
     .select(
       "id, status, total, notes, video_url, created_at, " +
-      "businesses(name, currency, financing_enabled, financing_url, financing_min_amount), " +
+      "businesses(name, logo_url, invoice_message, terms_and_conditions, currency, financing_enabled, financing_url, financing_min_amount), " +
       "clients(name), " +
       "quote_line_items(id, description, quantity, unit_price)"
     )

@@ -19,6 +19,9 @@ type PublicQuote = {
   created_at: string;
   businesses: {
     name: string;
+    logo_url: string | null;
+    invoice_message: string | null;
+    terms_and_conditions: string | null;
     currency: string | null;
     financing_enabled: boolean | null;
     financing_url: string | null;
@@ -93,6 +96,10 @@ export default function ClientQuotePage({ params }: { params: Promise<{ quoteId:
     <div className="min-h-screen bg-gray-50 pb-16">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 py-4">
+        {quote.businesses?.logo_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={quote.businesses.logo_url} alt="Business logo" className="h-12 w-auto object-contain mb-3" />
+        )}
         <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5">Quote from</p>
         <h1 className="text-xl font-extrabold text-gray-900">{businessName}</h1>
         {quote.clients?.name && (
@@ -232,6 +239,29 @@ export default function ClientQuotePage({ params }: { params: Promise<{ quoteId:
               {responding ? "Processing…" : "Decline"}
             </button>
           </div>
+        )}
+
+        {/* Invoice message */}
+        {quote.businesses?.invoice_message && (
+          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm px-4 py-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">A Note from {businessName}</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{quote.businesses.invoice_message}</p>
+          </div>
+        )}
+
+        {/* Terms & Conditions */}
+        {quote.businesses?.terms_and_conditions && (
+          <details className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden group">
+            <summary className="px-4 py-4 flex items-center justify-between cursor-pointer list-none">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Terms &amp; Conditions</p>
+              <svg className="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+              <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{quote.businesses.terms_and_conditions}</p>
+            </div>
+          </details>
         )}
 
         <p className="text-center text-xs text-gray-400 pb-4">

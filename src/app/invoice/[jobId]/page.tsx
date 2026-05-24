@@ -28,6 +28,11 @@ type InvoiceJob = {
   signature_url: string | null;
   businesses: {
     name: string;
+    logo_url: string | null;
+    address: string | null;
+    website_url: string | null;
+    invoice_message: string | null;
+    terms_and_conditions: string | null;
     currency: string | null;
     venmo_username: string | null;
     cashapp_tag: string | null;
@@ -80,7 +85,7 @@ export default async function InvoicePage({
   const { data, error } = await supabase
     .from("jobs")
     .select(
-      "id, status, total, scheduled_at, notes, signature_url, businesses(name, currency, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, stripe_connect_account_id, stripe_connect_status, financing_enabled, financing_url, financing_min_amount), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
+      "id, status, total, scheduled_at, notes, signature_url, businesses(name, logo_url, address, website_url, invoice_message, terms_and_conditions, currency, venmo_username, cashapp_tag, check_payable_to, contact_email, contact_phone, stripe_connect_account_id, stripe_connect_status, financing_enabled, financing_url, financing_min_amount), clients(name, email, phone, address), job_line_items(id, description, quantity, unit_price), payments(id, status, paid_at, method, amount)"
     )
     .eq("id", jobId)
     .single();
@@ -126,11 +131,23 @@ export default async function InvoicePage({
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div className="flex flex-col gap-1">
+            {job.businesses?.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={job.businesses.logo_url} alt="Business logo" className="h-14 w-auto object-contain mb-2" />
+            )}
             <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">
               {job.businesses?.name ?? "HustleBricks"}
             </h1>
-            <p className="text-sm text-gray-500 font-medium">Invoice</p>
-            <p className="text-xs text-gray-400 font-mono mt-1">{refNum}</p>
+            {job.businesses?.address && (
+              <p className="text-xs text-gray-500 mt-0.5">{job.businesses.address}</p>
+            )}
+            {job.businesses?.website_url && (
+              <a href={job.businesses.website_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                {job.businesses.website_url.replace(/^https?:\/\//, "")}
+              </a>
+            )}
+            <p className="text-sm text-gray-500 font-medium mt-1">Invoice</p>
+            <p className="text-xs text-gray-400 font-mono">{refNum}</p>
           </div>
 
           <div className="flex flex-col items-end gap-3">
@@ -448,6 +465,29 @@ export default async function InvoicePage({
               )}
             </div>
           </div>
+        )}
+
+        {/* Invoice message */}
+        {job.businesses?.invoice_message && (
+          <div className="mb-8 rounded-2xl border border-gray-200 px-5 py-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">A Note from {job.businesses.name}</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{job.businesses.invoice_message}</p>
+          </div>
+        )}
+
+        {/* Terms & Conditions */}
+        {job.businesses?.terms_and_conditions && (
+          <details className="mb-8 rounded-2xl border border-gray-200 overflow-hidden group">
+            <summary className="px-5 py-4 flex items-center justify-between cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors list-none">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Terms &amp; Conditions</p>
+              <svg className="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-5 py-4 border-t border-gray-100">
+              <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{job.businesses.terms_and_conditions}</p>
+            </div>
+          </details>
         )}
 
         {/* Footer */}
