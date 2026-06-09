@@ -69,32 +69,48 @@ export default function EmployeeJoinPage() {
     setSubmitting(true);
     const supabase = createClient();
 
+    // Store join intent before signup in case email confirmation is required
+    localStorage.setItem(
+      "pending_employee_join",
+      JSON.stringify({ code: code.trim().toUpperCase(), name: name.trim() })
+    );
+
+    const emailRedirectTo =
+      window.location.origin + "/auth/callback?next=/employee-join/complete";
+
     // Create auth account
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { full_name: name.trim() } },
+      options: {
+        data: { full_name: name.trim() },
+        emailRedirectTo,
+      },
     });
 
     if (signUpError) {
+      localStorage.removeItem("pending_employee_join");
       setSignupError(signUpError.message);
       setSubmitting(false);
       return;
     }
 
     const userId = signUpData.user?.id;
-    if (!userId) {
-      // Email confirmation required — tell user to confirm then come back
+    const hasSession = !!signUpData.session;
+
+    if (!userId || !hasSession) {
+      // Email confirmation required — join will complete at /employee-join/complete
       setStep("done");
       setSubmitting(false);
       return;
     }
 
-    // Create pending team_member via security-definer RPC
+    // No email confirmation required — complete join immediately
     const { data: joinData, error: joinError } = await supabase.rpc(
       "join_business_as_employee",
       { p_code: code.trim().toUpperCase(), p_name: name.trim() }
     );
+    localStorage.removeItem("pending_employee_join");
 
     if (joinError || joinData?.error) {
       setSignupError(joinData?.error ?? joinError?.message ?? "Failed to join team.");
@@ -116,11 +132,11 @@ export default function EmployeeJoinPage() {
               schedule
             </span>
           </div>
-          <h1 className="text-xl font-extrabold text-foreground">Request sent!</h1>
+          <h1 className="text-xl font-extrabold text-foreground">Check your email</h1>
           <p className="text-sm text-muted-foreground">
-            Your account is created. Your manager at{" "}
-            <strong>{businessName}</strong> will approve you shortly. You&apos;ll
-            be able to log in once they activate your account.
+            We sent a confirmation link to your email. Click it to finish
+            joining <strong>{businessName}</strong>. After confirming, your
+            manager will approve your account.
           </p>
           <button
             onClick={() => router.push("/login")}
