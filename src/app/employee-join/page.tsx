@@ -67,50 +67,43 @@ export default function EmployeeJoinPage() {
     }
 
     setSubmitting(true);
-    const supabase = createClient();
 
-    // Store join intent before signup in case email confirmation is required
-    localStorage.setItem(
-      "pending_employee_join",
-      JSON.stringify({ code: code.trim().toUpperCase(), name: name.trim() })
-    );
-
-    const emailRedirectTo =
-      window.location.origin + "/auth/callback?next=/employee-join/complete";
-
-    // Create auth account
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: { full_name: name.trim() },
-        emailRedirectTo,
-      },
+    // Create user server-side (pre-confirmed, no email required)
+    const res = await fetch("/api/employee-join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
+      }),
     });
 
-    if (signUpError) {
-      localStorage.removeItem("pending_employee_join");
-      setSignupError(signUpError.message);
+    const resData = await res.json();
+    if (!res.ok) {
+      setSignupError(resData.error ?? "Failed to create account.");
       setSubmitting(false);
       return;
     }
 
-    const userId = signUpData.user?.id;
-    const hasSession = !!signUpData.session;
+    // Sign in to get a session, then call join RPC
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
 
-    if (!userId || !hasSession) {
-      // Email confirmation required — join will complete at /employee-join/complete
-      setStep("done");
+    if (signInError) {
+      setSignupError(signInError.message);
       setSubmitting(false);
       return;
     }
 
-    // No email confirmation required — complete join immediately
     const { data: joinData, error: joinError } = await supabase.rpc(
       "join_business_as_employee",
       { p_code: code.trim().toUpperCase(), p_name: name.trim() }
     );
-    localStorage.removeItem("pending_employee_join");
 
     if (joinError || joinData?.error) {
       setSignupError(joinData?.error ?? joinError?.message ?? "Failed to join team.");
@@ -132,11 +125,11 @@ export default function EmployeeJoinPage() {
               schedule
             </span>
           </div>
-          <h1 className="text-xl font-extrabold text-foreground">Check your email</h1>
+          <h1 className="text-xl font-extrabold text-foreground">Request sent!</h1>
           <p className="text-sm text-muted-foreground">
-            We sent a confirmation link to your email. Click it to finish
-            joining <strong>{businessName}</strong>. After confirming, your
-            manager will approve your account.
+            Your account is created. Your manager at{" "}
+            <strong>{businessName}</strong> will approve you shortly. You&apos;ll
+            be able to log in once they activate your account.
           </p>
           <button
             onClick={() => router.push("/login")}
