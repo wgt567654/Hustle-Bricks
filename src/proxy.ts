@@ -48,6 +48,11 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/weather-alerts") ||
     pathname.startsWith("/api/quote-public") ||
     pathname.startsWith("/api/quote-respond") ||
+    pathname.startsWith("/book/") ||
+    pathname.startsWith("/api/leads/submit") ||
+    pathname.startsWith("/api/booking/capacity") ||
+    pathname.startsWith("/api/booking/public") ||
+    pathname.startsWith("/api/quotes/request") ||
     pathname.startsWith("/q/");
 
   if (!user && !isPublicPath) {

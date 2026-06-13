@@ -66,6 +66,14 @@ export default function SettingsPage() {
   const [generatingCode, setGeneratingCode] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
 
+  // Website booking link / slug
+  const [slug, setSlug] = useState<string | null>(null);
+  const [slugInput, setSlugInput] = useState("");
+  const [editingSlug, setEditingSlug] = useState(false);
+  const [savingSlug, setSavingSlug] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   // Tax & commission
   const [taxRate, setTaxRate] = useState("8.00");
   const [commissionRate, setCommissionRate] = useState("5.00");
@@ -201,6 +209,9 @@ export default function SettingsPage() {
         setBusinessName(business.name);
         setNameInput(business.name);
         setAccessCode((business as unknown as { employee_access_code: string | null }).employee_access_code ?? null);
+        const bizSlug = (business as unknown as { slug: string | null }).slug ?? null;
+        setSlug(bizSlug);
+        setSlugInput(bizSlug ?? "");
         setVenmoUsername(business.venmo_username ?? "");
         setCashappTag(business.cashapp_tag ?? "");
         setCheckPayableTo(business.check_payable_to ?? business.name ?? "");
@@ -405,6 +416,31 @@ export default function SettingsPage() {
     await navigator.clipboard.writeText(accessCode);
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
+  }
+
+  async function saveSlug() {
+    if (!businessId) return;
+    setSlugError(null);
+    const cleaned = slugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    if (!cleaned) { setSlugError("Enter a valid link name."); return; }
+    setSavingSlug(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("businesses").update({ slug: cleaned } as Record<string, unknown>).eq("id", businessId);
+    if (error) {
+      setSlugError(error.code === "23505" ? "That link name is already taken. Try another." : error.message);
+    } else {
+      setSlug(cleaned);
+      setSlugInput(cleaned);
+      setEditingSlug(false);
+    }
+    setSavingSlug(false);
+  }
+
+  async function copyBookingLink() {
+    const link = `${window.location.origin}/book/${slug ?? businessId}`;
+    await navigator.clipboard.writeText(link);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   }
 
   async function saveName() {
@@ -1038,6 +1074,89 @@ export default function SettingsPage() {
 
         {activeSection === "team" && (
         <section className="flex flex-col gap-3">
+
+        {/* Website Booking Link */}
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Website Booking Link</h3>
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <div className="p-4 flex flex-col gap-4">
+              <div className="flex items-start gap-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-[20px] text-primary">link</span>
+                </div>
+                <div className="flex flex-col flex-1 gap-0.5">
+                  <span className="font-bold text-sm text-foreground">Your Public Booking Page</span>
+                  <span className="text-xs text-muted-foreground">
+                    Share this link on Google, Instagram, or anywhere — customers can request quotes, book, or contact you without logging in.
+                  </span>
+                </div>
+              </div>
+
+              {/* Current link display */}
+              <div className="flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2 min-w-0">
+                <span className="text-xs text-muted-foreground shrink-0">/book/</span>
+                <span className="font-mono font-bold text-sm text-foreground truncate flex-1">
+                  {slug ?? businessId}
+                </span>
+                <button
+                  onClick={copyBookingLink}
+                  className={`text-xs font-bold shrink-0 transition-colors ${linkCopied ? "text-green-600" : "text-primary"}`}
+                >
+                  {linkCopied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+
+              {/* Set custom slug */}
+              {!editingSlug ? (
+                <button
+                  onClick={() => { setEditingSlug(true); setSlugInput(slug ?? ""); setSlugError(null); }}
+                  className="text-xs font-bold text-primary hover:underline text-left"
+                >
+                  {slug ? "Change link name" : "Set a custom link name"}
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground shrink-0">/book/</span>
+                    <input
+                      type="text"
+                      value={slugInput}
+                      onChange={(e) => setSlugInput(e.target.value)}
+                      placeholder="your-business-name"
+                      className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                    />
+                  </div>
+                  {slugError && <p className="text-xs text-red-500">{slugError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveSlug}
+                      disabled={savingSlug}
+                      className="flex-1 py-2 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {savingSlug ? "Saving…" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => { setEditingSlug(false); setSlugError(null); }}
+                      className="px-4 py-2 rounded-xl border border-border text-xs font-bold text-muted-foreground hover:bg-muted/50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Preview link */}
+              <a
+                href={`/book/${slug ?? businessId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                Preview your booking page
+              </a>
+            </div>
+          </Card>
+
         {/* Employee Access Code */}
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Employee Access</h3>
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
