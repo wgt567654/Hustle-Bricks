@@ -68,51 +68,56 @@ export default function EmployeeJoinPage() {
 
     setSubmitting(true);
 
-    // Create user server-side (pre-confirmed, no email required)
-    const res = await fetch("/api/employee-join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      // Create user server-side (pre-confirmed, no email required)
+      const res = await fetch("/api/employee-join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          name: name.trim(),
+          code: code.trim().toUpperCase(),
+        }),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) {
+        setSignupError(resData.error ?? "Failed to create account.");
+        setSubmitting(false);
+        return;
+      }
+
+      // Sign in to get a session, then call join RPC
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
-        name: name.trim(),
-        code: code.trim().toUpperCase(),
-      }),
-    });
+      });
 
-    const resData = await res.json();
-    if (!res.ok) {
-      setSignupError(resData.error ?? "Failed to create account.");
+      if (signInError) {
+        setSignupError(signInError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      const { data: joinData, error: joinError } = await supabase.rpc(
+        "join_business_as_employee",
+        { p_code: code.trim().toUpperCase(), p_name: name.trim() }
+      );
+
+      if (joinError || joinData?.error) {
+        setSignupError(joinData?.error ?? joinError?.message ?? "Failed to join team.");
+        setSubmitting(false);
+        return;
+      }
+
+      setStep("done");
+    } catch (err) {
+      setSignupError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    // Sign in to get a session, then call join RPC
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
-    if (signInError) {
-      setSignupError(signInError.message);
-      setSubmitting(false);
-      return;
-    }
-
-    const { data: joinData, error: joinError } = await supabase.rpc(
-      "join_business_as_employee",
-      { p_code: code.trim().toUpperCase(), p_name: name.trim() }
-    );
-
-    if (joinError || joinData?.error) {
-      setSignupError(joinData?.error ?? joinError?.message ?? "Failed to join team.");
-      setSubmitting(false);
-      return;
-    }
-
-    setStep("done");
-    setSubmitting(false);
   }
 
   // ── Done screen ─────────────────────────────────────────────────────────────

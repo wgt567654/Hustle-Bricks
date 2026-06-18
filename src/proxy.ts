@@ -46,6 +46,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/cron") ||
     pathname.startsWith("/api/sms/webhook") ||
     pathname.startsWith("/api/weather-alerts") ||
+    pathname.startsWith("/api/employee-join") ||
     pathname.startsWith("/api/quote-public") ||
     pathname.startsWith("/api/quote-respond") ||
     pathname.startsWith("/book/") ||
