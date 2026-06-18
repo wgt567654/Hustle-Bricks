@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -115,6 +115,15 @@ export default function TeamPage() {
   const [territoryInput,   setTerritoryInput]   = useState<Record<string, string>>({});
   const [savingZip,        setSavingZip]        = useState<string | null>(null);
   const [zipError,         setZipError]         = useState<Record<string, string>>({});
+
+  const searchParams = useSearchParams();
+  const pendingSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("pending") === "true" && !loading && pendingMembers.length > 0) {
+      pendingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [searchParams, loading, pendingMembers.length]);
 
 
   function copyPortalLink(id: string) {
@@ -497,7 +506,7 @@ export default function TeamPage() {
 
       {/* Pending approvals */}
       {pendingMembers.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <div ref={pendingSectionRef} className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Pending Approval</h2>
             <span className="text-[10px] font-bold bg-[var(--color-status-in-progress)] text-white px-2 py-0.5 rounded-full">

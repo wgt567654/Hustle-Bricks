@@ -765,6 +765,12 @@ export default function SettingsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
+  // Remove stuck owner account by email
+  const [removeEmailInput, setRemoveEmailInput] = useState("");
+  const [removingByEmail, setRemovingByEmail] = useState(false);
+  const [removeByEmailError, setRemoveByEmailError] = useState<string | null>(null);
+  const [removeByEmailSuccess, setRemoveByEmailSuccess] = useState(false);
+
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -781,6 +787,26 @@ export default function SettingsPage() {
       alert(error ?? "Could not delete account. Please try again.");
       setDeletingAccount(false);
     }
+  }
+
+  async function removeAccountByEmail() {
+    if (!removeEmailInput.trim()) return;
+    setRemovingByEmail(true);
+    setRemoveByEmailError(null);
+    setRemoveByEmailSuccess(false);
+    const res = await fetch("/api/account/delete-by-email", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: removeEmailInput.trim() }),
+    });
+    if (res.ok) {
+      setRemoveByEmailSuccess(true);
+      setRemoveEmailInput("");
+    } else {
+      const { error } = await res.json();
+      setRemoveByEmailError(error ?? "Could not remove account.");
+    }
+    setRemovingByEmail(false);
   }
 
   const hasPaymentMethods = venmoUsername || cashappTag || checkPayableTo;
@@ -2608,6 +2634,36 @@ export default function SettingsPage() {
               </div>
               <span className="material-symbols-outlined text-muted-foreground ml-auto">chevron_right</span>
             </button>
+            <div className="w-full p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0">
+                  <span className="material-symbols-outlined text-[20px]">person_remove</span>
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-bold text-sm text-orange-500">Remove Account by Email</span>
+                  <span className="text-xs text-muted-foreground">Free up an email that was used to create an owner account by mistake</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="employee@email.com"
+                  value={removeEmailInput}
+                  onChange={(e) => { setRemoveEmailInput(e.target.value); setRemoveByEmailError(null); setRemoveByEmailSuccess(false); }}
+                  className="flex-1 px-3 py-2 rounded-xl border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                />
+                <button
+                  onClick={removeAccountByEmail}
+                  disabled={removingByEmail || !removeEmailInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                >
+                  {removingByEmail ? "Removing…" : "Remove"}
+                </button>
+              </div>
+              {removeByEmailError && <p className="text-xs text-red-500">{removeByEmailError}</p>}
+              {removeByEmailSuccess && <p className="text-xs text-green-600">Account removed. They can now sign up as an employee.</p>}
+            </div>
+            <Separator />
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"

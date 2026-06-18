@@ -13,6 +13,14 @@ type NavGroup = { label: string; icon: string; ownerOnly?: boolean; items: NavSu
 
 const NAV_GROUPS: NavGroup[] = [
   {
+    label: "Home",
+    icon: "home",
+    ownerOnly: true,
+    items: [
+      { href: "/home", label: "Home", icon: "home" },
+    ],
+  },
+  {
     label: "Jobs",
     icon: "work",
     items: [
@@ -206,7 +214,7 @@ async function fetchNotifications(): Promise<Notification[]> {
       iconBg: "icon-orange",
       title: `${pending.length} employee${pending.length !== 1 ? "s" : ""} awaiting approval`,
       subtitle: pending.length === 1 ? `${pending[0].name} wants to join your team` : "Review and approve new team members",
-      href: "/team",
+      href: "/team?pending=true",
     });
   }
 
@@ -340,7 +348,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
   const unreadCount = notifications.length;
 
   return (
-    <div className="relative flex flex-col min-h-screen w-full overflow-x-hidden">
+    <div className="relative flex flex-col min-h-screen w-full">
 
       {/* ── TOP NAVIGATION BAR ── */}
       {!isMapPage && (
@@ -354,7 +362,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
           <div className="flex items-center h-14 px-3 gap-2">
 
             {/* Logo */}
-            <Link href="/jobs" className="flex items-center gap-2 shrink-0 mr-1">
+            <Link href="/home" className="flex items-center gap-2 shrink-0 mr-1">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary select-none">
                 <svg viewBox="0 0 22 13" className="w-[18px] h-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
@@ -446,70 +454,6 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
         </header>
       )}
 
-      {/* ── DESKTOP SIDEBAR — sub-items of active category, lg+ only ── */}
-      {!isMapPage && (
-        <div
-          onMouseEnter={() => setSidebarExpanded(true)}
-          onMouseLeave={() => setSidebarExpanded(false)}
-          className="hidden lg:flex flex-col fixed left-0 z-40 border-r border-border/40 overflow-hidden"
-          style={{
-            background: "var(--card)",
-            top: "calc(3.5rem + env(safe-area-inset-top, 0px))",
-            height: "calc(100vh - 3.5rem - env(safe-area-inset-top, 0px))",
-            width: sidebarExpanded ? 220 : 60,
-            transition: "width 200ms ease-in-out",
-          }}
-        >
-          {activeGroup && (
-            <>
-              <div className="flex items-center h-10 shrink-0 px-[14px] gap-3">
-                <span
-                  className="material-symbols-outlined text-[18px] shrink-0"
-                  style={{ color: "var(--color-primary)", fontVariationSettings: "'FILL' 1, 'wght' 500" }}
-                >
-                  {activeGroup.icon}
-                </span>
-                <span
-                  className={`whitespace-nowrap text-[11px] font-extrabold tracking-widest uppercase text-muted-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}
-                >
-                  {activeGroup.label}
-                </span>
-              </div>
-              <div className="h-px bg-border/40 mx-2 shrink-0" />
-            </>
-          )}
-
-          <nav className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto py-2 px-2 scrollbar-none">
-            {visibleSubItems.map(({ href, label, icon }) => {
-              const active = pathname === href || pathname.startsWith(href + "/");
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex items-center gap-3 h-10 rounded-xl px-[11px] transition-colors active:scale-95 ${
-                    active ? "bg-primary/10" : "hover:bg-muted/60"
-                  }`}
-                >
-                  <span
-                    className="material-symbols-outlined text-[20px] shrink-0"
-                    style={{
-                      color: active ? "var(--color-primary)" : "var(--muted-foreground)",
-                      fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
-                    }}
-                  >
-                    {icon}
-                  </span>
-                  <span
-                    className={`whitespace-nowrap text-sm font-semibold transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"} ${active ? "text-primary" : "text-muted-foreground"}`}
-                  >
-                    {label}
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-      )}
 
       {/* ── MOBILE SUB-NAVIGATION BAR — below top bar, hidden on desktop ── */}
       {hasSubNav && (
@@ -714,8 +658,76 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
         </div>
       )}
 
-      {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 lg:ml-[60px]">{children}</main>
+      {/* ── CONTENT ROW: sidebar + main ── */}
+      <div className="flex flex-1 min-h-0">
+
+        {/* Desktop sidebar — sticky, sub-items of active group, lg+ only */}
+        {!isMapPage && (
+          <div
+            onMouseEnter={() => setSidebarExpanded(true)}
+            onMouseLeave={() => setSidebarExpanded(false)}
+            className="hidden lg:flex flex-col sticky shrink-0 z-40 border-r border-border/40 overflow-hidden"
+            style={{
+              background: "var(--card)",
+              top: "calc(3.5rem + env(safe-area-inset-top, 0px))",
+              height: "calc(100vh - 3.5rem - env(safe-area-inset-top, 0px))",
+              width: sidebarExpanded ? 220 : 60,
+              transition: "width 200ms ease-in-out",
+            }}
+          >
+            {activeGroup && visibleSubItems.length > 1 && (
+              <>
+                <div className="flex items-center h-10 shrink-0 px-[14px] gap-3">
+                  <span
+                    className="material-symbols-outlined text-[18px] shrink-0"
+                    style={{ color: "var(--color-primary)", fontVariationSettings: "'FILL' 1, 'wght' 500" }}
+                  >
+                    {activeGroup.icon}
+                  </span>
+                  <span
+                    className={`whitespace-nowrap text-[11px] font-extrabold tracking-widest uppercase text-muted-foreground transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"}`}
+                  >
+                    {activeGroup.label}
+                  </span>
+                </div>
+                <div className="h-px bg-border/40 mx-2 shrink-0" />
+              </>
+            )}
+
+            <nav className="flex flex-col gap-0.5 flex-1 min-h-0 overflow-y-auto py-2 px-2 scrollbar-none">
+              {visibleSubItems.map(({ href, label, icon }) => {
+                const active = pathname === href || pathname.startsWith(href + "/");
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center gap-3 h-10 rounded-xl px-[11px] transition-colors active:scale-95 ${
+                      active ? "bg-primary/10" : "hover:bg-muted/60"
+                    }`}
+                  >
+                    <span
+                      className="material-symbols-outlined text-[20px] shrink-0"
+                      style={{
+                        color: active ? "var(--color-primary)" : "var(--muted-foreground)",
+                        fontVariationSettings: active ? "'FILL' 1, 'wght' 500" : "'FILL' 0",
+                      }}
+                    >
+                      {icon}
+                    </span>
+                    <span
+                      className={`whitespace-nowrap text-sm font-semibold transition-opacity duration-100 ${sidebarExpanded ? "opacity-100" : "opacity-0"} ${active ? "text-primary" : "text-muted-foreground"}`}
+                    >
+                      {label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
+
+        <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+      </div>
     </div>
   );
 }
