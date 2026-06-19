@@ -166,13 +166,13 @@ export default function TeamPage() {
 
       const { data } = await supabase
         .from("team_members")
-        .select("id, user_id, name, email, role, is_active, certifications, hourly_rate, commission_rate")
+        .select("id, user_id, name, email, role, is_active, is_pending, certifications, hourly_rate, commission_rate")
         .eq("business_id", business.id)
         .order("name");
 
-      const allMembers = ((data ?? []) as TeamMember[]).map((m) => ({ ...m, is_pending: false }));
-      const activeMembers = allMembers.filter((m) => m.is_active);
-      const pendingList: TeamMember[] = [];
+      const allMembers = (data ?? []) as TeamMember[];
+      const activeMembers = allMembers.filter((m) => m.is_active && !m.is_pending);
+      const pendingList = allMembers.filter((m) => m.is_pending);
 
       const memberList = activeMembers;
       setMembers(memberList.map((m) => ({ ...m, certifications: m.certifications ?? [] })));
