@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -116,14 +116,16 @@ export default function TeamPage() {
   const [savingZip,        setSavingZip]        = useState<string | null>(null);
   const [zipError,         setZipError]         = useState<Record<string, string>>({});
 
-  const searchParams = useSearchParams();
   const pendingSectionRef = useRef<HTMLDivElement | null>(null);
+  const [highlightPending, setHighlightPending] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get("pending") === "true" && !loading && pendingMembers.length > 0) {
+    if (!loading && pendingMembers.length > 0 && window.location.search.includes("pending=true")) {
       pendingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setHighlightPending(true);
+      setTimeout(() => setHighlightPending(false), 2000);
     }
-  }, [searchParams, loading, pendingMembers.length]);
+  }, [loading, pendingMembers.length]);
 
 
   function copyPortalLink(id: string) {
@@ -506,7 +508,7 @@ export default function TeamPage() {
 
       {/* Pending approvals */}
       {pendingMembers.length > 0 && (
-        <div ref={pendingSectionRef} className="flex flex-col gap-3">
+        <div ref={pendingSectionRef} className={`flex flex-col gap-3 rounded-2xl transition-all duration-300 ${highlightPending ? "ring-2 ring-[var(--color-status-in-progress)] ring-offset-2 bg-status-in-progress/5 p-2" : ""}`}>
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Pending Approval</h2>
             <span className="text-[10px] font-bold bg-[var(--color-status-in-progress)] text-white px-2 py-0.5 rounded-full">
