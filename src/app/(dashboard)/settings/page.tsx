@@ -65,6 +65,7 @@ export default function SettingsPage() {
   const [accessCode, setAccessCode] = useState<string | null>(null);
   const [generatingCode, setGeneratingCode] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [joinLinkCopied, setJoinLinkCopied] = useState(false);
 
   // Website booking link / slug
   const [slug, setSlug] = useState<string | null>(null);
@@ -416,6 +417,13 @@ export default function SettingsPage() {
     await navigator.clipboard.writeText(accessCode);
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
+  }
+
+  async function copyJoinLink() {
+    if (!accessCode) return;
+    await navigator.clipboard.writeText(`${window.location.origin}/employee-join?code=${accessCode}`);
+    setJoinLinkCopied(true);
+    setTimeout(() => setJoinLinkCopied(false), 2000);
   }
 
   async function saveSlug() {
@@ -1209,9 +1217,16 @@ export default function SettingsPage() {
                       onClick={copyAccessCode}
                       className={`text-xs font-bold transition-colors ${codeCopied ? "text-[var(--color-status-completed)]" : "text-primary"}`}
                     >
-                      {codeCopied ? "Copied!" : "Copy"}
+                      {codeCopied ? "Copied!" : "Copy code"}
                     </button>
                   </div>
+                  <button
+                    onClick={copyJoinLink}
+                    className={`w-full py-2.5 rounded-xl border text-sm font-bold transition-colors flex items-center justify-center gap-2 ${joinLinkCopied ? "border-[var(--color-status-completed)] text-[var(--color-status-completed)]" : "border-primary text-primary hover:bg-primary/5"}`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">link</span>
+                    {joinLinkCopied ? "Link copied!" : "Copy employee join link"}
+                  </button>
                   <button
                     onClick={regenerateAccessCode}
                     disabled={generatingCode}

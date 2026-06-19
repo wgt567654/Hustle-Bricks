@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,34 @@ export default function EmployeeJoinPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [signupError, setSignupError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const urlCode = new URLSearchParams(window.location.search).get("code");
+    if (urlCode) {
+      const cleaned = urlCode.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+      if (cleaned.length === 6) {
+        setCode(cleaned);
+        lookupCode(cleaned);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function lookupCode(codeValue: string) {
+    setCodeError(null);
+    setLookingUp(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("lookup_business_by_code", {
+      p_code: codeValue,
+    });
+    setLookingUp(false);
+    if (error || !data || !data.found) {
+      setCodeError("Invalid or expired join link. Please ask your manager for a valid code.");
+      return;
+    }
+    setBusinessName(data.name as string);
+    setStep("signup");
+  }
 
   async function handleCodeSubmit(e: React.FormEvent) {
     e.preventDefault();
