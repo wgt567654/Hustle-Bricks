@@ -35,6 +35,9 @@ export default function EmployeeShell({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const isMapPage = pathname === "/employee/canvassing";
+  const isPrimaryPage = NAV.some(({ href, exact }) =>
+    exact ? pathname === href : pathname === href || pathname.startsWith(href + "/")
+  );
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -230,17 +233,27 @@ export default function EmployeeShell({
       <header className={`sticky top-0 z-30 chrome lg:hidden${isMapPage ? " hidden" : ""}`}>
         <div className="flex items-center justify-between px-4 pt-3 pb-2.5 max-w-xl mx-auto">
           <div className="flex items-center gap-3">
-            <div
-              className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary"
-              style={{ boxShadow: "0 2px 8px color-mix(in srgb, var(--color-primary) 35%, transparent)" }}
-            >
-              <span
-                className="material-symbols-outlined text-[18px] text-white"
-                style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}
+            {!isPrimaryPage && (
+              <button
+                onClick={() => router.back()}
+                className="flex size-9 shrink-0 items-center justify-center rounded-[10px] text-muted-foreground hover:bg-muted transition-all active:scale-90"
               >
-                bolt
-              </span>
-            </div>
+                <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+              </button>
+            )}
+            {isPrimaryPage && (
+              <div
+                className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary"
+                style={{ boxShadow: "0 2px 8px color-mix(in srgb, var(--color-primary) 35%, transparent)" }}
+              >
+                <span
+                  className="material-symbols-outlined text-[18px] text-white"
+                  style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}
+                >
+                  bolt
+                </span>
+              </div>
+            )}
             <div className="flex flex-col">
               <span className="text-[11px] text-muted-foreground font-medium leading-none">Employee Portal</span>
               <span className="text-sm font-extrabold text-foreground leading-tight">{firstName}</span>

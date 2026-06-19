@@ -487,39 +487,49 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
 
       {/* ── FLOATING CONTROLS — map page only ── */}
       {isMapPage && (
-        <div
-          className="fixed right-2.5 z-[450] flex items-center gap-1.5"
-          style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}
-        >
-          <button
-            onClick={() => router.back()}
-            className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
-            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+        <>
+          {/* Back button — top left */}
+          <div
+            className="fixed left-2.5 z-[450]"
+            style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}
           >
-            <span className="material-symbols-outlined text-[17px] text-white">arrow_back</span>
-          </button>
-          <button
-            onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
-            className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
-            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+            <button
+              onClick={() => router.back()}
+              className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+              style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+            >
+              <span className="material-symbols-outlined text-[17px] text-white">arrow_back</span>
+            </button>
+          </div>
+
+          {/* Settings + Notifications — top right */}
+          <div
+            className="fixed right-2.5 z-[450] flex items-center gap-1.5"
+            style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}
           >
-            <span className="material-symbols-outlined text-[17px] text-white" style={{ fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0" }}>
-              settings
-            </span>
-          </button>
-          <button
-            onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
-            className="relative flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
-            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
-          >
-            <span className="material-symbols-outlined text-[17px] text-white" style={{ fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0" }}>
-              notifications
-            </span>
-            {(!open || !loaded) && (
-              <span className="absolute top-1 right-1 size-[6px] rounded-full bg-[var(--color-status-in-progress)]" />
-            )}
-          </button>
-        </div>
+            <button
+              onClick={() => { setSettingsOpen((v) => !v); setOpen(false); }}
+              className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+              style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+            >
+              <span className="material-symbols-outlined text-[17px] text-white" style={{ fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0" }}>
+                settings
+              </span>
+            </button>
+            <button
+              onClick={() => { open ? setOpen(false) : openPanel(); setSettingsOpen(false); }}
+              className="relative flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+              style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+            >
+              <span className="material-symbols-outlined text-[17px] text-white" style={{ fontVariationSettings: open ? "'FILL' 1" : "'FILL' 0" }}>
+                notifications
+              </span>
+              {(!open || !loaded) && (
+                <span className="absolute top-1 right-1 size-[6px] rounded-full bg-[var(--color-status-in-progress)]" />
+              )}
+            </button>
+          </div>
+        </>
       )}
 
       {/* ── SETTINGS PANEL ── */}
