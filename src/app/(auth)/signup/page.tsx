@@ -74,6 +74,11 @@ export default function SignupPage() {
 
         <ProgressBar step={1} />
 
+        <Link href="/login" className="flex items-center gap-1.5 self-start text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Back
+        </Link>
+
         <div className="flex flex-col gap-1">
           <p className="text-xs font-bold uppercase tracking-wider text-primary">Step 1 of 4</p>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Create your account</h1>

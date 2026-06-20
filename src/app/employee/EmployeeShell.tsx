@@ -229,6 +229,48 @@ export default function EmployeeShell({
         </div>
       )}
 
+      {/* ── FLOATING CONTROLS — map page only, mobile ── */}
+      {isMapPage && (
+        <>
+          <div
+            className="lg:hidden fixed left-2.5 z-[450]"
+            style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}
+          >
+            <button
+              onClick={() => router.back()}
+              className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+              style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+            >
+              <span className="material-symbols-outlined text-[17px] text-white">arrow_back</span>
+            </button>
+          </div>
+
+          <div
+            className="fixed right-2.5 z-[450] flex items-center gap-1.5 lg:hidden"
+            style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}
+          >
+            <Link
+              href="/employee/notifications"
+              className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+              style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+            >
+              <span className="material-symbols-outlined text-[17px] text-white" style={{ fontVariationSettings: "'FILL' 0" }}>
+                notifications
+              </span>
+            </Link>
+            <button
+              onClick={() => setSettingsOpen((v) => !v)}
+              className="flex size-8 items-center justify-center rounded-full active:scale-90 transition-all"
+              style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+            >
+              <span className="material-symbols-outlined text-[17px] text-white" style={{ fontVariationSettings: settingsOpen ? "'FILL' 1" : "'FILL' 0" }}>
+                settings
+              </span>
+            </button>
+          </div>
+        </>
+      )}
+
       {/* ── TOP BAR ── */}
       <header className={`sticky top-0 z-30 chrome lg:hidden${isMapPage ? " hidden" : ""}`}>
         <div className="flex items-center justify-between px-4 pt-3 pb-2.5 max-w-xl mx-auto">

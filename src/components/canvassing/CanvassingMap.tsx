@@ -377,23 +377,71 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
         else cfValues[cf.id] = raw;
       }
 
-      const { data: lead } = await supabase.from("leads").insert({
-        business_id: businessId,
-        name: bookName.trim(),
-        phone: bookPhone.trim() || null,
-        phone_alt: bookPhoneAlt.trim() || null,
-        email: bookEmail.trim() || null,
-        address: bookAddress.trim() || null,
-        rapport_notes: bookRapportNotes.trim() || null,
-        service_notes: bookServiceNotes.trim() || null,
-        preferred_date: bookPreferredDate || null,
-        preferred_time: bookPreferredTime ? (TIME_SLOTS.find((s) => s.value === bookPreferredTime)?.label ?? bookPreferredTime) : null,
-        custom_field_values: cfValues,
-        stage: "new",
-        source: "Canvassing",
-      }).select("id").single();
+      const hasDate = !!bookPreferredDate;
 
-      leadId = (lead as { id: string } | null)?.id ?? null;
+      if (hasDate) {
+        // Employee has a confirmed date — create client + job directly, no pipeline needed
+        const { data: client } = await supabase.from("clients").insert({
+          business_id: businessId,
+          name: bookName.trim(),
+          phone: bookPhone.trim() || null,
+          email: bookEmail.trim() || null,
+          address: bookAddress.trim() || null,
+          notes: [bookRapportNotes.trim(), bookServiceNotes.trim()].filter(Boolean).join("\n\n") || null,
+        }).select("id").single();
+
+        const clientId = (client as { id: string } | null)?.id ?? null;
+
+        if (clientId) {
+          const scheduledAt = bookPreferredTime
+            ? new Date(`${bookPreferredDate}T${bookPreferredTime}:00`).toISOString()
+            : new Date(`${bookPreferredDate}T08:00:00`).toISOString();
+
+          await supabase.from("jobs").insert({
+            business_id: businessId,
+            client_id: clientId,
+            status: "scheduled",
+            scheduled_at: scheduledAt,
+            notes: bookServiceNotes.trim() || null,
+          });
+        }
+
+        // Also record a won lead so it shows in the canvassing bookings history
+        const { data: lead } = await supabase.from("leads").insert({
+          business_id: businessId,
+          name: bookName.trim(),
+          phone: bookPhone.trim() || null,
+          phone_alt: bookPhoneAlt.trim() || null,
+          email: bookEmail.trim() || null,
+          address: bookAddress.trim() || null,
+          rapport_notes: bookRapportNotes.trim() || null,
+          service_notes: bookServiceNotes.trim() || null,
+          preferred_date: bookPreferredDate,
+          preferred_time: TIME_SLOTS.find((s) => s.value === bookPreferredTime)?.label ?? bookPreferredTime ?? null,
+          custom_field_values: cfValues,
+          stage: "won",
+          source: "Canvassing",
+        }).select("id").single();
+        leadId = (lead as { id: string } | null)?.id ?? null;
+      } else {
+        // No date set — create a lead for the owner to follow up on
+        const { data: lead } = await supabase.from("leads").insert({
+          business_id: businessId,
+          name: bookName.trim(),
+          phone: bookPhone.trim() || null,
+          phone_alt: bookPhoneAlt.trim() || null,
+          email: bookEmail.trim() || null,
+          address: bookAddress.trim() || null,
+          rapport_notes: bookRapportNotes.trim() || null,
+          service_notes: bookServiceNotes.trim() || null,
+          preferred_date: null,
+          preferred_time: null,
+          custom_field_values: cfValues,
+          stage: "new",
+          source: "Canvassing",
+        }).select("id").single();
+        leadId = (lead as { id: string } | null)?.id ?? null;
+      }
 
       if (leadId && bookPhotos.length > 0) {
         for (const photo of bookPhotos) {
@@ -698,7 +746,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: { onBookNow: (address: string) => void; captureLeadOnBook?: boolean }) {
+export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, showLeadsLink = false }: { onBookNow: (address: string) => void; captureLeadOnBook?: boolean; showLeadsLink?: boolean }) {
   const router = useRouter();
 
   // ── View mode ────────────────────────────────────────────────────────────
@@ -1262,7 +1310,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
       {/* ── Floating overlays ── */}
       <div className="absolute inset-0 pointer-events-none">
 
-        {/* Follow-ups / Analytics — desktop top right */}
+        {/* Follow-ups / Analytics / Leads — desktop top right */}
         {viewMode === "canvass" && (
           <div className="absolute top-3 right-3 z-[500] hidden lg:flex flex-row gap-1.5 pointer-events-auto">
             <Link href="/canvassing/follow-ups"
@@ -1277,6 +1325,14 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
               <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>leaderboard</span>
               Analytics
             </Link>
+            {showLeadsLink && (
+              <Link href="/canvassing/leads"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
+                style={{ ...glassStyle, color: "#4ADE80" }}>
+                <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>person_check</span>
+                Bookings
+              </Link>
+            )}
           </div>
         )}
 
@@ -1314,6 +1370,14 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false }: 
                 <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>leaderboard</span>
                 Analytics
               </Link>
+              {showLeadsLink && (
+                <Link href="/canvassing/leads"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-all"
+                  style={{ ...glassStyle, color: "#4ADE80" }}>
+                  <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>person_check</span>
+                  Bookings
+                </Link>
+              )}
             </div>
           )}
 

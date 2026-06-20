@@ -19,9 +19,9 @@ export default function CanvassingPage() {
   const router = useRouter();
   return (
     <CanvassingMap
-      onBookNow={(address) =>
-        router.push(`/quotes/new?address=${encodeURIComponent(address)}`)
-      }
+      captureLeadOnBook
+      showLeadsLink
+      onBookNow={() => router.push("/canvassing/leads")}
     />
   );
 }

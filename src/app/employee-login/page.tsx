@@ -158,6 +158,11 @@ export default function EmployeeLoginPage() {
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <div className="w-full max-w-sm flex flex-col gap-6">
 
+        <Link href="/login" className="flex items-center gap-1.5 self-start text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Back
+        </Link>
+
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="size-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/25 mb-2">
             <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>badge</span>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { BUSINESS_TYPE_OPTIONS } from "@/lib/businessTypes";
@@ -235,6 +236,10 @@ export default function OnboardingPage() {
         {/* Step 2: Contact Information */}
         {step === 2 && (
           <>
+            <Link href="/login" className="flex items-center gap-1.5 self-start text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+              Back
+            </Link>
             <div className="flex flex-col gap-1">
               <p className="text-xs font-bold uppercase tracking-wider text-primary">Step 2 of 4</p>
               <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Contact information</h1>
@@ -305,6 +310,14 @@ export default function OnboardingPage() {
         {/* Step 3: Business Details */}
         {step === 3 && (
           <>
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              className="flex items-center gap-1.5 self-start text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+              Back
+            </button>
             <div className="flex flex-col gap-1">
               <p className="text-xs font-bold uppercase tracking-wider text-primary">Step 3 of 4</p>
               <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Business details</h1>

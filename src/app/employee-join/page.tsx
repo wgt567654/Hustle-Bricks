@@ -180,6 +180,14 @@ export default function EmployeeJoinPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
         <div className="w-full max-w-sm flex flex-col gap-6">
+          <button
+            type="button"
+            onClick={() => setStep("code")}
+            className="flex items-center gap-1.5 self-start text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            Back
+          </button>
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
               <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -257,13 +265,6 @@ export default function EmployeeJoinPage() {
               {submitting ? "Creating account…" : "Create Account & Request Access"}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setStep("code")}
-              className="text-center text-xs font-bold text-muted-foreground hover:text-foreground"
-            >
-              ← Use a different code
-            </button>
           </form>
         </div>
       </div>
@@ -274,6 +275,11 @@ export default function EmployeeJoinPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <div className="w-full max-w-sm flex flex-col gap-6">
+
+        <Link href="/login" className="flex items-center gap-1.5 self-start text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Back
+        </Link>
 
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="size-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/25 mb-2">
