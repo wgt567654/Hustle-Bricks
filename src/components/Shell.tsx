@@ -488,9 +488,9 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
       {/* ── FLOATING CONTROLS — map page only ── */}
       {isMapPage && (
         <>
-          {/* Back button — top left */}
+          {/* Back button — top left, mobile only */}
           <div
-            className="fixed left-2.5 z-[450]"
+            className="lg:hidden fixed left-2.5 z-[450]"
             style={{ top: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}
           >
             <button
