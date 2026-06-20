@@ -267,6 +267,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
   const [bookPhotos, setBookPhotos] = useState<File[]>([]);
   const [bookPhotoUrls, setBookPhotoUrls] = useState<string[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [bookError, setBookError] = useState<string | null>(null);
 
   const [editAddress, setEditAddress] = useState(property.address ?? "");
   const [savingAddress, setSavingAddress] = useState(false);
@@ -370,6 +371,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
   async function handleBookSubmit() {
     if (!bookName.trim()) return;
     setSaving(true);
+    setBookError(null);
     const supabase = createClient();
 
     if (businessId) {
@@ -385,7 +387,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
         ? new Date(`${bookPreferredDate}T${bookPreferredTime || "08:00"}:00`).toISOString()
         : null;
 
-      const { data: result } = await supabase.rpc("create_canvassing_booking", {
+      const { data: result, error } = await supabase.rpc("create_canvassing_booking", {
         p_business_id:    businessId,
         p_name:           bookName.trim(),
         p_phone:          bookPhone.trim() || null,
@@ -402,6 +404,12 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
           ? (TIME_SLOTS.find((s) => s.value === bookPreferredTime)?.label ?? bookPreferredTime)
           : null,
       });
+
+      if (error) {
+        setBookError("Booking failed — the database function may not be installed yet. Run canvassing_booking_rpc.sql in your Supabase SQL editor.");
+        setSaving(false);
+        return;
+      }
 
       const leadId = (result as { lead_id?: string } | null)?.lead_id ?? null;
 
@@ -665,6 +673,11 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
                 </div>
                 <input ref={photoInputRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={handlePhotoSelect} />
               </div>
+              {bookError && (
+                <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-3 py-2.5 text-xs text-red-600 dark:text-red-400 font-medium">
+                  {bookError}
+                </div>
+              )}
               <div className="flex gap-2 pt-1 pb-4">
                 <button onClick={() => setMode("actions")} disabled={saving}
                   className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
