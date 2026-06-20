@@ -2,20 +2,29 @@
 -- Allows employees to create canvassing bookings (client + job + lead)
 -- without needing direct INSERT permissions on those tables.
 
+-- Ensure the extended lead columns exist (safe to run even if already added)
+alter table public.leads
+  add column if not exists phone_alt           text,
+  add column if not exists rapport_notes       text,
+  add column if not exists service_notes       text,
+  add column if not exists preferred_date      date,
+  add column if not exists preferred_time      text,
+  add column if not exists custom_field_values jsonb default '{}';
+
 create or replace function public.create_canvassing_booking(
   p_business_id    uuid,
   p_name           text,
-  p_phone          text    default null,
-  p_phone_alt      text    default null,
-  p_email          text    default null,
-  p_address        text    default null,
+  p_phone          text        default null,
+  p_phone_alt      text        default null,
+  p_email          text        default null,
+  p_address        text        default null,
   p_scheduled_at   timestamptz default null,
-  p_service_notes  text    default null,
-  p_rapport_notes  text    default null,
-  p_source         text    default 'Canvassing',
-  p_custom_fields  jsonb   default null,
-  p_preferred_date text    default null,
-  p_preferred_time text    default null
+  p_service_notes  text        default null,
+  p_rapport_notes  text        default null,
+  p_source         text        default 'Canvassing',
+  p_custom_fields  jsonb       default null,
+  p_preferred_date text        default null,
+  p_preferred_time text        default null
 )
 returns jsonb
 language plpgsql
@@ -30,7 +39,7 @@ declare
   v_stage          text;
   v_client_notes   text;
 begin
-  -- Allow active team members of this business
+  -- Allow active, approved team members of this business
   select exists(
     select 1 from public.team_members
     where user_id = auth.uid()
@@ -51,11 +60,11 @@ begin
     raise exception 'Not authorized to create a booking for this business';
   end if;
 
-  -- Combine notes for the client record
-  select nullif(trim(concat_ws(E'\n\n',
+  -- Build combined notes string for the client record
+  v_client_notes := nullif(trim(concat_ws(E'\n\n',
     nullif(trim(coalesce(p_rapport_notes, '')), ''),
     nullif(trim(coalesce(p_service_notes, '')), '')
-  )), '') into v_client_notes;
+  )), '');
 
   if p_scheduled_at is not null then
     -- Confirmed appointment: create client + job immediately
@@ -75,7 +84,7 @@ begin
 
     v_stage := 'won';
   else
-    -- No date yet: lead for owner follow-up
+    -- No date yet: leave as a lead for the owner to follow up
     v_stage := 'new';
   end if;
 
@@ -88,10 +97,10 @@ begin
   values (
     p_business_id,
     p_name,
-    nullif(trim(coalesce(p_phone,       '')), ''),
-    nullif(trim(coalesce(p_phone_alt,   '')), ''),
-    nullif(trim(coalesce(p_email,       '')), ''),
-    nullif(trim(coalesce(p_address,     '')), ''),
+    nullif(trim(coalesce(p_phone,         '')), ''),
+    nullif(trim(coalesce(p_phone_alt,     '')), ''),
+    nullif(trim(coalesce(p_email,         '')), ''),
+    nullif(trim(coalesce(p_address,       '')), ''),
     nullif(trim(coalesce(p_rapport_notes, '')), ''),
     nullif(trim(coalesce(p_service_notes, '')), ''),
     case when p_preferred_date is not null and p_preferred_date <> ''
@@ -111,25 +120,17 @@ begin
 end;
 $$;
 
--- Allow employees to upload lead photos after a booking
--- (storage upload is client-side; we just need the lead_photos row insert)
+-- Allow employees to insert lead_photos rows after uploading to storage
 do $$ begin
-  if exists (
-    select 1 from information_schema.tables
-    where table_schema = 'public' and table_name = 'lead_photos'
-  ) then
-    execute $policy$
-      create policy "Employees can insert lead photos for their business"
-        on public.lead_photos for insert
-        with check (
-          business_id in (
-            select business_id from public.team_members
-            where user_id = auth.uid()
-              and is_active = true
-              and is_pending = false
-          )
-        )
-    $policy$;
-  end if;
+  create policy "Employees can insert lead photos for their business"
+    on public.lead_photos for insert
+    with check (
+      business_id in (
+        select business_id from public.team_members
+        where user_id = auth.uid()
+          and is_active = true
+          and is_pending = false
+      )
+    );
 exception when duplicate_object then null;
 end $$;

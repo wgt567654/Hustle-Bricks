@@ -406,7 +406,7 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
       });
 
       if (error) {
-        setBookError("Booking failed — the database function may not be installed yet. Run canvassing_booking_rpc.sql in your Supabase SQL editor.");
+        setBookError("Something went wrong. Please try again.");
         setSaving(false);
         return;
       }
