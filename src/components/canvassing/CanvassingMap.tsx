@@ -366,7 +366,6 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
     if (!bookName.trim()) return;
     setSaving(true);
     const supabase = createClient();
-    let leadId: string | null = null;
 
     if (businessId) {
       const cfValues: Record<string, string | number | boolean> = {};
@@ -377,71 +376,29 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
         else cfValues[cf.id] = raw;
       }
 
-      const hasDate = !!bookPreferredDate;
+      const scheduledAt = bookPreferredDate
+        ? new Date(`${bookPreferredDate}T${bookPreferredTime || "08:00"}:00`).toISOString()
+        : null;
 
-      if (hasDate) {
-        // Employee has a confirmed date — create client + job directly, no pipeline needed
-        const { data: client } = await supabase.from("clients").insert({
-          business_id: businessId,
-          name: bookName.trim(),
-          phone: bookPhone.trim() || null,
-          email: bookEmail.trim() || null,
-          address: bookAddress.trim() || null,
-          notes: [bookRapportNotes.trim(), bookServiceNotes.trim()].filter(Boolean).join("\n\n") || null,
-        }).select("id").single();
+      const { data: result } = await supabase.rpc("create_canvassing_booking", {
+        p_business_id:    businessId,
+        p_name:           bookName.trim(),
+        p_phone:          bookPhone.trim() || null,
+        p_phone_alt:      bookPhoneAlt.trim() || null,
+        p_email:          bookEmail.trim() || null,
+        p_address:        bookAddress.trim() || null,
+        p_scheduled_at:   scheduledAt,
+        p_service_notes:  bookServiceNotes.trim() || null,
+        p_rapport_notes:  bookRapportNotes.trim() || null,
+        p_source:         "Canvassing",
+        p_custom_fields:  Object.keys(cfValues).length > 0 ? cfValues : null,
+        p_preferred_date: bookPreferredDate || null,
+        p_preferred_time: bookPreferredTime
+          ? (TIME_SLOTS.find((s) => s.value === bookPreferredTime)?.label ?? bookPreferredTime)
+          : null,
+      });
 
-        const clientId = (client as { id: string } | null)?.id ?? null;
-
-        if (clientId) {
-          const scheduledAt = bookPreferredTime
-            ? new Date(`${bookPreferredDate}T${bookPreferredTime}:00`).toISOString()
-            : new Date(`${bookPreferredDate}T08:00:00`).toISOString();
-
-          await supabase.from("jobs").insert({
-            business_id: businessId,
-            client_id: clientId,
-            status: "scheduled",
-            scheduled_at: scheduledAt,
-            notes: bookServiceNotes.trim() || null,
-          });
-        }
-
-        // Also record a won lead so it shows in the canvassing bookings history
-        const { data: lead } = await supabase.from("leads").insert({
-          business_id: businessId,
-          name: bookName.trim(),
-          phone: bookPhone.trim() || null,
-          phone_alt: bookPhoneAlt.trim() || null,
-          email: bookEmail.trim() || null,
-          address: bookAddress.trim() || null,
-          rapport_notes: bookRapportNotes.trim() || null,
-          service_notes: bookServiceNotes.trim() || null,
-          preferred_date: bookPreferredDate,
-          preferred_time: TIME_SLOTS.find((s) => s.value === bookPreferredTime)?.label ?? bookPreferredTime ?? null,
-          custom_field_values: cfValues,
-          stage: "won",
-          source: "Canvassing",
-        }).select("id").single();
-        leadId = (lead as { id: string } | null)?.id ?? null;
-      } else {
-        // No date set — create a lead for the owner to follow up on
-        const { data: lead } = await supabase.from("leads").insert({
-          business_id: businessId,
-          name: bookName.trim(),
-          phone: bookPhone.trim() || null,
-          phone_alt: bookPhoneAlt.trim() || null,
-          email: bookEmail.trim() || null,
-          address: bookAddress.trim() || null,
-          rapport_notes: bookRapportNotes.trim() || null,
-          service_notes: bookServiceNotes.trim() || null,
-          preferred_date: null,
-          preferred_time: null,
-          custom_field_values: cfValues,
-          stage: "new",
-          source: "Canvassing",
-        }).select("id").single();
-        leadId = (lead as { id: string } | null)?.id ?? null;
-      }
+      const leadId = (result as { lead_id?: string } | null)?.lead_id ?? null;
 
       if (leadId && bookPhotos.length > 0) {
         for (const photo of bookPhotos) {
