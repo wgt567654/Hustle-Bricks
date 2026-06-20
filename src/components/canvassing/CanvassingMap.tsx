@@ -130,9 +130,12 @@ function emptyLineGeoJSON(): maplibregl.GeoJSONSourceSpecification["data"] {
 // ─── Marker DOM element factories ─────────────────────────────────────────────
 
 function makeCanvassMarkerEl(color: string, opacity = 1): HTMLElement {
-  const el = document.createElement("div");
-  el.style.cssText = `width:18px;height:18px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35);opacity:${opacity};cursor:pointer;`;
-  return el;
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText = `width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+  const dot = document.createElement("div");
+  dot.style.cssText = `width:18px;height:18px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35);opacity:${opacity};`;
+  wrapper.appendChild(dot);
+  return wrapper;
 }
 
 function makeJobMarkerEl(color: string): HTMLElement {
@@ -238,7 +241,9 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
   captureLeadOnBook?: boolean;
   visits?: CanvassingVisit[];
 }) {
-  const [mode, setMode] = useState<"actions" | "interested" | "confirm-remove" | "book" | "edit-address">("actions");
+  const [mode, setMode] = useState<"actions" | "interested" | "confirm-remove" | "book" | "edit-address" | "booked-detail">(
+    property.status === "booked" ? "booked-detail" : "actions"
+  );
   const [notes, setNotes] = useState(property.notes ?? "");
   const [followUpDate, setFollowUpDate] = useState(property.follow_up_date ?? "");
   const [saving, setSaving] = useState(false);
@@ -673,6 +678,55 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
               </div>
             </div>
           )}
+          {mode === "booked-detail" && (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col items-center gap-2 py-2">
+                <div className="size-12 rounded-full flex items-center justify-center" style={{ background: "rgba(34,197,94,.15)" }}>
+                  <span className="material-symbols-outlined text-[28px]" style={{ color: "#22C55E", fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                </div>
+                <p className="text-sm font-semibold text-foreground text-center">Already Booked</p>
+                <p className="text-xs text-muted-foreground text-center">This address has an existing booking. View or edit it in your leads.</p>
+              </div>
+              <a href="/canvassing/leads"
+                className="w-full py-3 rounded-2xl bg-green-500 text-white font-bold text-sm text-center active:scale-95 transition-all"
+                style={{ boxShadow: "0 4px 14px rgba(34,197,94,.4)" }}>
+                View Bookings →
+              </a>
+              <button onClick={() => setMode("actions")}
+                className="w-full py-3 rounded-2xl border border-border text-muted-foreground font-semibold text-sm active:scale-95 transition-all">
+                Change Status
+              </button>
+              {onRemove && (
+                <button onClick={() => setMode("confirm-remove")}
+                  className="w-full py-3 rounded-2xl border border-border text-muted-foreground font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                  <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 0" }}>delete</span>
+                  Remove Pin
+                </button>
+              )}
+              {visits.length > 0 && (
+                <div className="mt-1 pt-4 border-t border-border/40">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2.5">Visit History</p>
+                  <div className="flex flex-col gap-3 max-h-52 overflow-y-auto pr-1">
+                    {visits.map((v) => (
+                      <div key={v.id} className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="size-2 rounded-full shrink-0" style={{ background: CANVASS_COLORS[v.status] }} />
+                          <span className="text-xs font-semibold text-foreground">{CANVASS_LABELS[v.status]}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">{formatVisitDate(v.visited_at)}</span>
+                        </div>
+                        {v.team_members?.name && (
+                          <p className="text-[11px] text-muted-foreground pl-3.5">by {v.team_members.name}</p>
+                        )}
+                        {v.notes && (
+                          <p className="text-[11px] text-foreground/80 pl-3.5 leading-snug">{v.notes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {mode === "interested" && (
             <div className="flex flex-col gap-3">
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
@@ -754,6 +808,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, sh
   const startMarkerRef     = useRef<maplibregl.Marker | null>(null);
   const skipClickRef       = useRef(false);
   const watchIdRef         = useRef<number | null>(null);
+  const justCreatedPinIdRef = useRef<string | null>(null);
 
   // Refs to keep closures up-to-date without re-registering map event handlers
   const viewModeRef        = useRef(viewMode);
@@ -959,6 +1014,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, sh
       .select("*").single();
     if (newProp) {
       const prop = normalizeProperty(newProp as Record<string, unknown>);
+      justCreatedPinIdRef.current = prop.id;
       setProperties((prev) => [prop, ...prev]);
       setSelected(prop);
     }
@@ -983,6 +1039,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, sh
 
   // ── Canvassing status update ──────────────────────────────────────────────
   async function handleStatusUpdate(id: string, updates: Partial<CanvassingProperty>) {
+    justCreatedPinIdRef.current = null;
     const supabase = createClient();
     const payload: Record<string, unknown> = { ...updates, last_visited_at: new Date().toISOString() };
     if (teamMemberId) payload.visited_by = teamMemberId;
@@ -1503,7 +1560,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, sh
 
       {/* ── Desktop back button ── */}
       <button
-        onClick={() => router.back()}
+        onClick={() => router.push("/home")}
         className="hidden lg:flex absolute top-4 left-4 z-[500] items-center gap-2 px-3 py-2 rounded-xl pointer-events-auto transition-opacity hover:opacity-90"
         style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.12)", color: "white" }}>
         <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 0" }}>arrow_back</span>
@@ -1514,9 +1571,15 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, sh
       {selected && viewMode === "canvass" && (
         <QuickActionSheet
           property={selected}
-          onClose={() => setSelected(null)}
+          onClose={async () => {
+            if (justCreatedPinIdRef.current && selected && selected.id === justCreatedPinIdRef.current) {
+              justCreatedPinIdRef.current = null;
+              await handleRemoveProperty(selected.id);
+            }
+            setSelected(null);
+          }}
           onStatusUpdate={async (updates) => { await handleStatusUpdate(selected.id, updates); }}
-          onBookNow={() => { onBookNow(selected.address ?? ""); setSelected(null); }}
+          onBookNow={() => { justCreatedPinIdRef.current = null; onBookNow(selected.address ?? ""); setSelected(null); }}
           onRemove={async () => { await handleRemoveProperty(selected.id); setSelected(null); }}
           onAddressUpdate={async (address) => { await handleAddressUpdate(selected.id, address); }}
           businessId={businessId ?? undefined}
