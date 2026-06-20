@@ -1,8 +1,7 @@
 -- Run this in the Supabase SQL editor.
--- Allows employees to create canvassing bookings (client + job + lead)
--- without needing direct INSERT permissions on those tables.
+-- Self-contained: creates all tables/columns/policies needed for canvassing bookings.
 
--- Ensure the extended lead columns exist (safe to run even if already added)
+-- 1. Ensure extended lead columns exist
 alter table public.leads
   add column if not exists phone_alt           text,
   add column if not exists rapport_notes       text,
@@ -11,6 +10,44 @@ alter table public.leads
   add column if not exists preferred_time      text,
   add column if not exists custom_field_values jsonb default '{}';
 
+-- 2. Lead photos table (stores URLs of photos taken during canvassing bookings)
+create table if not exists public.lead_photos (
+  id          uuid primary key default gen_random_uuid(),
+  lead_id     uuid not null references public.leads(id) on delete cascade,
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  url         text not null,
+  caption     text,
+  created_at  timestamptz default now()
+);
+
+alter table public.lead_photos enable row level security;
+
+do $$ begin
+  create policy "Owner manages lead photos"
+    on public.lead_photos for all
+    using (
+      business_id in (
+        select id from public.businesses where owner_id = auth.uid()
+      )
+    );
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create policy "Employees can insert lead photos for their business"
+    on public.lead_photos for insert
+    with check (
+      business_id in (
+        select business_id from public.team_members
+        where user_id = auth.uid()
+          and is_active = true
+          and is_pending = false
+      )
+    );
+exception when duplicate_object then null;
+end $$;
+
+-- 3. The booking function (SECURITY DEFINER so employees can create clients/jobs/leads)
 create or replace function public.create_canvassing_booking(
   p_business_id    uuid,
   p_name           text,
@@ -39,7 +76,7 @@ declare
   v_stage          text;
   v_client_notes   text;
 begin
-  -- Allow active, approved team members of this business
+  -- Allow active, approved team members
   select exists(
     select 1 from public.team_members
     where user_id = auth.uid()
@@ -60,35 +97,29 @@ begin
     raise exception 'Not authorized to create a booking for this business';
   end if;
 
-  -- Build combined notes string for the client record
+  -- Combined notes for the client record
   v_client_notes := nullif(trim(concat_ws(E'\n\n',
     nullif(trim(coalesce(p_rapport_notes, '')), ''),
     nullif(trim(coalesce(p_service_notes, '')), '')
   )), '');
 
   if p_scheduled_at is not null then
-    -- Confirmed appointment: create client + job immediately
     insert into public.clients (business_id, name, phone, email, address, notes)
     values (p_business_id, p_name, p_phone, p_email, p_address, v_client_notes)
     returning id into v_client_id;
 
     insert into public.jobs (business_id, client_id, status, scheduled_at, notes)
     values (
-      p_business_id,
-      v_client_id,
-      'scheduled',
-      p_scheduled_at,
+      p_business_id, v_client_id, 'scheduled', p_scheduled_at,
       nullif(trim(coalesce(p_service_notes, '')), '')
     )
     returning id into v_job_id;
 
     v_stage := 'won';
   else
-    -- No date yet: leave as a lead for the owner to follow up
     v_stage := 'new';
   end if;
 
-  -- Always record a lead for canvassing history
   insert into public.leads (
     business_id, name, phone, phone_alt, email, address,
     rapport_notes, service_notes, preferred_date, preferred_time,
@@ -119,18 +150,3 @@ begin
   );
 end;
 $$;
-
--- Allow employees to insert lead_photos rows after uploading to storage
-do $$ begin
-  create policy "Employees can insert lead photos for their business"
-    on public.lead_photos for insert
-    with check (
-      business_id in (
-        select business_id from public.team_members
-        where user_id = auth.uid()
-          and is_active = true
-          and is_pending = false
-      )
-    );
-exception when duplicate_object then null;
-end $$;
