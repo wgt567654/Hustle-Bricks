@@ -5,14 +5,15 @@ import { SupabaseClient } from "@supabase/supabase-js";
  * Checks owner first, then team member.
  */
 export async function getBusinessId(supabase: SupabaseClient): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub;
+  if (!userId) return null;
 
   // Try owner first
   const { data: bizList } = await supabase
     .from("businesses")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("owner_id", userId)
     .limit(1);
   if (bizList && bizList.length > 0) return bizList[0].id;
 
@@ -20,7 +21,7 @@ export async function getBusinessId(supabase: SupabaseClient): Promise<string | 
   const { data: tm } = await supabase
     .from("team_members")
     .select("business_id")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("is_active", true)
     .single();
   return tm?.business_id ?? null;

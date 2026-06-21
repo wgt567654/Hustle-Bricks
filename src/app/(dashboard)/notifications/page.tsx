@@ -1,9 +1,5 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { STATUS_HEX } from "@/lib/status-colors";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 
 type Notification = {
   id: string;
@@ -15,14 +11,15 @@ type Notification = {
 };
 
 async function fetchNotifications(): Promise<Notification[]> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub;
+  if (!userId) return [];
 
   const { data: business } = await supabase
     .from("businesses")
     .select("id, stale_quote_days")
-    .eq("owner_id", user.id)
+    .eq("owner_id", userId)
     .single();
   if (!business) return [];
   const staleQuoteDays = (business as unknown as { stale_quote_days: number | null }).stale_quote_days ?? 7;
@@ -197,17 +194,8 @@ async function fetchNotifications(): Promise<Notification[]> {
   return notes;
 }
 
-export default function NotificationsPage() {
-  const router = useRouter();
-  const [notes, setNotes] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchNotifications().then((n) => {
-      setNotes(n);
-      setLoading(false);
-    });
-  }, []);
+export default async function NotificationsPage() {
+  const notes = await fetchNotifications();
 
   return (
     <div className="flex flex-col gap-5 px-4 py-5 max-w-xl mx-auto">
@@ -216,15 +204,7 @@ export default function NotificationsPage() {
         <p className="text-sm text-muted-foreground">Actions and alerts for your business</p>
       </div>
 
-      {loading && (
-        <div className="flex flex-col gap-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 rounded-2xl bg-muted/50 animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {!loading && notes.length === 0 && (
+      {notes.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <span
             className="material-symbols-outlined text-[48px] text-muted-foreground/25"
@@ -237,12 +217,12 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {!loading && notes.length > 0 && (
+      {notes.length > 0 && (
         <div className="flex flex-col gap-3">
           {notes.map((note) => (
-            <button
+            <Link
               key={note.id}
-              onClick={() => router.push(note.href)}
+              href={note.href}
               className="w-full rounded-2xl border border-border bg-card shadow-sm p-4 flex items-start gap-3 text-left hover:border-primary/30 active:scale-[0.99] transition-all cursor-pointer"
             >
               <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl mt-0.5 ${note.iconBg}`}>
@@ -258,7 +238,7 @@ export default function NotificationsPage() {
                 <span className="text-xs text-muted-foreground">{note.subtitle}</span>
               </div>
               <span className="material-symbols-outlined text-muted-foreground/40 text-[15px] shrink-0 mt-1">chevron_right</span>
-            </button>
+            </Link>
           ))}
         </div>
       )}

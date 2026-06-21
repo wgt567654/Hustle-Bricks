@@ -1,9 +1,6 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { getBusinessId } from "@/lib/supabase/get-business";
 
 type Conversation = {
@@ -24,26 +21,22 @@ function timeAgo(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export default function InboxPage() {
-  const [convos, setConvos] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+export default async function InboxPage() {
+  const supabase = await createClient();
+  const bizId = await getBusinessId(supabase);
 
-  useEffect(() => {
-    (async () => {
-      const supabase = createClient();
-      const bizId = await getBusinessId(supabase);
-      if (!bizId) { setLoading(false); return; }
+  let convos: Conversation[] = [];
 
-      // Fetch all messages for this business with client info
-      const { data: messages } = await supabase
-        .from("sms_messages")
-        .select("client_id, body, direction, read_at, created_at, clients(name)")
-        .eq("business_id", bizId)
-        .not("client_id", "is", null)
-        .order("created_at", { ascending: false });
+  if (bizId) {
+    // Fetch all messages for this business with client info
+    const { data: messages } = await supabase
+      .from("sms_messages")
+      .select("client_id, body, direction, read_at, created_at, clients(name)")
+      .eq("business_id", bizId)
+      .not("client_id", "is", null)
+      .order("created_at", { ascending: false });
 
-      if (!messages) { setLoading(false); return; }
-
+    if (messages) {
       type MsgRow = {
         client_id: string;
         body: string;
@@ -72,10 +65,9 @@ export default function InboxPage() {
         }
       }
 
-      setConvos(Array.from(map.values()));
-      setLoading(false);
-    })();
-  }, []);
+      convos = Array.from(map.values());
+    }
+  }
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6 space-y-4">
@@ -86,11 +78,7 @@ export default function InboxPage() {
         </h1>
       </div>
 
-      {loading && (
-        <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
-      )}
-
-      {!loading && convos.length === 0 && (
+      {convos.length === 0 && (
         <Card className="p-8 flex flex-col items-center gap-2 text-center">
           <span className="material-symbols-outlined text-[40px] text-muted-foreground/30" style={{ fontVariationSettings: "'FILL' 1" }}>
             chat_bubble
@@ -102,7 +90,7 @@ export default function InboxPage() {
         </Card>
       )}
 
-      {!loading && convos.length > 0 && (
+      {convos.length > 0 && (
         <Card className="divide-y divide-border/40 overflow-hidden p-0">
           {convos.map((c) => (
             <Link

@@ -1,23 +1,11 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
+import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserGreeting } from "@/components/UserGreeting";
-import { createClient } from "@/lib/supabase/client";
 import { STATUS_HEX, STATUS_CLASS, CHART_COLORS } from "@/lib/status-colors";
 import { formatCurrencyRounded } from "@/lib/currency";
+import RevenueChart from "./RevenueChart";
 
 type TodayJob = {
   id: string;
@@ -79,346 +67,321 @@ function buildSparkline(
   return points;
 }
 
-export default function HomePage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
+export default async function HomePage() {
+  const supabase = await createClient();
 
-  const [weekRevenue, setWeekRevenue] = useState(0);
-  const [todayJobCount, setTodayJobCount] = useState(0);
-  const [openQuoteCount, setOpenQuoteCount] = useState(0);
-  const [outstandingBalance, setOutstandingBalance] = useState(0);
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub;
 
-  const [todayJobs, setTodayJobs] = useState<TodayJob[]>([]);
-  const [needsAttention, setNeedsAttention] = useState<NeedsAttentionItem[]>([]);
-  const [clockedIn, setClockedIn] = useState<ClockedInEntry[]>([]);
-  const [sparkline, setSparkline] = useState<SparklinePoint[]>([]);
-  const [activity, setActivity] = useState<ActivityEvent[]>([]);
-
-  useEffect(() => {
-    async function load() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: biz } = await supabase
+  const { data: biz } = userId
+    ? await supabase
         .from("businesses")
         .select("id, stale_quote_days")
-        .eq("owner_id", user.id)
-        .single();
-      if (!biz) return;
+        .eq("owner_id", userId)
+        .single()
+    : { data: null };
 
-      const now = new Date();
+  // Defaults for the (unlikely) case where the owner has no business row;
+  // the dashboard layout already redirects non-owners away from /home.
+  let weekRevenue = 0;
+  let todayJobCount = 0;
+  let openQuoteCount = 0;
+  let outstandingBalance = 0;
+  let todayJobs: TodayJob[] = [];
+  let needsAttention: NeedsAttentionItem[] = [];
+  let clockedIn: ClockedInEntry[] = [];
+  let sparkline: SparklinePoint[] = buildSparkline([]);
+  let activity: ActivityEvent[] = [];
 
-      const todayStart = new Date(now);
-      todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date(now);
-      todayEnd.setHours(23, 59, 59, 999);
+  if (biz) {
+    const now = new Date();
 
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
-      weekStart.setHours(0, 0, 0, 0);
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
 
-      const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(now.getDate() - 6);
-      sevenDaysAgo.setHours(0, 0, 0, 0);
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
 
-      const staleThreshold = new Date(
-        now.getTime() - ((biz.stale_quote_days ?? 7) * 86400000)
-      );
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
 
-      const [
-        { data: todayJobsData },
-        { data: weekPaymentsData },
-        { data: openQuotesData },
-        { data: completedJobsData },
-        { data: pendingBookingsData },
-        { data: newLeadsData },
-        { data: unreadSmsData },
-        { data: stalledQuotesData },
-        { data: clockedInData },
-        { data: sparklinePaymentsData },
-        { data: recentJobsData },
-        { data: acceptedQuotesData },
-      ] = await Promise.all([
-        // 1. Today's scheduled + in-progress jobs
-        supabase
-          .from("jobs")
-          .select(
-            "id, scheduled_at, status, total, clients(name, address), job_line_items(description), team_members:assigned_member_id(name)"
-          )
-          .eq("business_id", biz.id)
-          .in("status", ["scheduled", "in_progress"])
-          .gte("scheduled_at", todayStart.toISOString())
-          .lte("scheduled_at", todayEnd.toISOString())
-          .order("scheduled_at"),
+    const staleThreshold = new Date(
+      now.getTime() - (biz.stale_quote_days ?? 7) * 86400000
+    );
 
-        // 2. Paid payments this week
-        supabase
-          .from("payments")
-          .select("amount, paid_at")
-          .eq("business_id", biz.id)
-          .eq("status", "paid")
-          .gte("paid_at", weekStart.toISOString()),
+    const [
+      { data: todayJobsData },
+      { data: weekPaymentsData },
+      { data: openQuotesData },
+      { data: completedJobsData },
+      { data: pendingBookingsData },
+      { data: newLeadsData },
+      { data: unreadSmsData },
+      { data: stalledQuotesData },
+      { data: clockedInData },
+      { data: sparklinePaymentsData },
+      { data: recentJobsData },
+      { data: acceptedQuotesData },
+    ] = await Promise.all([
+      // 1. Today's scheduled + in-progress jobs
+      supabase
+        .from("jobs")
+        .select(
+          "id, scheduled_at, status, total, clients(name, address), job_line_items(description), team_members:assigned_member_id(name)"
+        )
+        .eq("business_id", biz.id)
+        .in("status", ["scheduled", "in_progress"])
+        .gte("scheduled_at", todayStart.toISOString())
+        .lte("scheduled_at", todayEnd.toISOString())
+        .order("scheduled_at"),
 
-        // 3. Open quotes (draft + sent)
-        supabase
-          .from("quotes")
-          .select("id")
-          .eq("business_id", biz.id)
-          .in("status", ["draft", "sent"]),
+      // 2. Paid payments this week
+      supabase
+        .from("payments")
+        .select("amount, paid_at")
+        .eq("business_id", biz.id)
+        .eq("status", "paid")
+        .gte("paid_at", weekStart.toISOString()),
 
-        // 4. Completed jobs (for outstanding balance)
-        supabase
-          .from("jobs")
-          .select("id, total, payments(id)")
-          .eq("business_id", biz.id)
-          .eq("status", "completed"),
+      // 3. Open quotes (draft + sent)
+      supabase
+        .from("quotes")
+        .select("id")
+        .eq("business_id", biz.id)
+        .in("status", ["draft", "sent"]),
 
-        // 5. Pending booking requests
-        supabase
-          .from("booking_requests")
-          .select("id, clients(name)")
-          .eq("business_id", biz.id)
-          .eq("status", "pending")
-          .order("created_at", { ascending: false })
-          .limit(5),
+      // 4. Completed jobs (for outstanding balance)
+      supabase
+        .from("jobs")
+        .select("id, total, payments(id)")
+        .eq("business_id", biz.id)
+        .eq("status", "completed"),
 
-        // 6. New leads
-        supabase
-          .from("leads")
-          .select("id, name")
-          .eq("business_id", biz.id)
-          .eq("stage", "new")
-          .limit(10),
+      // 5. Pending booking requests
+      supabase
+        .from("booking_requests")
+        .select("id, clients(name)")
+        .eq("business_id", biz.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(5),
 
-        // 7. Unread inbound SMS
-        supabase
-          .from("sms_messages")
-          .select("id, clients(name)")
-          .eq("business_id", biz.id)
-          .eq("direction", "inbound")
-          .is("read_at", null),
+      // 6. New leads
+      supabase
+        .from("leads")
+        .select("id, name")
+        .eq("business_id", biz.id)
+        .eq("stage", "new")
+        .limit(10),
 
-        // 8. Stalled sent quotes
-        supabase
-          .from("quotes")
-          .select("id, total, sent_at, clients(name)")
-          .eq("business_id", biz.id)
-          .eq("status", "sent")
-          .not("sent_at", "is", null)
-          .lt("sent_at", staleThreshold.toISOString()),
+      // 7. Unread inbound SMS
+      supabase
+        .from("sms_messages")
+        .select("id, clients(name)")
+        .eq("business_id", biz.id)
+        .eq("direction", "inbound")
+        .is("read_at", null),
 
-        // 9. Clocked-in employees
-        supabase
-          .from("time_entries")
-          .select(
-            "id, clocked_in_at, team_members:employee_id(name), jobs:job_id(id, job_line_items(description))"
-          )
-          .eq("business_id", biz.id)
-          .is("clocked_out_at", null),
+      // 8. Stalled sent quotes
+      supabase
+        .from("quotes")
+        .select("id, total, sent_at, clients(name)")
+        .eq("business_id", biz.id)
+        .eq("status", "sent")
+        .not("sent_at", "is", null)
+        .lt("sent_at", staleThreshold.toISOString()),
 
-        // 10. Last 7 days of paid payments (sparkline)
-        supabase
-          .from("payments")
-          .select("amount, paid_at")
-          .eq("business_id", biz.id)
-          .eq("status", "paid")
-          .gte("paid_at", sevenDaysAgo.toISOString())
-          .order("paid_at"),
+      // 9. Clocked-in employees
+      supabase
+        .from("time_entries")
+        .select(
+          "id, clocked_in_at, team_members:employee_id(name), jobs:job_id(id, job_line_items(description))"
+        )
+        .eq("business_id", biz.id)
+        .is("clocked_out_at", null),
 
-        // 11. Recently completed jobs (activity)
-        supabase
-          .from("jobs")
-          .select("id, completed_at, clients(name), job_line_items(description)")
-          .eq("business_id", biz.id)
-          .eq("status", "completed")
-          .not("completed_at", "is", null)
-          .order("completed_at", { ascending: false })
-          .limit(8),
+      // 10. Last 7 days of paid payments (sparkline)
+      supabase
+        .from("payments")
+        .select("amount, paid_at")
+        .eq("business_id", biz.id)
+        .eq("status", "paid")
+        .gte("paid_at", sevenDaysAgo.toISOString())
+        .order("paid_at"),
 
-        // 12. Recently accepted quotes (activity)
-        supabase
-          .from("quotes")
-          .select("id, total, created_at, clients(name)")
-          .eq("business_id", biz.id)
-          .eq("status", "accepted")
-          .order("created_at", { ascending: false })
-          .limit(8),
-      ]);
+      // 11. Recently completed jobs (activity)
+      supabase
+        .from("jobs")
+        .select("id, completed_at, clients(name), job_line_items(description)")
+        .eq("business_id", biz.id)
+        .eq("status", "completed")
+        .not("completed_at", "is", null)
+        .order("completed_at", { ascending: false })
+        .limit(8),
 
-      // --- KPIs ---
-      setWeekRevenue(
-        (weekPaymentsData ?? []).reduce((s, p) => s + p.amount, 0)
-      );
-      setTodayJobCount((todayJobsData ?? []).length);
-      setOpenQuoteCount((openQuotesData ?? []).length);
-      const unpaidJobs = (completedJobsData ?? []).filter(
-        (j) => !(j.payments as { id: string }[])?.length
-      );
-      const outstanding = unpaidJobs.reduce((s, j) => s + j.total, 0);
-      setOutstandingBalance(outstanding);
+      // 12. Recently accepted quotes (activity)
+      supabase
+        .from("quotes")
+        .select("id, total, created_at, clients(name)")
+        .eq("business_id", biz.id)
+        .eq("status", "accepted")
+        .order("created_at", { ascending: false })
+        .limit(8),
+    ]);
 
-      // --- Today's Schedule ---
-      setTodayJobs((todayJobsData ?? []) as unknown as TodayJob[]);
+    // --- KPIs ---
+    weekRevenue = (weekPaymentsData ?? []).reduce((s, p) => s + p.amount, 0);
+    todayJobCount = (todayJobsData ?? []).length;
+    openQuoteCount = (openQuotesData ?? []).length;
+    const unpaidJobs = (completedJobsData ?? []).filter(
+      (j) => !(j.payments as { id: string }[])?.length
+    );
+    outstandingBalance = unpaidJobs.reduce((s, j) => s + j.total, 0);
 
-      // --- Needs Attention ---
-      const attention: NeedsAttentionItem[] = [];
+    // --- Today's Schedule ---
+    todayJobs = (todayJobsData ?? []) as unknown as TodayJob[];
 
-      const bookings = pendingBookingsData ?? [];
-      if (bookings.length > 0) {
-        const first = bookings[0] as unknown as { id: string; clients: { name: string } | null };
-        attention.push({
-          id: "bookings",
-          icon: "calendar_clock",
-          iconColor: CHART_COLORS.orange,
-          title: `${bookings.length} booking request${bookings.length !== 1 ? "s" : ""} to review`,
-          subtitle: first.clients?.name ?? "A client",
-          href: "/bookings",
-        });
-      }
+    // --- Needs Attention ---
+    const attention: NeedsAttentionItem[] = [];
 
-      const leads = newLeadsData ?? [];
-      if (leads.length > 0) {
-        const first = leads[0] as { id: string; name: string };
-        attention.push({
-          id: "leads",
-          icon: "person_search",
-          iconColor: CHART_COLORS.green,
-          title: `${leads.length} new lead${leads.length !== 1 ? "s" : ""}`,
-          subtitle: first.name,
-          href: "/leads",
-        });
-      }
-
-      const unread = unreadSmsData ?? [];
-      if (unread.length > 0) {
-        attention.push({
-          id: "sms",
-          icon: "chat",
-          iconColor: CHART_COLORS.blue,
-          title: `${unread.length} unread message${unread.length !== 1 ? "s" : ""}`,
-          subtitle: "Open inbox to reply",
-          href: "/inbox",
-        });
-      }
-
-      const stalled = stalledQuotesData ?? [];
-      if (stalled.length > 0) {
-        const atRisk = stalled.reduce(
-          (s, q) => s + ((q as { id: string; total: number }).total ?? 0),
-          0
-        );
-        attention.push({
-          id: "stalled",
-          icon: "timer",
-          iconColor: CHART_COLORS.red,
-          title: `${stalled.length} stalled quote${stalled.length !== 1 ? "s" : ""}`,
-          subtitle: `${formatCurrencyRounded(atRisk)} at risk`,
-          href: "/sales",
-        });
-      }
-
-      if (unpaidJobs.length > 0) {
-        attention.push({
-          id: "unpaid",
-          icon: "payments",
-          iconColor: CHART_COLORS.orange,
-          title: `${unpaidJobs.length} unpaid job${unpaidJobs.length !== 1 ? "s" : ""}`,
-          subtitle: `Collect ${formatCurrencyRounded(outstanding)}`,
-          href: "/payments",
-        });
-      }
-
-      setNeedsAttention(attention.slice(0, 5));
-
-      // --- Employee Status ---
-      setClockedIn((clockedInData ?? []) as unknown as ClockedInEntry[]);
-
-      // --- Sparkline ---
-      setSparkline(buildSparkline(sparklinePaymentsData ?? []));
-
-      // --- Recent Activity ---
-      const events: ActivityEvent[] = [];
-
-      for (const job of recentJobsData ?? []) {
-        const j = job as unknown as {
-          id: string;
-          completed_at: string;
-          clients: { name: string } | null;
-          job_line_items: { description: string }[];
-        };
-        events.push({
-          id: `job-${j.id}`,
-          icon: "check_circle",
-          iconColor: CHART_COLORS.green,
-          title: j.job_line_items[0]?.description ?? "Job completed",
-          subtitle: j.clients?.name ?? "Client",
-          timestamp: j.completed_at,
-        });
-      }
-
-      for (const q of acceptedQuotesData ?? []) {
-        const quote = q as unknown as {
-          id: string;
-          total: number;
-          created_at: string;
-          clients: { name: string } | null;
-        };
-        events.push({
-          id: `quote-${quote.id}`,
-          icon: "handshake",
-          iconColor: CHART_COLORS.blue,
-          title: "Quote accepted",
-          subtitle: quote.clients?.name ?? "Client",
-          timestamp: quote.created_at,
-        });
-      }
-
-      for (const b of pendingBookingsData ?? []) {
-        const booking = b as unknown as {
-          id: string;
-          clients: { name: string } | null;
-        };
-        events.push({
-          id: `booking-${booking.id}`,
-          icon: "calendar_clock",
-          iconColor: CHART_COLORS.amber,
-          title: "New booking request",
-          subtitle: booking.clients?.name ?? "Client",
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      setActivity(
-        events
-          .sort(
-            (a, b) =>
-              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          )
-          .slice(0, 8)
-      );
-
-      setLoading(false);
+    const bookings = pendingBookingsData ?? [];
+    if (bookings.length > 0) {
+      const first = bookings[0] as unknown as {
+        id: string;
+        clients: { name: string } | null;
+      };
+      attention.push({
+        id: "bookings",
+        icon: "calendar_clock",
+        iconColor: CHART_COLORS.orange,
+        title: `${bookings.length} booking request${bookings.length !== 1 ? "s" : ""} to review`,
+        subtitle: first.clients?.name ?? "A client",
+        href: "/bookings",
+      });
     }
 
-    load();
-  }, []);
+    const leads = newLeadsData ?? [];
+    if (leads.length > 0) {
+      const first = leads[0] as { id: string; name: string };
+      attention.push({
+        id: "leads",
+        icon: "person_search",
+        iconColor: CHART_COLORS.green,
+        title: `${leads.length} new lead${leads.length !== 1 ? "s" : ""}`,
+        subtitle: first.name,
+        href: "/leads",
+      });
+    }
 
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-5 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-8">
-        <div className="h-16 rounded-2xl bg-muted/50 animate-pulse" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 rounded-2xl bg-muted/50 animate-pulse" />
-          ))}
-        </div>
-        <div className="h-72 rounded-2xl bg-muted/50 animate-pulse" />
-        <div className="h-48 rounded-2xl bg-muted/50 animate-pulse" />
-      </div>
-    );
+    const unread = unreadSmsData ?? [];
+    if (unread.length > 0) {
+      attention.push({
+        id: "sms",
+        icon: "chat",
+        iconColor: CHART_COLORS.blue,
+        title: `${unread.length} unread message${unread.length !== 1 ? "s" : ""}`,
+        subtitle: "Open inbox to reply",
+        href: "/inbox",
+      });
+    }
+
+    const stalled = stalledQuotesData ?? [];
+    if (stalled.length > 0) {
+      const atRisk = stalled.reduce(
+        (s, q) => s + ((q as { id: string; total: number }).total ?? 0),
+        0
+      );
+      attention.push({
+        id: "stalled",
+        icon: "timer",
+        iconColor: CHART_COLORS.red,
+        title: `${stalled.length} stalled quote${stalled.length !== 1 ? "s" : ""}`,
+        subtitle: `${formatCurrencyRounded(atRisk)} at risk`,
+        href: "/sales",
+      });
+    }
+
+    if (unpaidJobs.length > 0) {
+      attention.push({
+        id: "unpaid",
+        icon: "payments",
+        iconColor: CHART_COLORS.orange,
+        title: `${unpaidJobs.length} unpaid job${unpaidJobs.length !== 1 ? "s" : ""}`,
+        subtitle: `Collect ${formatCurrencyRounded(outstandingBalance)}`,
+        href: "/payments",
+      });
+    }
+
+    needsAttention = attention.slice(0, 5);
+
+    // --- Employee Status ---
+    clockedIn = (clockedInData ?? []) as unknown as ClockedInEntry[];
+
+    // --- Sparkline ---
+    sparkline = buildSparkline(sparklinePaymentsData ?? []);
+
+    // --- Recent Activity ---
+    const events: ActivityEvent[] = [];
+
+    for (const job of recentJobsData ?? []) {
+      const j = job as unknown as {
+        id: string;
+        completed_at: string;
+        clients: { name: string } | null;
+        job_line_items: { description: string }[];
+      };
+      events.push({
+        id: `job-${j.id}`,
+        icon: "check_circle",
+        iconColor: CHART_COLORS.green,
+        title: j.job_line_items[0]?.description ?? "Job completed",
+        subtitle: j.clients?.name ?? "Client",
+        timestamp: j.completed_at,
+      });
+    }
+
+    for (const q of acceptedQuotesData ?? []) {
+      const quote = q as unknown as {
+        id: string;
+        total: number;
+        created_at: string;
+        clients: { name: string } | null;
+      };
+      events.push({
+        id: `quote-${quote.id}`,
+        icon: "handshake",
+        iconColor: CHART_COLORS.blue,
+        title: "Quote accepted",
+        subtitle: quote.clients?.name ?? "Client",
+        timestamp: quote.created_at,
+      });
+    }
+
+    for (const b of pendingBookingsData ?? []) {
+      const booking = b as unknown as {
+        id: string;
+        clients: { name: string } | null;
+      };
+      events.push({
+        id: `booking-${booking.id}`,
+        icon: "calendar_clock",
+        iconColor: CHART_COLORS.amber,
+        title: "New booking request",
+        subtitle: booking.clients?.name ?? "Client",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    activity = events
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )
+      .slice(0, 8);
   }
 
   return (
@@ -592,9 +555,9 @@ export default function HomePage() {
                   : "—";
                 const description = job.job_line_items[0]?.description ?? "Job";
                 return (
-                  <button
+                  <Link
                     key={job.id}
-                    onClick={() => router.push(`/jobs/${job.id}`)}
+                    href={`/jobs/${job.id}`}
                     className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex flex-col items-center shrink-0 w-14 pt-0.5">
@@ -624,7 +587,7 @@ export default function HomePage() {
                         </span>
                       )}
                     </div>
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -664,9 +627,9 @@ export default function HomePage() {
             ) : (
               <div className="divide-y divide-border/30">
                 {needsAttention.map((item) => (
-                  <button
+                  <Link
                     key={item.id}
-                    onClick={() => router.push(item.href)}
+                    href={item.href}
                     className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted/60">
@@ -684,7 +647,7 @@ export default function HomePage() {
                     <span className="material-symbols-outlined text-muted-foreground/40 text-[15px] shrink-0">
                       chevron_right
                     </span>
-                  </button>
+                  </Link>
                 ))}
               </div>
             )}
@@ -759,52 +722,7 @@ export default function HomePage() {
             <span className="font-bold text-sm">7-Day Revenue</span>
           </div>
           <div className="p-4 h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={sparkline}
-                margin={{ top: 4, right: 4, bottom: 0, left: -28 }}
-                barSize={18}
-              >
-                <CartesianGrid
-                  vertical={false}
-                  stroke="var(--border)"
-                  strokeOpacity={0.4}
-                />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v: number) =>
-                    v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`
-                  }
-                />
-                <Tooltip
-                  formatter={(value) => [
-                    Number(value ?? 0).toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      maximumFractionDigits: 0,
-                    }),
-                    "Revenue",
-                  ]}
-                  contentStyle={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 12,
-                    fontSize: 12,
-                    color: "var(--foreground)",
-                  }}
-                  cursor={{ fill: "var(--muted)", fillOpacity: 0.3 }}
-                />
-                <Bar dataKey="revenue" fill={CHART_COLORS.blue} radius={[5, 5, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <RevenueChart data={sparkline} />
           </div>
         </Card>
 

@@ -770,19 +770,19 @@ function QuickActionSheet({ property, onClose, onStatusUpdate, onBookNow, onRemo
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, showLeadsLink = false }: { onBookNow: (address: string) => void; captureLeadOnBook?: boolean; showLeadsLink?: boolean }) {
+export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, showLeadsLink = false, initialBusinessId = null, initialTeamMemberId = null, initialProperties }: { onBookNow: (address: string) => void; captureLeadOnBook?: boolean; showLeadsLink?: boolean; initialBusinessId?: string | null; initialTeamMemberId?: string | null; initialProperties?: CanvassingProperty[] }) {
   const router = useRouter();
 
   // ── View mode ────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<ViewMode>("canvass");
 
   // ── Canvassing state ─────────────────────────────────────────────────────
-  const [businessId, setBusinessId]     = useState<string | null>(null);
-  const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
-  const [properties, setProperties]     = useState<CanvassingProperty[]>([]);
+  const [businessId, setBusinessId]     = useState<string | null>(initialBusinessId);
+  const [teamMemberId, setTeamMemberId] = useState<string | null>(initialTeamMemberId);
+  const [properties, setProperties]     = useState<CanvassingProperty[]>(initialProperties ?? []);
   const [selected, setSelected]         = useState<CanvassingProperty | null>(null);
   const [visits, setVisits]             = useState<CanvassingVisit[]>([]);
-  const [loading, setLoading]           = useState(true);
+  const [loading, setLoading]           = useState(initialProperties === undefined);
   const [creating, setCreating]         = useState(false);
 
   // ── Jobs state ────────────────────────────────────────────────────────────
@@ -907,29 +907,36 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, sh
   // ── Init: canvassing data + GPS ──────────────────────────────────────────
   useEffect(() => {
     async function init() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      let propList: CanvassingProperty[];
 
-      const { data: biz } = await supabase.from("businesses").select("id").eq("owner_id", user.id).maybeSingle();
-      let bizId: string;
-
-      if (biz) {
-        bizId = biz.id;
-        setBusinessId(bizId);
+      if (initialProperties !== undefined) {
+        // Initial data provided by the server — skip the redundant fetch.
+        propList = initialProperties;
       } else {
-        const { data: tm } = await supabase.from("team_members").select("id, business_id")
-          .eq("user_id", user.id).eq("is_active", true).single();
-        if (!tm) return;
-        bizId = (tm as { id: string; business_id: string }).business_id;
-        setBusinessId(bizId);
-        setTeamMemberId((tm as { id: string; business_id: string }).id);
-      }
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const { data: props } = await supabase.from("canvassing_properties").select("*")
-        .eq("business_id", bizId).order("created_at", { ascending: false });
-      const propList = (props ?? []).map((p) => normalizeProperty(p as Record<string, unknown>));
-      setProperties(propList);
+        const { data: biz } = await supabase.from("businesses").select("id").eq("owner_id", user.id).maybeSingle();
+        let bizId: string;
+
+        if (biz) {
+          bizId = biz.id;
+          setBusinessId(bizId);
+        } else {
+          const { data: tm } = await supabase.from("team_members").select("id, business_id")
+            .eq("user_id", user.id).eq("is_active", true).single();
+          if (!tm) return;
+          bizId = (tm as { id: string; business_id: string }).business_id;
+          setBusinessId(bizId);
+          setTeamMemberId((tm as { id: string; business_id: string }).id);
+        }
+
+        const { data: props } = await supabase.from("canvassing_properties").select("*")
+          .eq("business_id", bizId).order("created_at", { ascending: false });
+        propList = (props ?? []).map((p) => normalizeProperty(p as Record<string, unknown>));
+        setProperties(propList);
+      }
 
       const geoCoords = await new Promise<[number, number] | null>((resolve) => {
         if (!navigator.geolocation) return resolve(null);
@@ -959,6 +966,7 @@ export default function CanvassingMap({ onBookNow, captureLeadOnBook = false, sh
 
     init();
     return () => { if (watchIdRef.current !== null) navigator.geolocation?.clearWatch(watchIdRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Lazy load jobs data ───────────────────────────────────────────────────

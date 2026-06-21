@@ -153,10 +153,10 @@ const glassStyle = {
   WebkitBackdropFilter: "blur(8px)",
 } as const;
 
-export default function HeatmapContent() {
-  const [zones, setZones] = useState<ZoneData[]>([]);
+export default function HeatmapContent({ initialZones }: { initialZones: ZoneData[] }) {
+  const [zones] = useState<ZoneData[]>(initialZones);
   const [geoZones, setGeoZones] = useState<GeoZone[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
@@ -281,28 +281,30 @@ export default function HeatmapContent() {
   }, [geoZones]);
 
   useEffect(() => {
-    fetch("/api/heatmap-data")
-      .then((r) => r.json())
-      .then(async ({ zones: data }: { zones: ZoneData[] }) => {
-        setLoading(false);
-        setZones(data ?? []);
-        if (!data || data.length === 0) return;
-        setTotal(data.length);
-        setGeocoding(true);
-        const result: GeoZone[] = [];
-        for (let i = 0; i < data.length; i++) {
-          const zone = data[i];
-          const coords = await geocodeZip(zone.zip);
-          setProgress(i + 1);
-          if (coords) {
-            result.push({ ...zone, lat: coords[0], lng: coords[1] });
-            setGeoZones([...result]);
-          }
-          if (i < data.length - 1) await sleep(1100);
+    let cancelled = false;
+    async function geocodeAll() {
+      const data = initialZones;
+      if (!data || data.length === 0) return;
+      setTotal(data.length);
+      setGeocoding(true);
+      const result: GeoZone[] = [];
+      for (let i = 0; i < data.length; i++) {
+        if (cancelled) return;
+        const zone = data[i];
+        const coords = await geocodeZip(zone.zip);
+        if (cancelled) return;
+        setProgress(i + 1);
+        if (coords) {
+          result.push({ ...zone, lat: coords[0], lng: coords[1] });
+          setGeoZones([...result]);
         }
-        setGeocoding(false);
-      })
-      .catch(() => setLoading(false));
+        if (i < data.length - 1) await sleep(1100);
+      }
+      setGeocoding(false);
+    }
+    geocodeAll();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

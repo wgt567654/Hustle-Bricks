@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 const PALETTE = [
   "#007AFF", "#FF9500", "#34C759", "#FF2D55",
@@ -85,12 +84,20 @@ function makePinEl(color: string): HTMLElement {
   return el;
 }
 
-export default function TerritoryMapContent() {
+export default function TerritoryMapContent({
+  initialJobs,
+  initialMembers,
+  initialZipToMember,
+}: {
+  initialJobs: TerritoryJob[];
+  initialMembers: Member[];
+  initialZipToMember: Record<string, string>;
+}) {
   const router = useRouter();
 
   const [pins, setPins] = useState<Pin[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [loading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
@@ -126,55 +133,17 @@ export default function TerritoryMapContent() {
     };
   }, []);
 
-  // Data loading
+  // Data loading (initial data is server-rendered via props; geocoding stays client-side)
   useEffect(() => {
+    let cancelled = false;
     async function load() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const zipToMember = new Map<string, string>(Object.entries(initialZipToMember));
 
-      const { data: bizList } = await supabase
-        .from("businesses").select("id").eq("owner_id", user.id).limit(1);
-      const business = bizList?.[0];
-      if (!business) return;
-
-      const [{ data: jobs }, { data: teamMembers }, { data: territories }] = await Promise.all([
-        supabase
-          .from("jobs")
-          .select("id, status, total, job_line_items(description), clients(name, address)")
-          .eq("business_id", business.id)
-          .not("status", "eq", "cancelled")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("team_members").select("id, name")
-          .eq("business_id", business.id).eq("is_active", true).eq("is_pending", false).order("name"),
-        supabase
-          .from("territory_assignments").select("team_member_id, zip_code")
-          .eq("business_id", business.id),
-      ]);
-
-      setLoading(false);
-
-      const zipToMember = new Map<string, string>();
-      const memberZips: Record<string, string[]> = {};
-      for (const t of territories ?? []) {
-        zipToMember.set(t.zip_code, t.team_member_id);
-        if (!memberZips[t.team_member_id]) memberZips[t.team_member_id] = [];
-        memberZips[t.team_member_id].push(t.zip_code);
-      }
-
-      const memberList: Member[] = (teamMembers ?? []).map((m, i) => ({
-        id: m.id,
-        name: m.name,
-        zips: (memberZips[m.id] ?? []).sort(),
-        color: PALETTE[i % PALETTE.length],
-        jobCount: 0,
-      }));
+      const memberList: Member[] = initialMembers.map((m) => ({ ...m, jobCount: 0 }));
       const memberById = new Map<string, Member>(memberList.map((m) => [m.id, m]));
       setMembers(memberList);
 
-      const jobList = (jobs ?? []) as unknown as TerritoryJob[];
-      const withAddress = jobList.filter((j) => j.clients?.address);
+      const withAddress = initialJobs.filter((j) => j.clients?.address);
       setTotal(withAddress.length);
       if (withAddress.length === 0) return;
 
@@ -182,12 +151,14 @@ export default function TerritoryMapContent() {
       const newPins: Pin[] = [];
 
       for (let i = 0; i < withAddress.length; i++) {
+        if (cancelled) return;
         const job = withAddress[i];
         const address = job.clients!.address!;
         const zip = extractZip(address);
         const memberId = zip ? (zipToMember.get(zip) ?? null) : null;
 
         const coords = await geocode(address);
+        if (cancelled) return;
         setProgress(i + 1);
         if (coords) {
           newPins.push({ job, lat: coords[0], lng: coords[1], memberId });
@@ -204,6 +175,8 @@ export default function TerritoryMapContent() {
       setGeocoding(false);
     }
     load();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Markers

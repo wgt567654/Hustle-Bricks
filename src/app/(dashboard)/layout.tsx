@@ -9,16 +9,15 @@ export default async function DashboardLayout({
 }) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub;
 
-  if (!user) redirect("/");
+  if (!userId) redirect("/");
 
   const { data: business } = await supabase
     .from("businesses")
     .select("id")
-    .eq("owner_id", user.id)
+    .eq("owner_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -29,7 +28,7 @@ export default async function DashboardLayout({
     const { data: tm } = await supabase
       .from("team_members")
       .select("business_id, role, is_active, is_pending")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (!tm) redirect("/onboarding");

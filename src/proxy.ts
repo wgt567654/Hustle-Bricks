@@ -25,10 +25,12 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh the session — must be called before any route logic
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh the session and verify the JWT locally (ECC/ES256 signing keys
+  // are enabled, so getClaims verifies the signature in-process via WebCrypto
+  // instead of making a network round-trip to /auth/v1/user on every request).
+  // getClaims() still calls getSession() first, so expired tokens are refreshed.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims ? { id: claimsData.claims.sub } : null;
 
   const { pathname } = request.nextUrl;
   const isPublicPath =
