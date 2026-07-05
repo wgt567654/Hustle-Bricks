@@ -54,11 +54,13 @@ export default function QuoteDetailClient({
   initialBusinessId,
   initialCurrency,
   initialLinkedJobId,
+  shareToken,
 }: {
   initialQuote: Quote | null;
   initialBusinessId: string | null;
   initialCurrency: string;
   initialLinkedJobId: string | null;
+  shareToken?: string | null;
 }) {
   const router = useRouter();
   const [quote, setQuote] = useState<Quote | null>(initialQuote);
@@ -173,10 +175,17 @@ export default function QuoteDetailClient({
     setQuote((q) => q ? { ...q, video_url: null } : q);
   }
 
+  // Public client link, including the server-signed token (?t=...) so the
+  // /q page can pass token-gated API checks. Token is computed server-side.
+  function shareUrl(origin: string) {
+    if (!quote) return "";
+    const tokenQs = shareToken ? `?t=${shareToken}` : "";
+    return `${origin}/q/${quote.id}${tokenQs}`;
+  }
+
   function copyShareLink() {
     if (!quote) return;
-    const url = `${window.location.origin}/q/${quote.id}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(shareUrl(window.location.origin));
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
   }
@@ -408,12 +417,12 @@ export default function QuoteDetailClient({
             </p>
             <div className="flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-3">
               <span className="text-xs text-muted-foreground flex-1 truncate font-mono">
-                {typeof window !== "undefined" ? `${window.location.origin}/q/${quote.id}` : `/q/${quote.id}`}
+                {typeof window !== "undefined" ? shareUrl(window.location.origin) : shareUrl("")}
               </span>
             </div>
             <button
               onClick={copyShareLink}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-white text-sm font-bold active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-full bg-primary text-white text-sm font-bold active:scale-[0.98] transition-all"
             >
               <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                 {copySuccess ? "check_circle" : "content_copy"}
@@ -433,7 +442,7 @@ export default function QuoteDetailClient({
             <button
               onClick={sendQuote}
               disabled={acting}
-              className="w-full rounded-xl font-bold py-4 text-sm bg-primary text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full rounded-full font-bold py-4 text-sm bg-primary text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
               {acting ? "Sending…" : "Send Quote"}
@@ -471,7 +480,7 @@ export default function QuoteDetailClient({
           <div className="max-w-xl mx-auto">
             <button
               onClick={() => router.push(`/jobs/${linkedJobId}`)}
-              className="w-full rounded-xl font-bold py-4 text-sm bg-primary text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full rounded-full font-bold py-4 text-sm bg-primary text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>home_repair_service</span>
               View Job

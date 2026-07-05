@@ -235,7 +235,7 @@ export default function GroupChatClient({
             style={{ lineHeight: "1.5" }} />
           {text.trim() ? (
             <button onClick={() => { sendMessage(text.trim()); setText(""); }} disabled={sending}
-              className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white disabled:opacity-40 active:scale-90 transition-all">
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-40 active:scale-90 transition-all">
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
             </button>
           ) : (

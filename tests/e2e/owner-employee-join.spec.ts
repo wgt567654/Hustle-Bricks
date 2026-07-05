@@ -44,8 +44,11 @@ test.describe('Employee join — access code step', () => {
   });
 
   test('has link back to login page', async ({ page }) => {
-    const loginLink = page.locator('a[href="/login"]');
+    // The page now has two links back to login (a "Back" arrow and a
+    // "Log in" text link) — assert the explicit "Log in" one.
+    const loginLink = page.getByRole('link', { name: 'Log in' });
     await expect(loginLink).toBeVisible();
+    await expect(loginLink).toHaveAttribute('href', '/login');
   });
 });
 
@@ -55,13 +58,17 @@ test.describe('Employee join — signup step', () => {
   let accessCode: string;
 
   test.beforeAll(async ({ browser }) => {
+    // Settings is now sectioned — the access code lives under ?sec=team.
     const context = await browser.newContext({ storageState: 'tests/e2e/.auth/owner.json' });
     const page = await context.newPage();
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
-    const code = await page.locator('span.font-mono').textContent();
+    await page.goto('/settings?sec=team');
+    const codeDisplay = page
+      .locator('span.font-mono')
+      .filter({ hasText: /^[A-Z0-9]{6}$/ })
+      .first();
+    const code = await codeDisplay.textContent({ timeout: 15000 }).catch(() => null);
     await context.close();
-    accessCode = code?.trim() ?? '';
+    accessCode = code?.trim() || process.env.EMPLOYEE_ACCESS_CODE || '';
   });
 
   test('advances to signup form after valid code', async ({ page }) => {

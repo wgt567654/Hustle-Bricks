@@ -1,25 +1,31 @@
 /**
  * Owner settings tests — runs with saved owner auth state.
  * Covers: employee access code generation and copy.
+ * Settings is now sectioned — the access code lives under Team & Access (?sec=team).
  */
 import { test, expect } from '@playwright/test';
 
 test.describe('Settings — Employee Access Code', () => {
+  // The 6-char access code display (the booking-link slug is also font-mono,
+  // so filter to the code format).
+  const codeLocator = (page: import('@playwright/test').Page) =>
+    page.locator('span.font-mono').filter({ hasText: /^[A-Z0-9]{6}$/ }).first();
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/settings?sec=team');
     // Wait for async data (businessId, access code) to finish loading
     await page.waitForLoadState('networkidle');
-    await page.locator('text=Employee Access').scrollIntoViewIfNeeded();
+    await page.locator('h3:has-text("Employee Access")').scrollIntoViewIfNeeded();
   });
 
   test('settings page loads', async ({ page }) => {
     await expect(page).toHaveURL(/\/settings/);
-    await expect(page.locator('text=Employee Access')).toBeVisible();
+    await expect(page.locator('h3:has-text("Employee Access")')).toBeVisible();
   });
 
   test('can generate an access code if none exists', async ({ page }) => {
     const generateBtn = page.locator('button:has-text("Generate Access Code")');
-    const codeDisplay = page.locator('span.font-mono');
+    const codeDisplay = codeLocator(page);
 
     const alreadyHasCode = await codeDisplay.isVisible().catch(() => false);
 
@@ -37,12 +43,12 @@ test.describe('Settings — Employee Access Code', () => {
   test('can copy access code to clipboard', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    const codeDisplay = page.locator('span.font-mono');
+    const codeDisplay = codeLocator(page);
     await expect(codeDisplay).toBeVisible({ timeout: 8000 });
 
     const code = await codeDisplay.textContent();
 
-    await page.locator('button:has-text("Copy")').click();
+    await page.locator('button:has-text("Copy code")').click();
     await expect(page.locator('button:has-text("Copied!")')).toBeVisible({ timeout: 3000 });
 
     // Verify clipboard content matches the displayed code
@@ -51,7 +57,7 @@ test.describe('Settings — Employee Access Code', () => {
   });
 
   test('can regenerate access code', async ({ page }) => {
-    const codeDisplay = page.locator('span.font-mono');
+    const codeDisplay = codeLocator(page);
     await expect(codeDisplay).toBeVisible({ timeout: 8000 });
 
     const oldCode = (await codeDisplay.textContent())?.trim() ?? '';

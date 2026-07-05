@@ -79,7 +79,7 @@ export default function EmployeeShell({
           {/* Logo mark */}
           <div className="flex items-center h-14 shrink-0 px-[14px] gap-3">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary select-none">
-              <svg viewBox="0 0 22 13" width="18" height="auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 22 13" width="18" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
                 <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
                 <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />

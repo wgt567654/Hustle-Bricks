@@ -235,11 +235,11 @@ export default function SalesClient({
               </div>
 
               <div className="flex items-center justify-between">
-                {quote.status === "draft" && <Badge variant="secondary" className="bg-muted text-muted-foreground border-0">Draft</Badge>}
-                {quote.status === "sent" && !isStalled(quote) && <Badge variant="secondary" className="bg-primary/10 text-primary border-0">Quote Sent</Badge>}
+                {quote.status === "draft" && <Badge variant="secondary" className="status-draft border-0">Draft</Badge>}
+                {quote.status === "sent" && !isStalled(quote) && <Badge variant="secondary" className="status-sent border-0">Quote Sent</Badge>}
                 {quote.status === "sent" && isStalled(quote) && <Badge variant="secondary" className="bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-0 flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">timer</span>Stalled</Badge>}
-                {quote.status === "accepted" && <Badge variant="secondary" className="icon-green  border-0">Won ✓</Badge>}
-                {quote.status === "declined" && <Badge variant="secondary" className="bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-0">Lost</Badge>}
+                {quote.status === "accepted" && <Badge variant="secondary" className="status-accepted border-0">Won ✓</Badge>}
+                {quote.status === "declined" && <Badge variant="secondary" className="status-declined border-0">Lost</Badge>}
 
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                   <span className="material-symbols-outlined text-[14px]">history</span>
@@ -253,7 +253,7 @@ export default function SalesClient({
                   <button
                     onClick={(e) => { e.stopPropagation(); updateStatus(quote.id, "sent"); }}
                     disabled={isActing}
-                    className="flex-1 rounded-xl font-bold py-2.5 text-sm bg-primary text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+                    className="flex-1 rounded-full font-bold py-2.5 text-sm bg-primary text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
                   >
                     {isActing ? "Sending…" : "Send Quote"}
                   </button>

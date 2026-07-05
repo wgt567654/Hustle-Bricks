@@ -29,12 +29,16 @@ export default async function InboxPage() {
 
   if (bizId) {
     // Fetch all messages for this business with client info
-    const { data: messages } = await supabase
+    const { data: messages, error: messagesError } = await supabase
       .from("sms_messages")
       .select("client_id, body, direction, read_at, created_at, clients(name)")
       .eq("business_id", bizId)
       .not("client_id", "is", null)
       .order("created_at", { ascending: false });
+
+    if (messagesError) {
+      throw new Error(`Failed to load inbox messages: ${messagesError.message}`);
+    }
 
     if (messages) {
       type MsgRow = {

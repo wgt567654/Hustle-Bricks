@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/currency";
 import { getDefaultTemplate, interpolateTemplate } from "@/lib/messageTemplates";
+import { toast } from "@/lib/toast";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -240,7 +241,12 @@ export default function JobDetailClient({
     const updates: Record<string, unknown> = { status };
     if (status === "completed") updates.completed_at = new Date().toISOString();
 
-    await supabase.from("jobs").update(updates).eq("id", job.id);
+    const { error: statusError } = await supabase.from("jobs").update(updates).eq("id", job.id);
+    if (statusError) {
+      setUpdating(false);
+      toast.error("Couldn't update the job status — try again.");
+      return;
+    }
     setJob((j) => j ? { ...j, status, completed_at: status === "completed" ? new Date().toISOString() : j.completed_at } : j);
     setUpdating(false);
 
@@ -249,7 +255,9 @@ export default function JobDetailClient({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jobId: job.id }),
-    }).catch(() => {});
+    }).catch(() => {
+      toast.info("Google Calendar sync failed — the change is saved locally");
+    });
 
     if (status === "completed") {
       // Auto-send invoice to client via SMS + email
@@ -277,7 +285,7 @@ export default function JobDetailClient({
         const nextDate = addDays(baseDate, job.recurrence_interval_days);
 
         try {
-          const { data: newJob } = await supabase
+          const { data: newJob, error: newJobError } = await supabase
             .from("jobs")
             .insert({
               business_id: job.business_id,
@@ -293,18 +301,22 @@ export default function JobDetailClient({
             .select("id")
             .single();
 
-          if (newJob?.id && job.job_line_items.length > 0) {
-            await supabase.from("job_line_items").insert(
-              job.job_line_items.map((item) => ({
-                job_id: newJob.id,
-                description: item.description,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-              }))
-            );
+          if (newJobError || !newJob?.id) {
+            // Non-critical — job is completed either way, but let the owner know
+            toast.error("Couldn't auto-schedule the next recurring job.");
+          } else {
+            if (job.job_line_items.length > 0) {
+              await supabase.from("job_line_items").insert(
+                job.job_line_items.map((item) => ({
+                  job_id: newJob.id,
+                  description: item.description,
+                  quantity: item.quantity,
+                  unit_price: item.unit_price,
+                }))
+              );
+            }
+            setAutoScheduledDate(nextDate);
           }
-
-          setAutoScheduledDate(nextDate);
         } catch {
           // Non-critical — swallow error and continue
         }
@@ -345,7 +357,12 @@ export default function JobDetailClient({
     } else {
       updates.scheduled_at = null;
     }
-    await supabase.from("jobs").update(updates).eq("id", job.id);
+    const { error: editError } = await supabase.from("jobs").update(updates).eq("id", job.id);
+    if (editError) {
+      setEditSaving(false);
+      toast.error("Couldn't save the job changes — try again.");
+      return;
+    }
     setJob((j) =>
       j
         ? {
@@ -362,7 +379,9 @@ export default function JobDetailClient({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jobId: job.id }),
-    }).catch(() => {});
+    }).catch(() => {
+      toast.info("Google Calendar sync failed — the change is saved locally");
+    });
 
     // Auto-dispatch if a time was just set and no member is assigned yet
     if (updates.scheduled_at && !job.assigned_member_id) {
@@ -382,7 +401,7 @@ export default function JobDetailClient({
     setPaySaving(true);
     const supabase = createClient();
 
-    await supabase.from("payments").insert({
+    const { error: payError } = await supabase.from("payments").insert({
       business_id: businessId,
       job_id: job.id,
       amount: parseFloat(payAmount) || job.total,
@@ -393,7 +412,12 @@ export default function JobDetailClient({
     });
 
     setPaySaving(false);
+    if (payError) {
+      toast.error("Couldn't record the payment — try again.");
+      return;
+    }
     setPayModalOpen(false);
+    toast.success("Payment recorded");
     router.push("/payments");
   }
 
@@ -407,13 +431,19 @@ export default function JobDetailClient({
         : FREQUENCY_OPTIONS.find((f) => f.value === selectedFrequency)?.days ?? 7;
 
     const supabase = createClient();
-    await supabase
+    const { error: recurrenceError } = await supabase
       .from("jobs")
       .update({
         recurrence_frequency: selectedFrequency,
         recurrence_interval_days: intervalDays,
       })
       .eq("id", job.id);
+
+    if (recurrenceError) {
+      setRecurringSaving(false);
+      toast.error("Couldn't save the repeat schedule — try again.");
+      return;
+    }
 
     setJob((j) =>
       j
@@ -432,7 +462,7 @@ export default function JobDetailClient({
     if (!job || !businessId || !expenseForm.description || !expenseForm.amount) return;
     setExpenseSaving(true);
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error: expenseError } = await supabase
       .from("expenses")
       .insert({
         job_id: job.id,
@@ -443,6 +473,11 @@ export default function JobDetailClient({
       })
       .select("id, description, amount, category, created_at")
       .single();
+    if (expenseError) {
+      setExpenseSaving(false);
+      toast.error("Couldn't add the expense — try again.");
+      return;
+    }
     if (data) setExpenses((prev) => [...prev, data as Expense]);
     setExpenseForm({ description: "", amount: "", category: "materials" });
     setShowAddExpense(false);
@@ -451,7 +486,11 @@ export default function JobDetailClient({
 
   async function deleteExpense(expenseId: string) {
     const supabase = createClient();
-    await supabase.from("expenses").delete().eq("id", expenseId);
+    const { error } = await supabase.from("expenses").delete().eq("id", expenseId);
+    if (error) {
+      toast.error("Couldn't delete the expense — try again.");
+      return;
+    }
     setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
   }
 
@@ -469,7 +508,7 @@ export default function JobDetailClient({
       setTimeout(() => setEmailSent(false), 3000);
     } else {
       const data = await res.json().catch(() => ({}));
-      alert(`Failed to send email: ${data.error ?? "Unknown error"}`);
+      toast.error(`Couldn't send the email: ${data.error ?? "unknown error"}`);
     }
   }
 
@@ -513,11 +552,17 @@ export default function JobDetailClient({
     const { error: uploadError } = await supabase.storage
       .from("job-photos")
       .upload(path, file, { upsert: true });
-    if (!uploadError) {
+    if (uploadError) {
+      toast.error("Couldn't upload the photo — try again.");
+    } else {
       const { data: { publicUrl } } = supabase.storage.from("job-photos").getPublicUrl(path);
       const column = slot === "before" ? "before_photo_url" : "after_photo_url";
-      await supabase.from("jobs").update({ [column]: publicUrl }).eq("id", job.id);
-      setJob((j) => j ? { ...j, [column]: publicUrl } : j);
+      const { error: photoError } = await supabase.from("jobs").update({ [column]: publicUrl }).eq("id", job.id);
+      if (photoError) {
+        toast.error("Couldn't save the photo — try again.");
+      } else {
+        setJob((j) => j ? { ...j, [column]: publicUrl } : j);
+      }
     }
     setUploadingPhoto(null);
   }
@@ -525,10 +570,14 @@ export default function JobDetailClient({
   async function cancelRecurrence() {
     if (!job) return;
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("jobs")
       .update({ recurrence_frequency: null, recurrence_interval_days: null })
       .eq("id", job.id);
+    if (error) {
+      toast.error("Couldn't stop the repeat schedule — try again.");
+      return;
+    }
     setJob((j) =>
       j ? { ...j, recurrence_frequency: null, recurrence_interval_days: null } : j
     );
@@ -659,18 +708,33 @@ export default function JobDetailClient({
     const supabase = createClient();
     const primaryId = assignedIds[0] ?? null;
 
-    await supabase.from("jobs").update({
+    const { error: assignError } = await supabase.from("jobs").update({
       assigned_member_id: primaryId,
       crew_size: assignedIds.length || 1,
       duration_mins: editDurationMins,
     }).eq("id", job.id);
+    if (assignError) {
+      setAssignSaving(false);
+      toast.error("Couldn't save the assignment — try again.");
+      return;
+    }
 
-    await supabase.from("job_crew").delete().eq("job_id", job.id);
+    const { error: crewDeleteError } = await supabase.from("job_crew").delete().eq("job_id", job.id);
+    if (crewDeleteError) {
+      setAssignSaving(false);
+      toast.error("Couldn't update the crew — try again.");
+      return;
+    }
 
     if (assignedIds.length > 0) {
-      await supabase.from("job_crew").insert(
+      const { error: crewInsertError } = await supabase.from("job_crew").insert(
         assignedIds.map((mid) => ({ job_id: job.id, team_member_id: mid }))
       );
+      if (crewInsertError) {
+        setAssignSaving(false);
+        toast.error("Couldn't update the crew — try again.");
+        return;
+      }
     }
 
     const newCrewEntries = teamMembers
@@ -801,7 +865,7 @@ export default function JobDetailClient({
       <div className="flex flex-col gap-6 lg:flex-[3]">
 
       {/* Details card */}
-      <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border-border shadow-card overflow-hidden">
         <div className="p-5 flex flex-col gap-4">
 
           {/* Client */}
@@ -918,7 +982,7 @@ export default function JobDetailClient({
             {job.job_crew.length > 0 ? "Edit" : "Assign"}
           </button>
         </div>
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+        <Card className="rounded-2xl border-border shadow-card overflow-hidden">
           {job.job_crew.length === 0 ? (
             <button
               onClick={openAssignModal}
@@ -968,7 +1032,7 @@ export default function JobDetailClient({
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Line Items</h3>
           <span className="font-extrabold text-foreground">{formatCurrency(job.total, currency)}</span>
         </div>
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+        <Card className="rounded-2xl border-border shadow-card overflow-hidden">
           {job.job_line_items.map((item, i) => (
             <div key={item.id}>
               {i > 0 && <Separator className="bg-border/50 mx-4" />}
@@ -1071,7 +1135,7 @@ export default function JobDetailClient({
             <button
               onClick={addExpense}
               disabled={expenseSaving || !expenseForm.description || !expenseForm.amount}
-              className="w-full py-2.5 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-40 hover:opacity-90 transition-opacity"
+              className="w-full py-2.5 rounded-full bg-primary text-white font-bold text-sm disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {expenseSaving ? "Saving…" : "Save Expense"}
             </button>
@@ -1131,7 +1195,7 @@ export default function JobDetailClient({
 
         {job.recurrence_frequency ? (
           /* Active recurring card */
-          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          <Card className="rounded-2xl border-border shadow-card overflow-hidden">
             <div className="p-4 flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -1161,7 +1225,7 @@ export default function JobDetailClient({
           </Card>
         ) : (
           /* Make recurring CTA card */
-          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          <Card className="rounded-2xl border-border shadow-card overflow-hidden">
             <div className="p-4 flex items-center gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                 <span className="material-symbols-outlined text-[20px]">autorenew</span>
@@ -1275,7 +1339,7 @@ export default function JobDetailClient({
           <div className="max-w-xl mx-auto lg:max-w-none lg:max-w-3xl flex gap-3">
             <button
               onClick={() => setPayModalOpen(true)}
-              className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[var(--color-status-completed)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="flex-[2] rounded-full font-bold py-4 text-sm bg-[var(--color-status-completed)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[20px]">attach_money</span>
               Collect Payment
@@ -1298,7 +1362,7 @@ export default function JobDetailClient({
               <button
                 onClick={() => updateStatus("in_progress")}
                 disabled={updating}
-                className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[var(--color-status-in-progress)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-[2] rounded-full font-bold py-4 text-sm bg-[var(--color-status-in-progress)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">play_circle</span>
                 {updating ? "Starting…" : "Start Job"}
@@ -1316,7 +1380,7 @@ export default function JobDetailClient({
                 <button
                   onClick={() => updateStatus("completed")}
                   disabled={updating}
-                  className="flex-[2] rounded-xl font-bold py-4 text-sm bg-[var(--color-status-completed)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-[2] rounded-full font-bold py-4 text-sm bg-[var(--color-status-completed)] text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-[20px]">task_alt</span>
                   {updating ? "Completing…" : "Complete Job"}
@@ -1424,7 +1488,7 @@ export default function JobDetailClient({
               <button
                 onClick={saveJobEdits}
                 disabled={editSaving}
-                className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-full bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>save</span>
                 {editSaving ? "Saving…" : "Save Changes"}
@@ -1519,7 +1583,7 @@ export default function JobDetailClient({
               <button
                 onClick={saveRecurrence}
                 disabled={recurringSaving || !selectedFrequency}
-                className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-full bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                 {recurringSaving ? "Saving…" : "Confirm"}
@@ -1702,7 +1766,7 @@ export default function JobDetailClient({
               <button
                 onClick={saveAssignment}
                 disabled={assignSaving}
-                className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-full bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                 {assignSaving ? "Saving…" : `Save${assignedIds.length > 0 ? ` (${assignedIds.length} employee${assignedIds.length > 1 ? "s" : ""})` : ""}`}
@@ -1819,7 +1883,7 @@ export default function JobDetailClient({
               <button
                 onClick={collectPayment}
                 disabled={paySaving}
-                className="w-full py-3.5 rounded-2xl bg-[var(--color-status-completed)] text-white font-extrabold text-sm hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-md flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-full bg-[var(--color-status-completed)] text-white font-extrabold text-sm hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">attach_money</span>
                 {paySaving ? "Recording…" : `Record ${formatCurrency(parseFloat(payAmount || "0"), currency)} Payment`}

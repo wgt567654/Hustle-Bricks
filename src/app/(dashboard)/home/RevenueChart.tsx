@@ -13,5 +13,23 @@ const Chart = dynamic(() => import("./RevenueChartImpl"), {
 });
 
 export default function RevenueChart({ data }: { data: SparklinePoint[] }) {
+  const hasRevenue = data.some((d) => d.revenue > 0);
+
+  if (!hasRevenue) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-center">
+        <span className="material-symbols-outlined text-[32px] text-muted-foreground/40">
+          bar_chart
+        </span>
+        <p className="text-sm font-medium text-muted-foreground">
+          No revenue in the last 7 days
+        </p>
+        <p className="text-xs text-muted-foreground/60">
+          Collected payments will chart here
+        </p>
+      </div>
+    );
+  }
+
   return <Chart data={data} />;
 }

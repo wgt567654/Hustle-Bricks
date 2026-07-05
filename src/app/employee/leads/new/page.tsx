@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { toast } from "@/lib/toast";
 
 type Heat = "hot" | "warm" | "cool";
 
@@ -53,7 +54,7 @@ export default function NewLeadPage() {
     if (!businessId || !name.trim()) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("leads").insert({
+    const { error } = await supabase.from("leads").insert({
       business_id: businessId,
       name: name.trim(),
       phone: phone.trim() || null,
@@ -62,6 +63,11 @@ export default function NewLeadPage() {
       source: heatToSource(heat),
       notes: notes.trim() || null,
     });
+    if (error) {
+      toast.error("Lead couldn't be saved — try again");
+      setSaving(false);
+      return;
+    }
     setSuccess(true);
     setSaving(false);
     setName("");
@@ -165,7 +171,7 @@ export default function NewLeadPage() {
           <button
             onClick={saveLead}
             disabled={saving || !name.trim() || !businessId}
-            className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-all active:scale-[0.98]"
+            className="w-full py-3 rounded-full bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-all active:scale-[0.98]"
           >
             {saving ? "Saving…" : "Save Lead"}
           </button>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { buildGoogleMapsRouteUrls } from "@/lib/routeOptimizer";
+import { toast } from "@/lib/toast";
 
 type Job = {
   id: string;
@@ -91,13 +92,14 @@ export default function EmployeeHomePage() {
       setEmployeeId(tm.id);
       setBusinessId(tm.business_id);
 
-      // Fetch weather in parallel with jobs
+      // Fetch weather in parallel with jobs. Employees can't SELECT the
+      // businesses row under RLS, so this goes through a security-definer RPC
+      // that returns only service_areas + city (see rls_tenant_scoping.sql).
       const weatherPromise = supabase
-        .from("businesses")
-        .select("service_areas, city")
-        .eq("id", tm.business_id)
-        .single()
-        .then(async ({ data: biz }) => {
+        .rpc("get_business_service_areas")
+        .then(async ({ data: rows, error }) => {
+          if (error) return; // RPC not deployed yet or no membership — skip weather
+          const biz = Array.isArray(rows) ? rows[0] : rows;
           if (!biz) return;
           const areas: string[] = (biz as unknown as { service_areas: string[] | null }).service_areas ?? [];
           const legacyCity = (biz as unknown as { city: string | null }).city;
@@ -182,12 +184,17 @@ export default function EmployeeHomePage() {
     const startMiles = parseInt(odometerStart, 10);
     if (!isNaN(startMiles)) payload.odometer_start = startMiles;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("time_entries")
       .insert(payload)
       .select("id, job_id, clocked_in_at, clocked_out_at")
       .single();
-    if (data) setActiveEntry(data as TimeEntry);
+    if (error || !data) {
+      toast.error("Couldn't clock in — try again");
+      setClockingIn(false);
+      return;
+    }
+    setActiveEntry(data as TimeEntry);
     setOdometerStart("");
     setClockingIn(false);
   }
@@ -199,7 +206,12 @@ export default function EmployeeHomePage() {
     const update: Record<string, unknown> = { clocked_out_at: new Date().toISOString() };
     const endMiles = parseInt(odometerEnd, 10);
     if (!isNaN(endMiles)) update.odometer_end = endMiles;
-    await supabase.from("time_entries").update(update).eq("id", activeEntry.id);
+    const { error } = await supabase.from("time_entries").update(update).eq("id", activeEntry.id);
+    if (error) {
+      toast.error("Couldn't clock out — try again");
+      setClockingOut(false);
+      return;
+    }
     setActiveEntry(null);
     setOdometerEnd("");
     setClockingOut(false);
@@ -416,9 +428,7 @@ export default function EmployeeHomePage() {
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      job.status === "in_progress"
-                        ? "icon-orange "
-                        : "bg-primary/10 text-primary"
+                      job.status === "in_progress" ? "status-in-progress" : "status-scheduled"
                     }`}
                   >
                     {job.status === "in_progress" ? "In Progress" : "Scheduled"}

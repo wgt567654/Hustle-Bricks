@@ -123,38 +123,38 @@ test.describe('Territory assignment (Team page)', () => {
 test.describe('Territories map page', () => {
   test('page loads and shows Territory Zones heading', async ({ page }) => {
     await page.goto('/territories');
-    await expect(page.locator('h1')).toContainText('Territory Zones', { timeout: 10000 });
+    // The page title is now a map-overlay span, not an h1
+    await expect(page.getByText('Territory Zones')).toBeVisible({ timeout: 10000 });
   });
 
   test('appears in the navigation', async ({ page }) => {
-    await page.goto('/jobs');
-    // On desktop the sidebar is always visible; on mobile it's behind More
+    // Territories now lives in the Team group's sub-navigation
+    await page.goto('/team');
     const sidebarLink = page.locator('nav a[href="/territories"]').first();
-    const moreBtn = page.locator('button:has-text("More")').last();
-    const sidebarVisible = await sidebarLink.isVisible({ timeout: 2000 }).catch(() => false);
-    if (sidebarVisible) {
-      await expect(sidebarLink).toBeVisible();
-    } else {
-      await moreBtn.click();
-      await expect(page.locator('a[href="/territories"]')).toBeVisible({ timeout: 3000 });
-    }
+    await expect(sidebarLink).toBeVisible({ timeout: 5000 });
+    await sidebarLink.click();
+    await expect(page).toHaveURL(/\/territories/, { timeout: 8000 });
   });
 
   test('filter pills show All button', async ({ page }) => {
     await page.goto('/territories');
-    await expect(page.locator('h1')).toContainText('Territory Zones', { timeout: 10000 });
+    await expect(page.getByText('Territory Zones')).toBeVisible({ timeout: 10000 });
     // The All filter pill is a button with a span containing "All"
     await expect(page.locator('button').filter({ hasText: /^All \(/ })).toBeVisible({ timeout: 5000 });
   });
 
   test('shows a valid state after load', async ({ page }) => {
     await page.goto('/territories');
-    await expect(page.locator('h1')).toContainText('Territory Zones', { timeout: 10000 });
+    await expect(page.getByText('Territory Zones')).toBeVisible({ timeout: 10000 });
     // After heading appears, one of these states must be visible
+    // (the map is now MapLibre — exposed as a region named "Map")
     await page.waitForTimeout(2000);
-    const hasMap   = await page.locator('.leaflet-container').isVisible().catch(() => false);
-    const hasEmpty = await page.locator('text=No jobs with addresses').isVisible().catch(() => false);
-    const hasLoading = await page.locator('p:has-text("Loading")').isVisible().catch(() => false);
-    expect(hasMap || hasEmpty || hasLoading).toBe(true);
+    const hasMap = await page.getByRole('region', { name: 'Map' }).isVisible().catch(() => false);
+    const hasStatus = await page
+      .getByText(/Loading…|Plotting \d+\/\d+…|\d+ jobs mapped|Loading map…/)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    expect(hasMap || hasStatus).toBe(true);
   });
 });

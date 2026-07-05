@@ -87,7 +87,7 @@ export default function EmployeeLoginPage() {
           </p>
           <button
             onClick={() => { setView("login"); setError(null); }}
-            className="w-full mt-2 py-3 rounded-xl bg-foreground text-background font-bold text-sm hover:bg-foreground/90 transition-colors"
+            className="w-full mt-2 py-3 rounded-full bg-foreground text-background font-bold text-sm hover:bg-foreground/90 transition-colors"
           >
             Back to Login
           </button>
@@ -110,7 +110,7 @@ export default function EmployeeLoginPage() {
             <p className="text-sm text-muted-foreground">Enter your email and we&apos;ll send you a reset link</p>
           </div>
 
-          <Card className="p-6 rounded-2xl border-border shadow-sm flex flex-col gap-4">
+          <Card className="p-6 rounded-2xl border-border shadow-card flex flex-col gap-4">
             <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
               {error && (
                 <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl px-3 py-2">{error}</p>
@@ -133,7 +133,7 @@ export default function EmployeeLoginPage() {
               <button
                 type="submit"
                 disabled={loading || !email}
-                className="w-full mt-2 rounded-xl font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full mt-2 rounded-full font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? "Sending…" : "Send reset link"}
               </button>
@@ -171,7 +171,7 @@ export default function EmployeeLoginPage() {
           <p className="text-sm text-muted-foreground">Access your team portal</p>
         </div>
 
-        <Card className="p-6 rounded-2xl border-border shadow-sm flex flex-col gap-4">
+        <Card className="p-6 rounded-2xl border-border shadow-card flex flex-col gap-4">
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             {error && (
               <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl px-3 py-2">{error}</p>
@@ -229,7 +229,7 @@ export default function EmployeeLoginPage() {
             <button
               type="submit"
               disabled={loading || emailExists === false}
-              className="w-full mt-2 rounded-xl font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full mt-2 rounded-full font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? "Logging in…" : "Log in"}
             </button>

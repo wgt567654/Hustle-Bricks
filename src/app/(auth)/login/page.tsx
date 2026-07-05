@@ -103,7 +103,7 @@ export default function LoginPage() {
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Password</label>
-                <Link href="#" className="text-xs font-bold text-primary hover:underline hover:text-primary/80 transition-colors">Forgot password?</Link>
+                <Link href="/forgot-password" className="text-xs font-bold text-primary hover:underline hover:text-primary/80 transition-colors">Forgot password?</Link>
               </div>
               <input
                 id="password"
@@ -118,7 +118,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 rounded-xl font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full mt-2 rounded-full font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? "Logging in…" : "Log in"}
             </button>

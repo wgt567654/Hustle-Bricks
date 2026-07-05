@@ -39,6 +39,14 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/update-password") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms") ||
+    pathname === "/sw.js" ||
+    pathname === "/manifest.json" ||
+    pathname === "/offline" ||
+    pathname.startsWith("/icons/") ||
+    pathname.startsWith("/apple-touch-icon") ||
     pathname.startsWith("/check-email") ||
     pathname.startsWith("/employee-join") ||
     pathname.startsWith("/employee-login") ||
@@ -52,9 +60,15 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/quote-public") ||
     pathname.startsWith("/api/quote-respond") ||
     pathname.startsWith("/book/") ||
+    pathname.startsWith("/invoice/") ||
+    pathname.startsWith("/portal/") ||
+    pathname.startsWith("/quote-request/") ||
     pathname.startsWith("/api/leads/submit") ||
     pathname.startsWith("/api/booking/capacity") ||
     pathname.startsWith("/api/booking/public") ||
+    pathname.startsWith("/api/booking") ||
+    pathname.startsWith("/api/stripe/create-payment-intent") ||
+    pathname.startsWith("/api/stripe/confirm-payment") ||
     pathname.startsWith("/api/quotes/request") ||
     pathname.startsWith("/q/");
 

@@ -428,7 +428,7 @@ export default function LeadDetailClient({
         <button
           onClick={rescore}
           disabled={rescoring}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-violet-50 border border-violet-200 text-violet-700 text-sm font-bold active:scale-95 transition-all disabled:opacity-50"
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary/10 text-primary text-sm font-bold active:scale-95 transition-all disabled:opacity-50"
         >
           <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
           {rescoring ? "Analyzing lead…" : "Score this lead with AI"}
@@ -575,7 +575,7 @@ export default function LeadDetailClient({
                 Cancel
               </button>
               <button onClick={saveEdits} disabled={saving || !form.name?.trim()}
-                className="flex-[2] py-3 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform">
+                className="flex-[2] py-3 rounded-full bg-primary text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform">
                 {saving ? "Saving…" : "Save Changes"}
               </button>
             </div>
@@ -794,7 +794,7 @@ export default function LeadDetailClient({
                 Cancel
               </button>
               <button onClick={scheduleJob} disabled={scheduling || !schedDate}
-                className="flex-[2] py-3 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform">
+                className="flex-[2] py-3 rounded-full bg-primary text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform">
                 {scheduling ? "Scheduling…" : "Confirm Job →"}
               </button>
             </div>

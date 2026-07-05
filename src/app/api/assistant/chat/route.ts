@@ -109,7 +109,8 @@ const TOOLS: Anthropic.Tool[] = [
 async function executeTool(
   toolName: string,
   input: Record<string, unknown>,
-  businessId: string
+  businessId: string,
+  cookieHeader: string
 ): Promise<string> {
   const now = new Date();
 
@@ -259,7 +260,7 @@ async function executeTool(
       if (status === "completed") {
         fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/invoice/notify`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", cookie: cookieHeader },
           body: JSON.stringify({ jobId }),
         }).catch(() => {});
       }
@@ -270,7 +271,7 @@ async function executeTool(
       const jobId = input.job_id as string;
       const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/invoice/notify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", cookie: cookieHeader },
         body: JSON.stringify({ jobId }),
       });
       const json = await res.json().catch(() => ({}));
@@ -329,7 +330,7 @@ export async function POST(req: NextRequest) {
       toolUseBlocks.map(async (block) => ({
         type: "tool_result" as const,
         tool_use_id: block.id,
-        content: await executeTool(block.name, block.input as Record<string, unknown>, businessId),
+        content: await executeTool(block.name, block.input as Record<string, unknown>, businessId, req.headers.get("cookie") ?? ""),
       }))
     );
 

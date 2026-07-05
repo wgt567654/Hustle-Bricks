@@ -81,14 +81,14 @@ function CheckoutForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <PaymentElement />
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+        <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
           {error}
         </p>
       )}
       <button
         type="submit"
         disabled={submitting || !stripe}
-        className="w-full py-3 rounded-xl bg-[#635bff] text-white font-bold text-sm hover:bg-[#5a52e8] disabled:opacity-50 transition-colors"
+        className="w-full py-3 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary/90 active:scale-95 disabled:opacity-50 transition-all"
       >
         {submitting ? "Processing…" : `Pay ${formatCurrency(amount, currency)}`}
       </button>
@@ -134,15 +134,15 @@ export function StripePaymentForm({
 
   if (paid) {
     return (
-      <div className="flex items-center gap-4 px-5 py-4 bg-green-50">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-100">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-green-600">
+      <div className="flex items-center gap-4 px-5 py-4 bg-status-completed/10">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-status-completed/15">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-status-completed">
             <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
           </svg>
         </div>
         <div>
-          <p className="font-bold text-green-800 text-sm">Payment successful!</p>
-          <p className="text-xs text-green-700">Reload the page to see the updated invoice.</p>
+          <p className="font-bold text-status-completed text-sm">Payment successful!</p>
+          <p className="text-xs text-muted-foreground">Reload the page to see the updated invoice.</p>
         </div>
       </div>
     );
@@ -153,7 +153,7 @@ export function StripePaymentForm({
       {!open ? (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-4 px-5 py-4 hover:bg-indigo-50 transition-colors group"
+          className="flex items-center gap-4 px-5 py-4 hover:bg-muted/50 transition-colors group"
         >
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#635bff]/10">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-[#635bff]">
@@ -162,26 +162,26 @@ export function StripePaymentForm({
             </svg>
           </div>
           <div className="flex flex-col flex-1 text-left">
-            <span className="font-bold text-gray-900 text-sm">Pay by Card</span>
-            <span className="text-xs text-gray-500">{formatCurrency(amount, currency)} · Secured by Stripe</span>
+            <span className="font-bold text-foreground text-sm">Pay by Card</span>
+            <span className="text-xs text-muted-foreground">{formatCurrency(amount, currency)} · Secured by Stripe</span>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400 group-hover:text-[#635bff] transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-muted-foreground group-hover:text-[#635bff] transition-colors">
             <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 001.06 0l7.22-7.22v5.69a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h5.69l-7.22 7.22a.75.75 0 000 1.06z" clipRule="evenodd" />
           </svg>
         </button>
       ) : (
         <div className="px-5 py-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Pay by Card</span>
-            <button onClick={() => setOpen(false)} className="text-xs text-gray-400 hover:text-gray-600">
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Pay by Card</span>
+            <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
               Cancel
             </button>
           </div>
           <Elements stripe={stripePromise} options={options}>
             <CheckoutForm jobId={jobId} amount={amount} currency={currency} onSuccess={() => setPaid(true)} />
           </Elements>
-          <p className="text-[10px] text-gray-400 text-center flex items-center justify-center gap-1">
-            <svg viewBox="0 0 24 24" className="w-3 h-3 fill-gray-400">
+          <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1">
+            <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current">
               <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
             </svg>
             Payments secured by Stripe

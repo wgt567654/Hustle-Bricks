@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 
 type Job = {
   id: string;
@@ -224,7 +225,12 @@ export default function EmployeeSchedulePage() {
     if (!teamMemberId || !businessId) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("employee_availability").delete().eq("team_member_id", teamMemberId);
+    const { error: deleteError } = await supabase.from("employee_availability").delete().eq("team_member_id", teamMemberId);
+    if (deleteError) {
+      toast.error("Couldn't save your availability — try again");
+      setSaving(false);
+      return;
+    }
     const rows = Object.entries(availability).map(([day, hours]) => ({
       team_member_id: teamMemberId,
       business_id: businessId,
@@ -233,10 +239,16 @@ export default function EmployeeSchedulePage() {
       until_time: hours.until,
     }));
     if (rows.length > 0) {
-      await supabase.from("employee_availability").insert(rows);
+      const { error: insertError } = await supabase.from("employee_availability").insert(rows);
+      if (insertError) {
+        toast.error("Couldn't save your availability — try again");
+        setSaving(false);
+        return;
+      }
     }
     setSaving(false);
     setSaved(true);
+    toast.success("Availability saved");
     setTimeout(() => setSaved(false), 2500);
   }
 
@@ -245,19 +257,29 @@ export default function EmployeeSchedulePage() {
     setTogglingDate(true);
     const supabase = createClient();
     if (blockedDates.has(dateStr)) {
-      await supabase.from("employee_blocked_dates")
+      const { error } = await supabase.from("employee_blocked_dates")
         .delete()
         .eq("team_member_id", teamMemberId)
         .eq("blocked_date", dateStr);
-      setBlockedDates((prev) => {
-        const s = new Set(prev);
-        s.delete(dateStr);
-        return s;
-      });
+      if (error) {
+        toast.error("Couldn't unblock that date — try again");
+      } else {
+        setBlockedDates((prev) => {
+          const s = new Set(prev);
+          s.delete(dateStr);
+          return s;
+        });
+        toast.success("Date unblocked");
+      }
     } else {
-      await supabase.from("employee_blocked_dates")
+      const { error } = await supabase.from("employee_blocked_dates")
         .insert({ team_member_id: teamMemberId, business_id: businessId, blocked_date: dateStr });
-      setBlockedDates((prev) => new Set([...prev, dateStr]));
+      if (error) {
+        toast.error("Couldn't block that date — try again");
+      } else {
+        setBlockedDates((prev) => new Set([...prev, dateStr]));
+        toast.success("Date blocked off");
+      }
     }
     setTogglingDate(false);
   }
@@ -481,9 +503,7 @@ export default function EmployeeSchedulePage() {
                       )}
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isCompleted
-                            ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400"
-                            : "bg-muted text-muted-foreground"
+                          isCompleted ? "status-completed" : "status-cancelled"
                         }`}
                       >
                         {isCompleted ? "Done" : "Cancelled"}

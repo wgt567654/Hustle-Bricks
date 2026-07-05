@@ -1,5 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import {
+  isOptionalString,
+  isOptionalStringArray,
+  isRequiredString,
+  isUuid,
+} from "@/lib/validation";
 
 // Uses the service role key so this works without user auth.
 // The service role key is NEVER exposed to the browser — this runs server-side only.
@@ -11,11 +18,43 @@ function adminClient() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  // Rate limit before any parsing or DB work.
+  const rl = rateLimit(`leads-submit:${getClientIp(req)}`, {
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { business_id, name, email, phone, property_type, services, frequency, address, source } = body;
 
   if (!business_id || !name) {
     return NextResponse.json({ error: "business_id and name are required" }, { status: 400 });
+  }
+
+  // Input sanity (defense in depth)
+  if (!isUuid(business_id)) {
+    return NextResponse.json({ error: "Invalid business" }, { status: 400 });
+  }
+  if (
+    !isRequiredString(name) ||
+    !isOptionalString(email) ||
+    !isOptionalString(phone) ||
+    !isOptionalString(address) ||
+    !isOptionalString(property_type) ||
+    !isOptionalString(frequency) ||
+    !isOptionalString(source) ||
+    !isOptionalStringArray(services)
+  ) {
+    return NextResponse.json(
+      { error: "One or more fields are invalid or too long" },
+      { status: 400 }
+    );
   }
 
   const supabase = adminClient();

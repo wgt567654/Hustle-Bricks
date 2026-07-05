@@ -1,8 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
-  const { email, password, name, code } = await request.json();
+  // Rate limit before any parsing or DB work — this endpoint creates
+  // pre-confirmed auth users gated only by a short access code, so it is a
+  // brute-force target.
+  const rl = rateLimit(`employee-join:${getClientIp(request)}`, {
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+
+  let parsed: { email?: string; password?: string; name?: string; code?: string };
+  try {
+    parsed = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const { email, password, name, code } = parsed;
 
   if (!email || !password || !name || !code) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });

@@ -14,23 +14,26 @@ test.describe('Jobs page', () => {
 
   test('jobs page loads', async ({ page }) => {
     await expect(page).toHaveURL(/\/jobs/);
-    await expect(page.locator('h1:has-text("Schedule & Jobs")')).toBeVisible();
+    // The Jobs hub now greets the user ("Good morning/afternoon/evening, <name>")
+    await expect(page.locator('h1')).toContainText(/Good (morning|afternoon|evening)/);
+    // And shows the Jobs sub-navigation
+    await expect(page.locator('nav a[href="/jobs"]').first()).toBeVisible();
   });
 
   test('filter tabs are visible', async ({ page }) => {
-    await expect(page.locator('button:has-text("All")')).toBeVisible();
-    await expect(page.locator('button:has-text("Scheduled")')).toBeVisible();
-    await expect(page.locator('button:has-text("In Progress")')).toBeVisible();
-    await expect(page.locator('button:has-text("Completed")')).toBeVisible();
+    // Jobs hub now filters by date range instead of status
+    await expect(page.locator('button:has-text("All")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Today")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Tomorrow")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("This Week")').first()).toBeVisible();
   });
 
   test('clicking filter tabs does not error', async ({ page }) => {
-    await page.locator('button:has-text("Scheduled")').click();
-    await page.locator('button:has-text("In Progress")').click();
-    await page.locator('button:has-text("Completed")').click();
-    await page.locator('button:has-text("All")').click();
-    // No error thrown — page still shows the heading
-    await expect(page.locator('h1:has-text("Schedule & Jobs")')).toBeVisible();
+    await page.locator('button:has-text("Today")').first().click();
+    await page.locator('button:has-text("This Week")').first().click();
+    await page.locator('button:has-text("All")').first().click();
+    // No error thrown — page still shows the greeting heading
+    await expect(page.locator('h1')).toContainText(/Good (morning|afternoon|evening)/);
   });
 
   test('job cards or empty state renders gracefully', async ({ page }) => {

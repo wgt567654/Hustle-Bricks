@@ -109,8 +109,8 @@ test.describe('Quotes — new quote page', () => {
 
     await serviceCard.click();
 
-    // A blue qty badge (rounded-full bg-[#007AFF]) should appear on the card
-    await expect(serviceCard.locator('div.rounded-full.bg-\\[\\#007AFF\\]')).toBeVisible({ timeout: 5000 });
+    // A qty badge (rounded-full bg-primary) should appear on the card
+    await expect(serviceCard.locator('div.rounded-full.bg-primary')).toBeVisible({ timeout: 5000 });
   });
 });
 

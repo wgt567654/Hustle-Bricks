@@ -1,5 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import {
+  isOptionalString,
+  isRequiredString,
+  isUuid,
+  LONG_MAX,
+} from "@/lib/validation";
 
 function adminClient() {
   return createClient(
@@ -13,12 +20,43 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  // Rate limit before any parsing or DB work.
+  const rl = rateLimit(`booking-public:${getClientIp(req)}`, {
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { business_id, name, email, phone, address, date, time, notes } = body;
 
   if (!business_id || !name || !date || !time) {
     return NextResponse.json(
       { error: "business_id, name, date, and time are required" },
+      { status: 400 }
+    );
+  }
+
+  // Input sanity (defense in depth)
+  if (!isUuid(business_id)) {
+    return NextResponse.json({ error: "Invalid business" }, { status: 400 });
+  }
+  if (
+    !isRequiredString(name) ||
+    !isRequiredString(date) ||
+    !isRequiredString(time) ||
+    !isOptionalString(email) ||
+    !isOptionalString(phone) ||
+    !isOptionalString(address) ||
+    !isOptionalString(notes, LONG_MAX)
+  ) {
+    return NextResponse.json(
+      { error: "One or more fields are invalid or too long" },
       { status: 400 }
     );
   }

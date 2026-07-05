@@ -32,6 +32,7 @@ export default function RevenueChartImpl({ data }: { data: SparklinePoint[] }) {
           tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
           axisLine={false}
           tickLine={false}
+          allowDecimals={false}
           tickFormatter={(v: number) =>
             v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`
           }

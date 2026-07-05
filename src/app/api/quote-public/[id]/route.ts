@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { verifyLinkToken } from "@/lib/link-token";
 
 function adminClient() {
   return createClient(
@@ -9,10 +10,21 @@ function adminClient() {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // Signed-link check: quote pages are public but must carry a valid token.
+  // Grace mode (QUOTE_LINK_GRACE=true) lets legacy token-less links through;
+  // a token that is present but invalid is always rejected.
+  const token = req.nextUrl.searchParams.get("t");
+  const grace = process.env.QUOTE_LINK_GRACE === "true";
+  const allowed = token ? verifyLinkToken("quote", id, token) : grace;
+  if (!allowed) {
+    return NextResponse.json({ error: "Invalid or missing link token" }, { status: 403 });
+  }
+
   const supabase = adminClient();
 
   const { data, error } = await supabase

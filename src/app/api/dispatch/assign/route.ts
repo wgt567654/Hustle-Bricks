@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { findBestMember } from "@/lib/dispatch";
 import { sendSMS } from "@/lib/sms";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,6 +11,11 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  // Authenticate the caller via their session (anon client + cookies)
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { jobId } = await req.json();
   if (!jobId) return NextResponse.json({ error: "jobId required" }, { status: 400 });
 
@@ -18,7 +24,7 @@ export async function POST(req: NextRequest) {
     .select(`
       id, scheduled_at, duration_mins, business_id, assigned_member_id, total,
       clients ( name, address, phone ),
-      businesses ( name, contact_email ),
+      businesses ( name, contact_email, owner_id ),
       job_line_items ( description )
     `)
     .eq("id", jobId)
@@ -32,13 +38,19 @@ export async function POST(req: NextRequest) {
     assigned_member_id: string | null;
     total: number;
     clients: { name: string; address: string | null; phone: string | null } | null;
-    businesses: { name: string | null; contact_email: string | null } | null;
+    businesses: { name: string | null; contact_email: string | null; owner_id: string } | null;
     job_line_items: { description: string }[];
   };
 
   const j = job as unknown as JobRow;
 
   if (!j) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+
+  // Authorize: only the owner of the business this job belongs to may dispatch it
+  if (!j.businesses || j.businesses.owner_id !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   if (!j.scheduled_at) return NextResponse.json({ assigned: null, reason: "no_scheduled_at" });
   if (j.assigned_member_id) return NextResponse.json({ assigned: j.assigned_member_id, reason: "already_assigned" });
 

@@ -408,7 +408,7 @@ export default function NewQuoteClient({
           <button
             onClick={() => handleSave("sent")}
             disabled={saving}
-            className="flex-1 rounded-xl font-bold py-3 px-4 bg-primary text-white shadow-primary/30 shadow-lg hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-50"
+            className="flex-1 rounded-full font-bold py-3 px-4 bg-primary text-white shadow-primary/30 shadow-lg hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? "Saving…" : "Send Quote"}
           </button>
@@ -531,7 +531,7 @@ export default function NewQuoteClient({
                     type="button"
                     onClick={handleCreateClient}
                     disabled={newClientSaving || !newClientForm.name.trim()}
-                    className="flex-1 h-11 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+                    className="flex-1 h-11 rounded-full bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
                   >
                     {newClientSaving ? "Creating…" : "Create & Select"}
                   </button>

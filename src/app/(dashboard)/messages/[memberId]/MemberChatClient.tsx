@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { STATUS_CLASS } from "@/lib/status-colors";
 
 type Message = {
   id: string;
@@ -46,7 +47,6 @@ function getInitials(name: string) {
 
 const ROLE_LABELS: Record<string, string> = { admin: "Admin", member: "Member", sales: "Sales" };
 const STATUS_LABELS: Record<string, string> = { scheduled: "Scheduled", in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled" };
-const STATUS_COLORS: Record<string, string> = { scheduled: "text-blue-500", in_progress: "text-amber-500", completed: "text-green-500", cancelled: "text-red-500" };
 
 function mStr(v: unknown, fallback = ""): string { return typeof v === "string" ? v : fallback; }
 function mNum(v: unknown, fallback = 0): number { return typeof v === "number" ? v : fallback; }
@@ -111,8 +111,8 @@ function RichCard({ msg, onOpenJob, onOpenLead }: {
             </div>
           )}
           {status && (
-            <span className={`text-[11px] font-semibold ${STATUS_COLORS[status] ?? "text-muted-foreground"}`}>
-              ● {STATUS_LABELS[status] ?? status}
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${(STATUS_CLASS as Record<string, string>)[status] ?? "text-muted-foreground"}`}>
+              {STATUS_LABELS[status] ?? status}
             </span>
           )}
           {jobId && onOpenJob && (
@@ -613,7 +613,7 @@ export default function MemberChatClient({
             <button
               onClick={() => { sendMessage(text.trim()); setText(""); }}
               disabled={sending}
-              className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white disabled:opacity-40 active:scale-90 transition-all"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-40 active:scale-90 transition-all"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
             </button>
@@ -733,7 +733,7 @@ export default function MemberChatClient({
                       )}
                       {job.total != null && <span className="text-xs text-muted-foreground">${job.total.toFixed(0)}</span>}
                     </div>
-                    <span className={`text-[11px] font-semibold shrink-0 ${STATUS_COLORS[job.status] ?? "text-muted-foreground"}`}>
+                    <span className={`text-[11px] font-semibold shrink-0 px-2 py-0.5 rounded-full ${(STATUS_CLASS as Record<string, string>)[job.status] ?? "text-muted-foreground"}`}>
                       {STATUS_LABELS[job.status] ?? job.status}
                     </span>
                   </button>

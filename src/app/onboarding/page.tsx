@@ -246,7 +246,7 @@ export default function OnboardingPage() {
               <p className="text-sm text-muted-foreground">Tell us a bit about yourself.</p>
             </div>
 
-            <Card className="p-6 rounded-2xl border-border shadow-sm">
+            <Card className="p-6 rounded-2xl border-border shadow-card">
               <form onSubmit={handleStep2} className="flex flex-col gap-5">
                 {error && (
                   <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl px-3 py-2">{error}</p>
@@ -324,7 +324,7 @@ export default function OnboardingPage() {
               <p className="text-sm text-muted-foreground">What&apos;s the name of your company?</p>
             </div>
 
-            <Card className="p-6 rounded-2xl border-border shadow-sm">
+            <Card className="p-6 rounded-2xl border-border shadow-card">
               <form onSubmit={handleStep3} className="flex flex-col gap-5">
                 {error && (
                   <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl px-3 py-2">{error}</p>
@@ -462,7 +462,7 @@ export default function OnboardingPage() {
                     className={`p-6 rounded-2xl flex flex-col gap-4 relative ${
                       plan.highlight
                         ? "border-primary border-2 shadow-lg shadow-primary/10"
-                        : "border-border shadow-sm"
+                        : "border-border shadow-card"
                     }`}
                   >
                     {plan.highlight && (

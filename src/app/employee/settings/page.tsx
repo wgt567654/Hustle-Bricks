@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { toast } from "@/lib/toast";
 
 type Teammate = { id: string; name: string; email: string | null; role: string | null };
 
@@ -51,10 +52,15 @@ export default function EmployeeSettingsPage() {
     if (!memberId) return;
     setSavingAddress(true);
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("team_members")
       .update({ home_address: addressInput.trim() })
       .eq("id", memberId);
+    if (error) {
+      toast.error("Address couldn't be saved — try again");
+      setSavingAddress(false);
+      return;
+    }
     setHomeAddress(addressInput.trim());
     setEditingAddress(false);
     setSavingAddress(false);
@@ -73,7 +79,7 @@ export default function EmployeeSettingsPage() {
       window.location.href = "/";
     } else {
       const { error } = await res.json();
-      alert(error ?? "Could not delete account. Please try again.");
+      toast.error(error ?? "Could not delete account. Please try again.");
       setDeletingAccount(false);
     }
   }
@@ -108,7 +114,7 @@ export default function EmployeeSettingsPage() {
                 <button
                   onClick={saveAddress}
                   disabled={savingAddress || !addressInput.trim()}
-                  className="flex-[2] py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-colors"
+                  className="flex-[2] py-2.5 rounded-full bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-colors"
                 >
                   {savingAddress ? "Saving…" : "Save Address"}
                 </button>

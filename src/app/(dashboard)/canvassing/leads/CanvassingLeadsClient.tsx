@@ -168,7 +168,7 @@ export default function CanvassingLeadsClient({
           </p>
           {stageFilter === "all" && (
             <Link href="/canvassing"
-              className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold">
+              className="mt-2 px-4 py-2 rounded-full bg-primary text-white text-sm font-bold">
               Go to Map
             </Link>
           )}

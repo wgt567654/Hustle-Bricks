@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { SERVICE_TYPES, MessageType, DEFAULT_TEMPLATES, interpolateTemplate as _interpolate } from "@/lib/messageTemplates";
 import { BUSINESS_TYPE_OPTIONS } from "@/lib/businessTypes";
+import { toast } from "@/lib/toast";
 import CityAutocomplete from "@/components/CityAutocomplete";
 
 // Business row shape — broad record matching every column the UI reads.
@@ -274,15 +275,16 @@ export default function SettingsClient({
         body: JSON.stringify({ businessId }),
       });
       const { url, error } = await res.json();
-      if (error || !url) { setConnectingExpress(false); return; }
+      if (error || !url) {
+        setConnectingExpress(false);
+        toast.error("Couldn't connect to Stripe — try again.");
+        return;
+      }
       window.location.href = url;
     } catch {
       setConnectingExpress(false);
+      toast.error("Couldn't connect to Stripe — try again.");
     }
-  }
-
-  async function connectStandard() {
-    window.location.href = "/api/stripe/connect/standard";
   }
 
   async function disconnectStripe() {
@@ -298,7 +300,7 @@ export default function SettingsClient({
       setConnectStatus("not_connected");
       setConnectType(null);
     } else {
-      alert(error ?? "Could not disconnect");
+      toast.error(error ?? "Couldn't disconnect Stripe — try again.");
     }
     setDisconnecting(false);
   }
@@ -312,10 +314,17 @@ export default function SettingsClient({
     const { error: uploadError } = await supabase.storage
       .from("business-logos")
       .upload(path, file, { upsert: true });
-    if (!uploadError) {
+    if (uploadError) {
+      toast.error("Couldn't upload the logo — try again.");
+    } else {
       const { data: { publicUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
-      await supabase.from("businesses").update({ logo_url: publicUrl }).eq("id", businessId);
-      setLogoUrl(publicUrl);
+      const { error } = await supabase.from("businesses").update({ logo_url: publicUrl }).eq("id", businessId);
+      if (error) {
+        toast.error("Couldn't save the logo — try again.");
+      } else {
+        setLogoUrl(publicUrl);
+        toast.success("Logo updated");
+      }
     }
     setUploadingLogo(false);
   }
@@ -324,13 +333,18 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingFinancing(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({
+    const { error } = await supabase.from("businesses").update({
       financing_enabled: financingEnabled,
       financing_partner: financingPartner.trim() || null,
       financing_url: financingUrl.trim() || null,
       financing_min_amount: parseInt(financingMinAmount) || 500,
     }).eq("id", businessId);
     setSavingFinancing(false);
+    if (error) {
+      toast.error("Couldn't save financing settings — try again.");
+      return;
+    }
+    toast.success("Financing settings saved");
     setEditingFinancing(false);
   }
 
@@ -355,9 +369,14 @@ export default function SettingsClient({
     setGeneratingCode(true);
     const newCode = generateCode();
     const supabase = createClient();
-    await supabase.from("businesses").update({ employee_access_code: newCode } as Record<string, unknown>).eq("id", businessId);
-    setAccessCode(newCode);
+    const { error } = await supabase.from("businesses").update({ employee_access_code: newCode } as Record<string, unknown>).eq("id", businessId);
     setGeneratingCode(false);
+    if (error) {
+      toast.error("Couldn't generate a new code — try again.");
+      return;
+    }
+    setAccessCode(newCode);
+    toast.success("New access code generated");
   }
 
   async function copyAccessCode() {
@@ -403,17 +422,26 @@ export default function SettingsClient({
     if (!businessId || !nameInput.trim()) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({ name: nameInput.trim() }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ name: nameInput.trim() }).eq("id", businessId);
+    setSaving(false);
+    if (error) {
+      toast.error("Couldn't save the business name — try again.");
+      return;
+    }
     setBusinessName(nameInput.trim());
     setEditingName(false);
-    setSaving(false);
+    toast.success("Business name saved");
   }
 
   async function addServiceArea(area: string) {
     if (!businessId || !area.trim() || serviceAreas.includes(area.trim())) return;
     const updated = [...serviceAreas, area.trim()];
     const supabase = createClient();
-    await supabase.from("businesses").update({ service_areas: updated }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ service_areas: updated }).eq("id", businessId);
+    if (error) {
+      toast.error("Couldn't add the service area — try again.");
+      return;
+    }
     setServiceAreas(updated);
   }
 
@@ -421,7 +449,11 @@ export default function SettingsClient({
     if (!businessId) return;
     const updated = serviceAreas.filter((a) => a !== area);
     const supabase = createClient();
-    await supabase.from("businesses").update({ service_areas: updated }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ service_areas: updated }).eq("id", businessId);
+    if (error) {
+      toast.error("Couldn't remove the service area — try again.");
+      return;
+    }
     setServiceAreas(updated);
   }
 
@@ -429,12 +461,17 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingPayments(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({
+    const { error } = await supabase.from("businesses").update({
       venmo_username: venmoUsername.trim().replace(/^@/, "") || null,
       cashapp_tag: cashappTag.trim().replace(/^\$/, "") || null,
       check_payable_to: checkPayableTo.trim() || null,
     }).eq("id", businessId);
     setSavingPayments(false);
+    if (error) {
+      toast.error("Couldn't save payment methods — try again.");
+      return;
+    }
+    toast.success("Payment methods saved");
     setEditingPayments(false);
   }
 
@@ -442,11 +479,16 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingContact(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({
+    const { error } = await supabase.from("businesses").update({
       contact_email: contactEmail.trim() || null,
       contact_phone: contactPhone.trim() || null,
     }).eq("id", businessId);
     setSavingContact(false);
+    if (error) {
+      toast.error("Couldn't save contact info — try again.");
+      return;
+    }
+    toast.success("Contact info saved");
     setEditingContact(false);
   }
 
@@ -454,11 +496,16 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingAddressWeb(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({
+    const { error } = await supabase.from("businesses").update({
       address: businessAddress.trim() || null,
       website_url: websiteUrl.trim() || null,
     }).eq("id", businessId);
     setSavingAddressWeb(false);
+    if (error) {
+      toast.error("Couldn't save address and website — try again.");
+      return;
+    }
+    toast.success("Address and website saved");
     setEditingAddressWeb(false);
   }
 
@@ -466,8 +513,13 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingInvoiceMessage(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({ invoice_message: invoiceMessage.trim() || null }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ invoice_message: invoiceMessage.trim() || null }).eq("id", businessId);
     setSavingInvoiceMessage(false);
+    if (error) {
+      toast.error("Couldn't save the invoice message — try again.");
+      return;
+    }
+    toast.success("Invoice message saved");
     setEditingInvoiceMessage(false);
   }
 
@@ -475,8 +527,13 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingTerms(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({ terms_and_conditions: termsAndConditions.trim() || null }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ terms_and_conditions: termsAndConditions.trim() || null }).eq("id", businessId);
     setSavingTerms(false);
+    if (error) {
+      toast.error("Couldn't save the terms — try again.");
+      return;
+    }
+    toast.success("Terms saved");
     setEditingTerms(false);
   }
 
@@ -484,8 +541,13 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingBusinessType(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({ business_type: businessType || null }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ business_type: businessType || null }).eq("id", businessId);
     setSavingBusinessType(false);
+    if (error) {
+      toast.error("Couldn't save the business type — try again.");
+      return;
+    }
+    toast.success("Business type saved");
     setEditingBusinessType(false);
   }
 
@@ -493,8 +555,13 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingTax(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({ tax_rate: parseFloat(taxRate) || 0 }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ tax_rate: parseFloat(taxRate) || 0 }).eq("id", businessId);
     setSavingTax(false);
+    if (error) {
+      toast.error("Couldn't save the tax rate — try again.");
+      return;
+    }
+    toast.success("Tax rate saved");
     setEditingTax(false);
   }
 
@@ -502,8 +569,13 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingCommission(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({ commission_rate: parseFloat(commissionRate) || 0 }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ commission_rate: parseFloat(commissionRate) || 0 }).eq("id", businessId);
     setSavingCommission(false);
+    if (error) {
+      toast.error("Couldn't save the commission rate — try again.");
+      return;
+    }
+    toast.success("Commission rate saved");
     setEditingCommission(false);
   }
 
@@ -511,8 +583,13 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingMileage(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({ mileage_rate_per_mile: parseFloat(mileageRate) || 0.70 }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ mileage_rate_per_mile: parseFloat(mileageRate) || 0.70 }).eq("id", businessId);
     setSavingMileage(false);
+    if (error) {
+      toast.error("Couldn't save the mileage rate — try again.");
+      return;
+    }
+    toast.success("Mileage rate saved");
     setEditingMileage(false);
   }
 
@@ -537,7 +614,10 @@ export default function SettingsClient({
     setSavingAutomation(key);
     const supabase = createClient();
     const { error } = await supabase.from("businesses").update({ [key]: !current }).eq("id", businessId);
-    if (error) setters[key]?.(current);
+    if (error) {
+      setters[key]?.(current);
+      toast.error("Couldn't update that setting — try again.");
+    }
     setSavingAutomation(null);
   }
 
@@ -545,8 +625,13 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingReviewUrl(true);
     const supabase = createClient();
-    await supabase.from("businesses").update({ google_review_url: googleReviewUrl || null }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({ google_review_url: googleReviewUrl || null }).eq("id", businessId);
     setSavingReviewUrl(false);
+    if (error) {
+      toast.error("Couldn't save the review link — try again.");
+      return;
+    }
+    toast.success("Review link saved");
     setEditingReviewUrl(false);
   }
 
@@ -555,9 +640,13 @@ export default function SettingsClient({
     setSavingStaleQuoteDays(true);
     const supabase = createClient();
     const days = parseInt(staleQuoteDays) || 7;
-    await supabase.from("businesses").update({ stale_quote_days: days }).eq("id", businessId);
-    setStaleQuoteDays(String(days));
+    const { error } = await supabase.from("businesses").update({ stale_quote_days: days }).eq("id", businessId);
     setSavingStaleQuoteDays(false);
+    if (error) {
+      toast.error("Couldn't save that setting — try again.");
+      return;
+    }
+    setStaleQuoteDays(String(days));
     setEditingStaleQuoteDays(false);
   }
 
@@ -566,9 +655,13 @@ export default function SettingsClient({
     setSavingRebookingDays(true);
     const supabase = createClient();
     const days = parseInt(rebookingAfterDays) || 60;
-    await supabase.from("businesses").update({ rebooking_after_days: days }).eq("id", businessId);
-    setRebookingAfterDays(String(days));
+    const { error } = await supabase.from("businesses").update({ rebooking_after_days: days }).eq("id", businessId);
     setSavingRebookingDays(false);
+    if (error) {
+      toast.error("Couldn't save that setting — try again.");
+      return;
+    }
+    setRebookingAfterDays(String(days));
     setEditingRebookingDays(false);
   }
 
@@ -604,8 +697,12 @@ export default function SettingsClient({
       { business_id: businessId, service_type: tmplService, message_type: "confirmation", body: tmplConfirmation },
       { business_id: businessId, service_type: tmplService, message_type: "reminder", body: tmplReminder },
     ];
-    await supabase.from("message_templates").upsert(rows, { onConflict: "business_id,service_type,message_type" });
+    const { error } = await supabase.from("message_templates").upsert(rows, { onConflict: "business_id,service_type,message_type" });
     setTmplSaving(false);
+    if (error) {
+      toast.error("Couldn't save the templates — try again.");
+      return;
+    }
     setTmplSaved(true);
     setTimeout(() => setTmplSaved(false), 2000);
   }
@@ -613,9 +710,13 @@ export default function SettingsClient({
   async function resetTemplates() {
     if (!businessId) return;
     const supabase = createClient();
-    await supabase.from("message_templates").delete()
+    const { error } = await supabase.from("message_templates").delete()
       .eq("business_id", businessId)
       .eq("service_type", tmplService);
+    if (error) {
+      toast.error("Couldn't reset the templates — try again.");
+      return;
+    }
     const defaults = DEFAULT_TEMPLATES[tmplService as keyof typeof DEFAULT_TEMPLATES] ?? DEFAULT_TEMPLATES["Other"];
     setTmplPostQuote(fillKnownVars(defaults.post_quote));
     setTmplConfirmation(fillKnownVars(defaults.confirmation));
@@ -626,12 +727,16 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingSchedule(true);
     const supabase = createClient();
-    await supabase.from("scheduling_settings").upsert({
+    const { error } = await supabase.from("scheduling_settings").upsert({
       business_id: businessId,
       unavailable_days: unavailableDays,
       day_hours: dayHours,
     }, { onConflict: "business_id" });
     setSavingSchedule(false);
+    if (error) {
+      toast.error("Couldn't save the schedule — try again.");
+      return;
+    }
     setScheduleSaved(true);
     setTimeout(() => setScheduleSaved(false), 2000);
   }
@@ -640,11 +745,15 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingCrew(true);
     const supabase = createClient();
-    await supabase.from("business_crew_settings").upsert({
+    const { error } = await supabase.from("business_crew_settings").upsert({
       business_id: businessId,
       crew_size: crewSize,
     }, { onConflict: "business_id" });
     setSavingCrew(false);
+    if (error) {
+      toast.error("Couldn't save the crew size — try again.");
+      return;
+    }
     setCrewSaved(true);
     setTimeout(() => setCrewSaved(false), 2000);
   }
@@ -680,15 +789,25 @@ export default function SettingsClient({
       ? cfOptionsInput.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
     if (cfEditing) {
-      const { data } = await supabase.from("canvassing_custom_fields")
+      const { data, error } = await supabase.from("canvassing_custom_fields")
         .update({ label: cfForm.label.trim(), field_type: cfForm.field_type, options, required: cfForm.required })
         .eq("id", cfEditing.id).select("*").single();
+      if (error) {
+        setCfSaving(false);
+        toast.error("Couldn't save the field — try again.");
+        return;
+      }
       if (data) setCustomFields((prev) => prev.map((f) => f.id === cfEditing.id ? data as unknown as CustomField : f));
     } else {
       const position = customFields.length;
-      const { data } = await supabase.from("canvassing_custom_fields")
+      const { data, error } = await supabase.from("canvassing_custom_fields")
         .insert({ business_id: businessId, label: cfForm.label.trim(), field_type: cfForm.field_type, options, required: cfForm.required, position })
         .select("*").single();
+      if (error) {
+        setCfSaving(false);
+        toast.error("Couldn't save the field — try again.");
+        return;
+      }
       if (data) setCustomFields((prev) => [...prev, data as unknown as CustomField]);
     }
     setCfSaving(false);
@@ -698,7 +817,12 @@ export default function SettingsClient({
   async function deleteCf(id: string) {
     setCfDeleting(id);
     const supabase = createClient();
-    await supabase.from("canvassing_custom_fields").delete().eq("id", id);
+    const { error } = await supabase.from("canvassing_custom_fields").delete().eq("id", id);
+    if (error) {
+      setCfDeleting(null);
+      toast.error("Couldn't delete the field — try again.");
+      return;
+    }
     setCustomFields((prev) => prev.filter((f) => f.id !== id));
     setCfDeleting(null);
   }
@@ -708,14 +832,19 @@ export default function SettingsClient({
     if (idx < 0) return;
     const next = idx + dir;
     if (next < 0 || next >= customFields.length) return;
+    const previous = customFields;
     const updated = [...customFields];
     [updated[idx], updated[next]] = [updated[next], updated[idx]];
     setCustomFields(updated);
     const supabase = createClient();
-    await Promise.all([
+    const [resA, resB] = await Promise.all([
       supabase.from("canvassing_custom_fields").update({ position: next }).eq("id", updated[idx].id),
       supabase.from("canvassing_custom_fields").update({ position: idx }).eq("id", updated[next].id),
     ]);
+    if (resA.error || resB.error) {
+      setCustomFields(previous);
+      toast.error("Couldn't reorder the fields — try again.");
+    }
   }
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -740,7 +869,7 @@ export default function SettingsClient({
       window.location.href = "/";
     } else {
       const { error } = await res.json();
-      alert(error ?? "Could not delete account. Please try again.");
+      toast.error(error ?? "Couldn't delete the account — try again.");
       setDeletingAccount(false);
     }
   }
@@ -1761,21 +1890,13 @@ export default function SettingsClient({
                   </>
                 )}
                 {connectStatus === "not_connected" && (
-                  <div className="flex flex-col items-end gap-1">
-                    <button
-                      onClick={connectExpress}
-                      disabled={connectingExpress}
-                      className="text-xs font-bold text-primary hover:opacity-80 disabled:opacity-50"
-                    >
-                      {connectingExpress ? "Redirecting…" : "New Stripe account"}
-                    </button>
-                    <button
-                      onClick={connectStandard}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Use existing account
-                    </button>
-                  </div>
+                  <button
+                    onClick={connectExpress}
+                    disabled={connectingExpress}
+                    className="text-xs font-bold text-primary hover:opacity-80 disabled:opacity-50"
+                  >
+                    {connectingExpress ? "Redirecting…" : "Connect Stripe"}
+                  </button>
                 )}
               </div>
             </div>
@@ -2398,7 +2519,11 @@ export default function SettingsClient({
                     setFinancingEnabled(next);
                     if (businessId) {
                       const supabase = createClient();
-                      await supabase.from("businesses").update({ financing_enabled: next }).eq("id", businessId);
+                      const { error } = await supabase.from("businesses").update({ financing_enabled: next }).eq("id", businessId);
+                      if (error) {
+                        setFinancingEnabled(!next);
+                        toast.error("Couldn't update financing — try again.");
+                      }
                     }
                   }}
                   className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${financingEnabled ? "bg-primary" : "bg-muted"}`}
@@ -2572,7 +2697,7 @@ export default function SettingsClient({
                 </div>
                 <div className="flex gap-2 mt-1">
                   <button onClick={() => setCfModalOpen(false)} className="flex-1 py-3 rounded-2xl border border-border text-muted-foreground font-bold text-sm">Cancel</button>
-                  <button onClick={saveCf} disabled={cfSaving || !cfForm.label.trim()} className="flex-[2] py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50">{cfSaving ? "Saving…" : cfEditing ? "Save Changes" : "Add Field"}</button>
+                  <button onClick={saveCf} disabled={cfSaving || !cfForm.label.trim()} className="flex-[2] py-3 rounded-full bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50">{cfSaving ? "Saving…" : cfEditing ? "Save Changes" : "Add Field"}</button>
                 </div>
               </div>
             </div>

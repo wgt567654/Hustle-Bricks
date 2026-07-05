@@ -14,7 +14,8 @@ test.describe('Weather alerts — settings', () => {
   test('settings page has Service Area City field', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.locator('body')).not.toContainText('Error', { timeout: 8000 });
-    await expect(page.locator('text=Service Areas')).toBeVisible({ timeout: 5000 });
+    // "Service Areas" also appears in the section description — use the exact label
+    await expect(page.getByText('Service Areas', { exact: true })).toBeVisible({ timeout: 5000 });
   });
 });
 

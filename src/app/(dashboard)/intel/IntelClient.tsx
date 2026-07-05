@@ -13,12 +13,12 @@ export type IntelRow = {
   team_members: { name: string } | null;
 };
 
-const OBS_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-  truck_spotted:     { label: "Truck spotted",      icon: "local_shipping", color: "#007AFF", bg: "bg-primary/10" },
-  yard_sign:         { label: "Yard sign",           icon: "signpost",       color: "#FF9500", bg: "bg-[#FF9500]/10" },
-  customer_mentioned:{ label: "Customer mentioned",  icon: "chat_bubble",    color: "#AF52DE", bg: "bg-[#AF52DE]/10" },
-  price_info:        { label: "Price info",          icon: "sell",           color: "#34C759", bg: "bg-[#34C759]/10" },
-  quality_note:      { label: "Quality note",        icon: "star",           color: "#FF2D55", bg: "bg-[#FF2D55]/10" },
+const OBS_META: Record<string, { label: string; icon: string; cls: string }> = {
+  truck_spotted:     { label: "Truck spotted",      icon: "local_shipping", cls: "icon-primary" },
+  yard_sign:         { label: "Yard sign",           icon: "signpost",       cls: "icon-orange" },
+  customer_mentioned:{ label: "Customer mentioned",  icon: "chat_bubble",    cls: "icon-violet" },
+  price_info:        { label: "Price info",          icon: "sell",           cls: "icon-green" },
+  quality_note:      { label: "Quality note",        icon: "star",           cls: "icon-red" },
 };
 
 function formatDate(dateStr: string) {
@@ -97,11 +97,11 @@ export default function IntelClient({ initialRows }: { initialRows: IntelRow[] }
               <div key={row.id} className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
                 <div className="p-4 flex items-start gap-3">
                   <div
-                    className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${meta.bg}`}
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${meta.cls}`}
                   >
                     <span
                       className="material-symbols-outlined text-[20px]"
-                      style={{ color: meta.color, fontVariationSettings: "'FILL' 1" }}
+                      style={{ fontVariationSettings: "'FILL' 1" }}
                     >
                       {meta.icon}
                     </span>
@@ -112,8 +112,7 @@ export default function IntelClient({ initialRows }: { initialRows: IntelRow[] }
                       <span className="text-[10px] text-muted-foreground/60 shrink-0">{formatDate(row.created_at)}</span>
                     </div>
                     <span
-                      className={`self-start text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.bg}`}
-                      style={{ color: meta.color }}
+                      className={`self-start text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.cls}`}
                     >
                       {meta.label}
                     </span>

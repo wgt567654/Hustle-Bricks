@@ -229,7 +229,7 @@ export default function LeadsClient({
             <button
               onClick={scoreAll}
               disabled={scoring}
-              className="flex items-center gap-1.5 bg-violet-600 text-white text-sm font-bold px-3 py-2 rounded-xl shadow-sm active:scale-95 transition-transform disabled:opacity-60"
+              className="flex items-center gap-1.5 bg-primary/10 text-primary text-sm font-bold px-3 py-2 rounded-xl active:scale-95 transition-transform disabled:opacity-60"
             >
               <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
               {scoring
@@ -310,7 +310,7 @@ export default function LeadsClient({
           {stageFilter === "all" && (
             <button
               onClick={openAdd}
-              className="mt-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold"
+              className="mt-2 px-4 py-2 rounded-full bg-primary text-white text-sm font-bold"
             >
               Add Lead
             </button>
@@ -636,7 +636,7 @@ export default function LeadsClient({
               <button
                 onClick={save}
                 disabled={saving || !form.name.trim()}
-                className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform"
+                className="flex-1 py-3 rounded-full bg-primary text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform"
               >
                 {saving ? "Saving…" : editLead ? "Save Changes" : "Add Lead"}
               </button>

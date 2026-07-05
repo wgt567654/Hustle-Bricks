@@ -33,18 +33,11 @@ export function EmailInvoiceButton({
     <button
       onClick={handleSend}
       disabled={sending}
-      className="print-hidden"
-      style={{
-        padding: "10px 20px",
-        borderRadius: 10,
-        border: "1px solid #d1d5db",
-        background: sent ? "#dcfce7" : "white",
-        color: sent ? "#16a34a" : "#374151",
-        fontWeight: 700,
-        fontSize: 13,
-        cursor: sending ? "not-allowed" : "pointer",
-        opacity: sending ? 0.6 : 1,
-      }}
+      className={`print-hidden px-5 py-2.5 rounded-xl text-[13px] font-bold transition-colors border ${
+        sent
+          ? "bg-status-completed/10 text-status-completed border-status-completed/20"
+          : "bg-card text-foreground border-border hover:bg-muted/50"
+      } ${sending ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
     >
       {sending ? "Sending…" : sent ? "✓ Invoice Sent" : "Email Invoice"}
     </button>

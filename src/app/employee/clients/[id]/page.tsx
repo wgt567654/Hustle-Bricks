@@ -30,10 +30,10 @@ const TAG_STYLES: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  completed:   "bg-green-500/10 text-green-600",
-  scheduled:   "bg-primary/10 text-primary",
-  in_progress: "bg-amber-500/10 text-amber-600",
-  cancelled:   "bg-muted text-muted-foreground",
+  completed:   "status-completed",
+  scheduled:   "status-scheduled",
+  in_progress: "status-in-progress",
+  cancelled:   "status-cancelled",
 };
 
 function fmtDate(str: string | null) {

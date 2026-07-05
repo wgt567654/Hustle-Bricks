@@ -8,7 +8,8 @@ test.describe('Territory Heat Map — page', () => {
   test('heatmap page loads without error', async ({ page }) => {
     await page.goto('/heatmap');
     await expect(page.locator('body')).not.toContainText('Error', { timeout: 8000 });
-    await expect(page.locator('h1')).toBeVisible({ timeout: 5000 });
+    // The page title is now a map-overlay span, not an h1
+    await expect(page.getByText('Territory Heat Map')).toBeVisible({ timeout: 5000 });
   });
 
   test('heatmap page has layer toggle buttons', async ({ page }) => {

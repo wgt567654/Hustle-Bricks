@@ -821,7 +821,7 @@ export default function InventoryDetailClient({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full py-3.5 flex items-center justify-center rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+              className="w-full py-3.5 flex items-center justify-center rounded-full bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
@@ -995,7 +995,7 @@ export default function InventoryDetailClient({
             <button
               onClick={handleCheckout}
               disabled={checkoutSaving || checkoutMemberIds.size === 0 || (saveAsPreset && !presetName.trim())}
-              className="w-full py-3.5 flex items-center justify-center rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+              className="w-full py-3.5 flex items-center justify-center rounded-full bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
               {checkoutSaving
                 ? "Saving…"
@@ -1051,7 +1051,7 @@ export default function InventoryDetailClient({
             <button
               onClick={handleLogUsage}
               disabled={usageSaving}
-              className="w-full py-3.5 flex items-center justify-center rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+              className="w-full py-3.5 flex items-center justify-center rounded-full bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
               {usageSaving ? "Saving…" : "Log Usage"}
             </button>

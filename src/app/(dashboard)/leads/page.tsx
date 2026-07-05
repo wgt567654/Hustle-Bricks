@@ -33,11 +33,14 @@ export default async function LeadsPage() {
 
   let leads: Lead[] = [];
   if (businessId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("leads")
       .select("*")
       .eq("business_id", businessId)
       .order("created_at", { ascending: false });
+    if (error) {
+      throw new Error(`Failed to load leads: ${error.message}`);
+    }
     leads = (data ?? []) as Lead[];
   }
 

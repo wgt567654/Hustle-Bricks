@@ -15,10 +15,10 @@ type Quote = {
 };
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  draft:    { label: "Draft",    className: "bg-muted text-muted-foreground" },
-  sent:     { label: "Sent",     className: "bg-primary/10 text-primary" },
-  accepted: { label: "Accepted", className: "bg-green-500/10 text-green-600" },
-  declined: { label: "Declined", className: "bg-red-500/10 text-red-500" },
+  draft:    { label: "Draft",    className: "status-draft" },
+  sent:     { label: "Sent",     className: "status-sent" },
+  accepted: { label: "Accepted", className: "status-accepted" },
+  declined: { label: "Declined", className: "status-declined" },
 };
 
 function fmtDate(str: string) {
@@ -84,7 +84,7 @@ export default function EmployeeQuotesPage() {
             <p className="text-xs text-muted-foreground/60">Create a draft quote in the field and your manager will review it.</p>
             <Link
               href="/employee/quotes/new"
-              className="mt-2 px-4 py-2.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 active:scale-95 transition-all"
+              className="mt-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 active:scale-95 transition-all"
             >
               Create First Quote
             </Link>

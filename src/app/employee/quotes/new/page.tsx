@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 
 type Client = { id: string; name: string };
 type LineItem = { description: string; qty: number; unitPrice: number };
@@ -91,7 +92,7 @@ export default function NewQuotePage() {
       notesValue = `Client: ${clientSearch.trim()} (not in system)${notesValue ? `\n${notesValue}` : ""}`;
     }
 
-    const { data: quote } = await supabase
+    const { data: quote, error: quoteError } = await supabase
       .from("quotes")
       .insert({
         business_id: businessId,
@@ -104,20 +105,27 @@ export default function NewQuotePage() {
       .select("id")
       .single();
 
-    if (quote) {
-      const items = lineItems
-        .filter((li) => li.description.trim())
-        .map((li) => ({
-          quote_id: (quote as unknown as { id: string }).id,
-          description: li.description.trim(),
-          quantity: li.qty,
-          unit_price: li.unitPrice,
-        }));
-      if (items.length > 0) {
-        await supabase.from("quote_line_items").insert(items);
-      }
-      setSavedId((quote as unknown as { id: string }).id);
+    if (quoteError || !quote) {
+      toast.error("Quote couldn't be saved — try again");
+      setSaving(false);
+      return;
     }
+
+    const items = lineItems
+      .filter((li) => li.description.trim())
+      .map((li) => ({
+        quote_id: (quote as unknown as { id: string }).id,
+        description: li.description.trim(),
+        quantity: li.qty,
+        unit_price: li.unitPrice,
+      }));
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase.from("quote_line_items").insert(items);
+      if (itemsError) {
+        toast.error("Quote saved, but line items didn't save — check it before sending");
+      }
+    }
+    setSavedId((quote as unknown as { id: string }).id);
     setSaving(false);
   }
 
@@ -153,7 +161,7 @@ export default function NewQuotePage() {
           <div className="flex flex-col gap-2 w-full mt-2">
             <button
               onClick={resetForm}
-              className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-all active:scale-[0.98]"
+              className="w-full py-3 rounded-full bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-all active:scale-[0.98]"
             >
               Create Another Quote
             </button>
@@ -323,7 +331,7 @@ export default function NewQuotePage() {
       <button
         onClick={saveQuote}
         disabled={saving || !businessId || lineItems.every((li) => !li.description.trim())}
-        className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-all active:scale-[0.98]"
+        className="w-full py-3 rounded-full bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-all active:scale-[0.98]"
       >
         {saving ? "Saving…" : "Submit Draft Quote"}
       </button>

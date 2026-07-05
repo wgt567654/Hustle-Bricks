@@ -1,9 +1,36 @@
 import type { NextConfig } from "next";
 
+// Lock CORS on public intake routes to the app's own origin.
+// NOTE: if the booking widget is ever embedded on customers' own websites,
+// this must become a per-business origin allowlist instead of a single origin.
+function appOrigin(): string {
+  const raw = process.env.NEXT_PUBLIC_APP_URL ?? "https://hustlebricks.com";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "https://hustlebricks.com";
+  }
+}
+
 const corsHeaders = [
-  { key: "Access-Control-Allow-Origin", value: "*" },
+  { key: "Access-Control-Allow-Origin", value: appOrigin() },
   { key: "Access-Control-Allow-Methods", value: "GET,POST,OPTIONS" },
   { key: "Access-Control-Allow-Headers", value: "Content-Type" },
+];
+
+// Global security headers. No CSP yet — adding one blind risks breaking the
+// app (inline styles, Supabase/Stripe/Twilio origins); treat as a follow-up.
+// Permissions-Policy: the app uses the microphone (voice notes in chat) and
+// geolocation (canvassing map); camera capture goes through <input capture>
+// (native picker), which Permissions-Policy does not gate, so camera=() is safe.
+const securityHeaders = [
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(self), geolocation=(self)",
+  },
 ];
 
 const nextConfig: NextConfig = {
@@ -19,6 +46,7 @@ const nextConfig: NextConfig = {
         : [];
 
     return [
+      { source: "/:path*", headers: securityHeaders },
       ...devHeaders,
       { source: "/api/leads/submit", headers: corsHeaders },
       { source: "/api/booking/capacity", headers: corsHeaders },

@@ -5,14 +5,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Customer Financing — settings', () => {
+  // Settings is now sectioned — Customer Financing lives under Payments (?sec=payments).
   test('settings page has Customer Financing section', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/settings?sec=payments');
     await expect(page.locator('body')).not.toContainText('Error', { timeout: 8000 });
-    await expect(page.locator('text=Customer Financing')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('h3:has-text("Customer Financing")')).toBeVisible({ timeout: 5000 });
   });
 
   test('settings financing toggle is present', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/settings?sec=payments');
     await expect(page.locator('body')).not.toContainText('Error', { timeout: 8000 });
     await expect(page.locator('text=Offer financing to clients')).toBeVisible({ timeout: 5000 });
   });

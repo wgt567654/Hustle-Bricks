@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
+import { STATUS_CLASS } from "@/lib/status-colors";
 
 type Message = {
   id: string;
@@ -73,7 +75,6 @@ function AudioPlayer({ src }: { src: string }) {
 }
 
 const STATUS_LABELS: Record<string, string> = { scheduled: "Scheduled", in_progress: "In Progress", completed: "Completed" };
-const STATUS_COLORS: Record<string, string> = { scheduled: "text-blue-500", in_progress: "text-amber-500", completed: "text-green-500" };
 
 function mStr(v: unknown, fallback = ""): string { return typeof v === "string" ? v : fallback; }
 function mNum(v: unknown, fallback = 0): number { return typeof v === "number" ? v : fallback; }
@@ -133,8 +134,8 @@ function RichCard({ msg }: { msg: Message }) {
             </div>
           )}
           {status && (
-            <span className={`text-[11px] font-semibold ${STATUS_COLORS[status] ?? "text-muted-foreground"}`}>
-              ● {STATUS_LABELS[status] ?? status}
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${(STATUS_CLASS as Record<string, string>)[status] ?? "text-muted-foreground"}`}>
+              {STATUS_LABELS[status] ?? status}
             </span>
           )}
         </div>
@@ -454,6 +455,8 @@ export default function EmployeeMessagesPage() {
     if (!error) {
       const { data: { publicUrl } } = supabase.storage.from("chat-media").getPublicUrl(path);
       await sendMessage("", "photo", undefined, publicUrl);
+    } else {
+      toast.error("Photo couldn't be sent — try again");
     }
     setUploadingPhoto(false);
     e.target.value = "";
@@ -500,10 +503,15 @@ export default function EmployeeMessagesPage() {
   async function confirmJobDone(job: TodayJob) {
     setShowJobDoneSheet(false);
     const supabase = createClient();
-    await Promise.all([
-      supabase.from("jobs").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", job.id),
-      sendMessage("Job done ✅", "quick_reply"),
-    ]);
+    const { error } = await supabase
+      .from("jobs")
+      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .eq("id", job.id);
+    if (error) {
+      toast.error("Couldn't mark the job done — try again");
+      return;
+    }
+    await sendMessage("Job done ✅", "quick_reply");
   }
 
   async function submitLead() {
@@ -538,6 +546,8 @@ export default function EmployeeMessagesPage() {
       );
       setLeadName(""); setLeadAddress(""); setLeadPhone(""); setLeadValue("");
       setShowLeadSheet(false);
+    } else {
+      toast.error("Lead couldn't be saved — try again");
     }
     setSubmittingLead(false);
   }
@@ -574,6 +584,8 @@ export default function EmployeeMessagesPage() {
     if (!error) {
       const { data: { publicUrl } } = supabase.storage.from("chat-media").getPublicUrl(path);
       await sendMessage("", "voice", undefined, publicUrl);
+    } else {
+      toast.error("Voice note couldn't be sent — try again");
     }
     setUploadingVoice(false);
     audioChunksRef.current = [];
@@ -782,7 +794,7 @@ export default function EmployeeMessagesPage() {
             <button
               onClick={() => { sendMessage(text.trim()); setText(""); }}
               disabled={sending || notApproved}
-              className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white disabled:opacity-40 active:scale-90 transition-all"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-40 active:scale-90 transition-all"
             >
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
             </button>
@@ -898,7 +910,7 @@ export default function EmployeeMessagesPage() {
             <button
               onClick={submitLead}
               disabled={!leadName.trim() || !leadAddress.trim() || submittingLead}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-all active:scale-95"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-full bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-all active:scale-95"
             >
               <span className="material-symbols-outlined text-[18px]">person_add</span>
               {submittingLead ? "Sharing…" : "Share Lead"}

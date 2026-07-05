@@ -386,7 +386,7 @@ export default function TerritoryMapContent({
               )}
               <button
                 onClick={() => router.push(`/jobs/${selectedPin.job.id}`)}
-                className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm active:scale-95 transition-all"
+                className="w-full py-3 rounded-full bg-primary text-white font-bold text-sm active:scale-95 transition-all"
               >
                 View Job →
               </button>

@@ -13,9 +13,9 @@ function CheckEmailContent() {
       <div className="w-full max-w-sm flex flex-col items-center gap-6 text-center">
 
         {/* Icon */}
-        <div className="size-20 rounded-3xl bg-[#3581f3]/10 border border-[#3581f3]/20 flex items-center justify-center">
+        <div className="size-20 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center">
           <span
-            className="material-symbols-outlined text-[44px] text-[#3581f3]"
+            className="material-symbols-outlined text-[44px] text-primary"
             style={{ fontVariationSettings: "'FILL' 1" }}
           >
             mark_email_unread

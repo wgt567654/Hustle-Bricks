@@ -36,15 +36,21 @@ export default async function CanvassingPage() {
   let properties: CanvassingProperty[] = [];
 
   if (userId) {
-    const { data: biz } = await supabase.from("businesses").select("id").eq("owner_id", userId).maybeSingle();
+    const { data: biz, error: bizError } = await supabase.from("businesses").select("id").eq("owner_id", userId).maybeSingle();
+    if (bizError) {
+      throw new Error(`Failed to load business: ${bizError.message}`);
+    }
     let bizId: string | null = null;
 
     if (biz) {
       bizId = biz.id;
       businessId = bizId;
     } else {
-      const { data: tm } = await supabase.from("team_members").select("id, business_id")
-        .eq("user_id", userId).eq("is_active", true).single();
+      const { data: tm, error: tmError } = await supabase.from("team_members").select("id, business_id")
+        .eq("user_id", userId).eq("is_active", true).maybeSingle();
+      if (tmError) {
+        throw new Error(`Failed to load team membership: ${tmError.message}`);
+      }
       if (tm) {
         bizId = (tm as { id: string; business_id: string }).business_id;
         businessId = bizId;
@@ -53,8 +59,11 @@ export default async function CanvassingPage() {
     }
 
     if (bizId) {
-      const { data: props } = await supabase.from("canvassing_properties").select("*")
+      const { data: props, error: propsError } = await supabase.from("canvassing_properties").select("*")
         .eq("business_id", bizId).order("created_at", { ascending: false });
+      if (propsError) {
+        throw new Error(`Failed to load canvassing properties: ${propsError.message}`);
+      }
       properties = (props ?? []).map((p) => normalizeProperty(p as Record<string, unknown>));
     }
   }

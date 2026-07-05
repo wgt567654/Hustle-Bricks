@@ -43,7 +43,7 @@ function Navbar() {
       <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-xl select-none" style={{ background: "oklch(0.470 0.082 229)" }}>
-            <svg viewBox="0 0 22 13" width="18" height="auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 22 13" width="18" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
               <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
               <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
@@ -832,7 +832,7 @@ function Footer() {
       <div className="max-w-6xl mx-auto px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-lg select-none" style={{ background: "oklch(0.470 0.082 229)" }}>
-            <svg viewBox="0 0 22 13" width="15" height="auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 22 13" width="15" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="0"  y="0"   width="9"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
               <rect x="11" y="0"   width="11" height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
               <rect x="0"  y="7.5" width="5"  height="5.5" rx="0.75" fill="white" fillOpacity="0.95" />
@@ -845,8 +845,8 @@ function Footer() {
         <p className="text-xs" style={{ color: "oklch(0.551 0.023 264)" }}>© {new Date().getFullYear()} HustleBricks. All rights reserved.</p>
         <nav className="flex items-center gap-5">
           <Link href="/login" className="text-xs transition-colors" style={{ color: "oklch(0.551 0.023 264)" }}>Log in</Link>
-          <a href="#" className="text-xs transition-colors" style={{ color: "oklch(0.551 0.023 264)" }}>Privacy</a>
-          <a href="#" className="text-xs transition-colors" style={{ color: "oklch(0.551 0.023 264)" }}>Terms</a>
+          <Link href="/privacy" className="text-xs transition-colors" style={{ color: "oklch(0.551 0.023 264)" }}>Privacy</Link>
+          <Link href="/terms" className="text-xs transition-colors" style={{ color: "oklch(0.551 0.023 264)" }}>Terms</Link>
         </nav>
       </div>
     </footer>

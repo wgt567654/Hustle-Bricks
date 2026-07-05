@@ -74,7 +74,7 @@ export default function EmployeePendingPage() {
         <div className="flex flex-col gap-3 w-full mt-2">
           <button
             onClick={() => router.refresh()}
-            className="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 active:scale-95 transition-all"
+            className="w-full py-3 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary/90 active:scale-95 transition-all"
           >
             Check again
           </button>

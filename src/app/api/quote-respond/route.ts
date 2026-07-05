@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendSMS } from "@/lib/sms";
+import { verifyLinkToken } from "@/lib/link-token";
 
 function adminClient() {
   return createClient(
@@ -11,10 +12,19 @@ function adminClient() {
 }
 
 export async function POST(req: NextRequest) {
-  const { quoteId, action } = await req.json();
+  const { quoteId, action, t } = await req.json();
 
   if (!quoteId || !["accepted", "declined"].includes(action)) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  // Signed-link check: only holders of the tokenized link may respond.
+  // Grace mode (QUOTE_LINK_GRACE=true) lets legacy token-less links through;
+  // a token that is present but invalid is always rejected.
+  const grace = process.env.QUOTE_LINK_GRACE === "true";
+  const allowed = t ? verifyLinkToken("quote", quoteId, t) : grace;
+  if (!allowed) {
+    return NextResponse.json({ error: "Invalid or missing link token" }, { status: 403 });
   }
 
   const supabase = adminClient();

@@ -113,10 +113,12 @@ export default function BookWidget({
   }, [selectedDate, dayHours]);
 
   // Reset time when date changes
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing pattern; task 3.3 is styling-only
   useEffect(() => { setSelectedTime(null); }, [selectedDate]);
 
   // Fetch slot capacity when a date is selected
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing pattern; task 3.3 is styling-only
     if (!selectedDate || intent !== "schedule") { setSlotCapacity(null); return; }
     setLoadingCapacity(true);
     fetch(`/api/booking/capacity?businessId=${businessId}&date=${selectedDate}`)
@@ -182,25 +184,25 @@ export default function BookWidget({
     };
     const msg = messages[intent];
     return (
-      <div className="bg-green-50 border border-green-200 rounded-3xl p-8 flex flex-col items-center gap-4 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full bg-green-100">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-green-600">
+      <div className="bg-card border border-border shadow-card rounded-3xl p-8 flex flex-col items-center gap-4 text-center">
+        <div className="flex size-16 items-center justify-center rounded-full bg-green-600/10">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-green-600 dark:text-green-500">
             <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
           </svg>
         </div>
         <div>
-          <p className="font-extrabold text-green-800 text-lg">{msg.title}</p>
-          <p className="text-sm text-green-700 mt-2 leading-relaxed">{msg.body}</p>
+          <p className="font-extrabold text-foreground text-lg">{msg.title}</p>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{msg.body}</p>
         </div>
         {(contactPhone || contactEmail) && (
           <div className="flex flex-col gap-2 w-full mt-2">
             {contactPhone && (
-              <a href={`tel:${contactPhone}`} className="flex items-center justify-center gap-2 bg-green-100 hover:bg-green-200 transition-colors rounded-2xl py-3 text-green-800 text-sm font-bold">
+              <a href={`tel:${contactPhone}`} className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/15 transition-colors rounded-2xl py-3 text-primary text-sm font-bold">
                 Call us: {contactPhone}
               </a>
             )}
             {contactEmail && (
-              <a href={`mailto:${contactEmail}`} className="flex items-center justify-center gap-2 bg-green-100 hover:bg-green-200 transition-colors rounded-2xl py-3 text-green-800 text-sm font-bold">
+              <a href={`mailto:${contactEmail}`} className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/15 transition-colors rounded-2xl py-3 text-primary text-sm font-bold">
                 {contactEmail}
               </a>
             )}
@@ -247,21 +249,21 @@ export default function BookWidget({
 
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1 px-1">What can we help you with?</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1 px-1">What can we help you with?</p>
         {options.map((opt) => (
           <button
             key={opt.id}
             onClick={() => { setIntent(opt.id); setStep("info"); }}
-            className="bg-white border border-gray-200 rounded-3xl p-5 flex items-center gap-4 hover:border-indigo-300 hover:bg-indigo-50/40 transition-all group text-left active:scale-[0.98]"
+            className="bg-card border border-border shadow-card rounded-3xl p-5 flex items-center gap-4 hover:border-primary/40 hover:bg-primary/5 transition-all group text-left active:scale-[0.98]"
           >
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors">
               {opt.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-extrabold text-gray-900 text-base">{opt.label}</p>
-              <p className="text-sm text-gray-500 mt-0.5">{opt.description}</p>
+              <p className="font-extrabold text-foreground text-base">{opt.label}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{opt.description}</p>
             </div>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-400 shrink-0 group-hover:text-indigo-500 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors">
               <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
             </svg>
           </button>
@@ -275,68 +277,68 @@ export default function BookWidget({
     const isValid = name.trim().length > 0 && (email.trim().length > 0 || phone.trim().length > 0);
     return (
       <div className="flex flex-col gap-5">
-        <button onClick={() => setStep("intent")} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors w-fit">
+        <button onClick={() => setStep("intent")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
             <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
           </svg>
           Back
         </button>
 
-        <div className="bg-white border border-gray-200 rounded-3xl p-5 flex flex-col gap-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Your Info</p>
+        <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Info</p>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-600">Full Name *</label>
+            <label className="text-xs font-bold text-foreground">Full Name *</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Jane Smith"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-600">Email</label>
+            <label className="text-xs font-bold text-foreground">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="jane@example.com"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-600">Phone</label>
+            <label className="text-xs font-bold text-foreground">Phone</label>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="(555) 000-0000"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-600">Address <span className="font-normal text-gray-400">(optional)</span></label>
+            <label className="text-xs font-bold text-foreground">Address <span className="font-normal text-muted-foreground">(optional)</span></label>
             <input
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="123 Main St, City, State"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
 
           {!isValid && (name.length > 0 || email.length > 0 || phone.length > 0) && (
-            <p className="text-xs text-amber-600">Please enter your name and at least one way to reach you.</p>
+            <p className="text-xs text-amber-600 dark:text-amber-500">Please enter your name and at least one way to reach you.</p>
           )}
 
           <button
             onClick={() => setStep("details")}
             disabled={!isValid}
-            className="w-full py-4 rounded-2xl bg-indigo-600 text-white font-extrabold text-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+            className="w-full py-4 rounded-full bg-primary text-white font-extrabold text-sm shadow-md shadow-primary/25 hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
           >
             Continue
           </button>
@@ -356,7 +358,7 @@ export default function BookWidget({
 
   return (
     <div className="flex flex-col gap-5">
-      <button onClick={() => setStep("info")} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors w-fit">
+      <button onClick={() => setStep("info")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
           <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
         </svg>
@@ -365,27 +367,27 @@ export default function BookWidget({
 
       {/* ── Schedule ── */}
       {intent === "schedule" && (
-        <div className="bg-white border border-gray-200 rounded-3xl p-5 flex flex-col gap-5">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Pick a Date & Time</p>
+        <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Pick a Date & Time</p>
 
           {/* Month nav */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <button onClick={() => setCalMonth(new Date(calYear, calMonthIdx - 1, 1))} className="flex size-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-600">
+              <button onClick={() => setCalMonth(new Date(calYear, calMonthIdx - 1, 1))} className="flex size-8 items-center justify-center rounded-full border border-border hover:bg-muted transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-muted-foreground">
                   <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
                 </svg>
               </button>
-              <span className="text-sm font-extrabold text-gray-900">{MONTHS[calMonthIdx]} {calYear}</span>
-              <button onClick={() => setCalMonth(new Date(calYear, calMonthIdx + 1, 1))} className="flex size-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-gray-600">
+              <span className="text-sm font-extrabold text-foreground">{MONTHS[calMonthIdx]} {calYear}</span>
+              <button onClick={() => setCalMonth(new Date(calYear, calMonthIdx + 1, 1))} className="flex size-8 items-center justify-center rounded-full border border-border hover:bg-muted transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-muted-foreground">
                   <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
                 </svg>
               </button>
             </div>
             <div className="grid grid-cols-7 mb-1">
               {DAYS_SHORT.map((d) => (
-                <div key={d} className="text-center text-[10px] font-bold uppercase tracking-wider text-gray-400 py-1">{d}</div>
+                <div key={d} className="text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground py-1">{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-px">
@@ -403,11 +405,11 @@ export default function BookWidget({
                     disabled={isDisabled}
                     onClick={() => setSelectedDate(key)}
                     className={`relative flex items-center justify-center h-9 rounded-xl text-sm font-bold transition-all active:scale-95 ${
-                      isBlocked ? "bg-red-50 text-red-300 cursor-not-allowed line-through" :
-                      isSelected ? "bg-indigo-600 text-white shadow-sm" :
-                      isToday ? "bg-indigo-50 text-indigo-600" :
-                      isPast || !isCurrentMonth ? "text-gray-300 cursor-not-allowed" :
-                      "text-gray-800 hover:bg-gray-100"
+                      isBlocked ? "bg-destructive/5 text-destructive/40 cursor-not-allowed line-through" :
+                      isSelected ? "bg-primary/10 text-primary border border-primary shadow-sm" :
+                      isToday ? "bg-primary/5 text-primary" :
+                      isPast || !isCurrentMonth ? "text-muted-foreground/40 cursor-not-allowed" :
+                      "text-foreground hover:bg-muted"
                     }`}
                   >
                     {day.getDate()}
@@ -420,11 +422,11 @@ export default function BookWidget({
           {/* Time slots */}
           {selectedDate && (
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Pick a Time</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pick a Time</p>
               {loadingCapacity ? (
-                <p className="text-xs text-gray-400 text-center py-3">Checking availability…</p>
+                <p className="text-xs text-muted-foreground text-center py-3">Checking availability…</p>
               ) : timeSlots.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-3">No availability on this day.</p>
+                <p className="text-xs text-muted-foreground text-center py-3">No availability on this day.</p>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {timeSlots.map((slot) => {
@@ -438,17 +440,17 @@ export default function BookWidget({
                         disabled={isFull}
                         onClick={() => setSelectedTime(slot === selectedTime ? null : slot)}
                         className={`py-3 rounded-xl text-sm font-bold transition-all active:scale-95 flex flex-col items-center gap-0.5 ${
-                          isFull ? "bg-gray-100 text-gray-300 cursor-not-allowed line-through" :
-                          isSelected ? "bg-indigo-600 text-white shadow-sm" :
-                          "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                          isFull ? "bg-muted text-muted-foreground/50 cursor-not-allowed line-through" :
+                          isSelected ? "bg-primary/10 text-primary border border-primary shadow-sm" :
+                          "bg-transparent text-foreground border border-border hover:bg-muted"
                         }`}
                       >
                         {formatSlot(slot)}
                         {isLow && !isSelected && (
-                          <span className="text-[9px] font-bold text-amber-500">{cap} left</span>
+                          <span className="text-[9px] font-bold text-amber-600 dark:text-amber-500">{cap} left</span>
                         )}
                         {isFull && (
-                          <span className="text-[9px] font-bold text-gray-400" style={{ textDecoration: "none" }}>Full</span>
+                          <span className="text-[9px] font-bold text-muted-foreground" style={{ textDecoration: "none" }}>Full</span>
                         )}
                       </button>
                     );
@@ -460,13 +462,13 @@ export default function BookWidget({
 
           {/* Notes */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-600">Notes <span className="font-normal text-gray-400">(optional)</span></label>
+            <label className="text-xs font-bold text-foreground">Notes <span className="font-normal text-muted-foreground">(optional)</span></label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Anything we should know? Gate code, pets, specific areas…"
               rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
           </div>
         </div>
@@ -474,11 +476,11 @@ export default function BookWidget({
 
       {/* ── Quote ── */}
       {intent === "quote" && (
-        <div className="bg-white border border-gray-200 rounded-3xl p-5 flex flex-col gap-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">What do you need?</p>
+        <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">What do you need?</p>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-600">Services</label>
+            <label className="text-xs font-bold text-foreground">Services</label>
             <div className="flex flex-wrap gap-2">
               {SERVICE_OPTIONS.map((s) => (
                 <button
@@ -486,8 +488,8 @@ export default function BookWidget({
                   onClick={() => toggleService(s)}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
                     services.includes(s)
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300"
+                      ? "bg-primary/10 text-primary border-primary"
+                      : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
                   }`}
                 >
                   {s}
@@ -497,11 +499,11 @@ export default function BookWidget({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-600">Property Type <span className="font-normal text-gray-400">(optional)</span></label>
+            <label className="text-xs font-bold text-foreground">Property Type <span className="font-normal text-muted-foreground">(optional)</span></label>
             <select
               value={propertyType}
               onChange={(e) => setPropertyType(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <option value="">Select…</option>
               <option value="residential">Residential</option>
@@ -512,13 +514,13 @@ export default function BookWidget({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-gray-600">Notes <span className="font-normal text-gray-400">(optional)</span></label>
+            <label className="text-xs font-bold text-foreground">Notes <span className="font-normal text-muted-foreground">(optional)</span></label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any details that would help us give you an accurate quote…"
               rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
           </div>
         </div>
@@ -526,14 +528,14 @@ export default function BookWidget({
 
       {/* ── Contact ── */}
       {intent === "contact" && (
-        <div className="bg-white border border-gray-200 rounded-3xl p-5 flex flex-col gap-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Your Message</p>
+        <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Message</p>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={`Hi ${businessName}, I'd like to ask about…`}
             rows={5}
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+            className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
           />
         </div>
       )}
@@ -541,23 +543,23 @@ export default function BookWidget({
       {/* Summary + submit */}
       <div className="flex flex-col gap-3">
         {selectedDate && selectedTime && intent === "schedule" && (
-          <div className="bg-indigo-50 rounded-2xl p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-indigo-500 mb-1">Your Request</p>
-            <p className="font-extrabold text-gray-900">
+          <div className="bg-primary/10 rounded-2xl p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Your Request</p>
+            <p className="font-extrabold text-foreground">
               {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
-            <p className="text-sm text-gray-600 mt-0.5">{formatSlot(selectedTime)}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{formatSlot(selectedTime)}</p>
           </div>
         )}
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>
+          <p className="text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2">{error}</p>
         )}
 
         <button
           onClick={handleSubmit}
           disabled={submitting || !canSubmit}
-          className="w-full py-4 rounded-2xl bg-indigo-600 text-white font-extrabold text-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-lg shadow-indigo-200"
+          className="w-full py-4 rounded-full bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all shadow-md shadow-primary/25"
         >
           {submitting ? "Sending…" :
             intent === "schedule" ? "Request This Time" :

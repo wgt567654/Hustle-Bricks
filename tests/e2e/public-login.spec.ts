@@ -15,10 +15,13 @@ test.describe('Login page', () => {
     await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
-  test('shows "Join your team" link to employee join page', async ({ page }) => {
-    const joinLink = page.locator('a[href="/employee-join"]');
-    await expect(joinLink).toBeVisible();
-    await expect(joinLink).toHaveAttribute('href', '/employee-join');
+  test('shows Employee Login link that leads to the employee join page', async ({ page }) => {
+    // The login page now links to /employee-login, which in turn links to /employee-join
+    const employeeLink = page.locator('a[href="/employee-login"]');
+    await expect(employeeLink).toBeVisible();
+    await employeeLink.click();
+    await expect(page).toHaveURL(/\/employee-login/);
+    await expect(page.locator('a[href="/employee-join"]').first()).toBeVisible();
   });
 
   test('shows error on bad credentials', async ({ page }) => {

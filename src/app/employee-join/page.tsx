@@ -318,7 +318,7 @@ export default function EmployeeJoinPage() {
             <button
               type="submit"
               disabled={lookingUp || code.length < 6}
-              className="w-full mt-2 rounded-xl font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full mt-2 rounded-full font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {lookingUp ? "Looking up…" : "Continue"}
             </button>

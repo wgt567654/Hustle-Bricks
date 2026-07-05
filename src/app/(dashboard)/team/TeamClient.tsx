@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -178,6 +179,8 @@ export default function TeamClient({
     if (data) {
       setPendingMembers((prev) => prev.filter((m) => m.id !== id));
       setMembers((prev) => [...prev, { ...data, user_id: data.user_id ?? null, certifications: data.certifications ?? [], hourly_rate: data.hourly_rate ?? null, commission_rate: data.commission_rate ?? null }].sort((a, b) => a.name.localeCompare(b.name)));
+    } else {
+      toast.error("Couldn't approve the member — try again.");
     }
     setApprovingId(null);
   }
@@ -185,7 +188,12 @@ export default function TeamClient({
   async function handleReject(id: string) {
     setRejectingId(id);
     const supabase = createClient();
-    await supabase.from("team_members").update({ is_pending: false }).eq("id", id);
+    const { error } = await supabase.from("team_members").update({ is_pending: false }).eq("id", id);
+    if (error) {
+      setRejectingId(null);
+      toast.error("Couldn't reject the request — try again.");
+      return;
+    }
     setPendingMembers((prev) => prev.filter((m) => m.id !== id));
     setRejectingId(null);
   }
@@ -238,7 +246,7 @@ export default function TeamClient({
     const supabase = createClient();
     const hourly_rate = editForm.hourly_rate ? parseFloat(editForm.hourly_rate) : null;
     const commission_rate = editForm.commission_rate ? parseFloat(editForm.commission_rate) : null;
-    await supabase.from("team_members").update({
+    const { error } = await supabase.from("team_members").update({
       name: editForm.name.trim(),
       email: editForm.email.trim() || null,
       role: editForm.role,
@@ -246,6 +254,12 @@ export default function TeamClient({
       hourly_rate,
       commission_rate,
     }).eq("id", editMember.id);
+
+    if (error) {
+      setEditSaving(false);
+      toast.error("Couldn't save the changes — try again.");
+      return;
+    }
 
     setMembers((prev) => prev.map((m) =>
       m.id === editMember.id
@@ -259,7 +273,12 @@ export default function TeamClient({
   async function handleRemove(id: string) {
     setDeletingId(id);
     const supabase = createClient();
-    await supabase.from("team_members").update({ is_active: false }).eq("id", id);
+    const { error } = await supabase.from("team_members").update({ is_active: false }).eq("id", id);
+    if (error) {
+      setDeletingId(null);
+      toast.error("Couldn't remove the member — try again.");
+      return;
+    }
     setMembers((prev) => prev.filter((m) => m.id !== id));
     setDeletingId(null);
   }
@@ -272,7 +291,7 @@ export default function TeamClient({
       setConfirmDeleteAccountMember(null);
     } else {
       const { error } = await res.json();
-      alert(error ?? "Could not delete account. Please try again.");
+      toast.error(error ?? "Couldn't delete the account — try again.");
     }
     setDeletingAccountId(null);
   }
@@ -305,7 +324,12 @@ export default function TeamClient({
     const supabase = createClient();
     const days = memberAvailability[memberId] ?? {};
 
-    await supabase.from("employee_availability").delete().eq("team_member_id", memberId);
+    const { error: deleteError } = await supabase.from("employee_availability").delete().eq("team_member_id", memberId);
+    if (deleteError) {
+      setSavingAvailability(null);
+      toast.error("Couldn't save availability — try again.");
+      return;
+    }
 
     const rows = Object.entries(days).map(([day, hours]) => ({
       team_member_id: memberId,
@@ -316,8 +340,14 @@ export default function TeamClient({
     }));
 
     if (rows.length > 0) {
-      await supabase.from("employee_availability").insert(rows);
+      const { error: insertError } = await supabase.from("employee_availability").insert(rows);
+      if (insertError) {
+        setSavingAvailability(null);
+        toast.error("Couldn't save availability — try again.");
+        return;
+      }
     }
+    toast.success("Availability saved");
     setSavingAvailability(null);
   }
 
@@ -327,14 +357,24 @@ export default function TeamClient({
     const supabase = createClient();
     const current = memberBlockedDates[memberId] ?? new Set<string>();
     if (current.has(dateStr)) {
-      await supabase.from("employee_blocked_dates").delete().eq("team_member_id", memberId).eq("blocked_date", dateStr);
+      const { error } = await supabase.from("employee_blocked_dates").delete().eq("team_member_id", memberId).eq("blocked_date", dateStr);
+      if (error) {
+        setTogglingDateFor(null);
+        toast.error("Couldn't unblock that date — try again.");
+        return;
+      }
       setMemberBlockedDates((prev) => {
         const s = new Set(prev[memberId]);
         s.delete(dateStr);
         return { ...prev, [memberId]: s };
       });
     } else {
-      await supabase.from("employee_blocked_dates").insert({ team_member_id: memberId, business_id: businessId, blocked_date: dateStr });
+      const { error } = await supabase.from("employee_blocked_dates").insert({ team_member_id: memberId, business_id: businessId, blocked_date: dateStr });
+      if (error) {
+        setTogglingDateFor(null);
+        toast.error("Couldn't block that date — try again.");
+        return;
+      }
       setMemberBlockedDates((prev) => ({ ...prev, [memberId]: new Set([...(prev[memberId] ?? []), dateStr]) }));
     }
     setTogglingDateFor(null);
@@ -401,10 +441,14 @@ export default function TeamClient({
   async function handleRemoveZip(memberId: string, zip: string) {
     if (!businessId) return;
     const supabase = createClient();
-    await supabase.from("territory_assignments").delete()
+    const { error } = await supabase.from("territory_assignments").delete()
       .eq("business_id", businessId)
       .eq("team_member_id", memberId)
       .eq("zip_code", zip);
+    if (error) {
+      toast.error("Couldn't remove that ZIP — try again.");
+      return;
+    }
     setMemberTerritories((prev) => ({
       ...prev,
       [memberId]: (prev[memberId] ?? []).filter((z) => z !== zip),
@@ -451,7 +495,7 @@ export default function TeamClient({
             </span>
           </div>
           {pendingMembers.map((member) => (
-            <Card key={member.id} className="overflow-hidden rounded-2xl border-[var(--color-status-in-progress)]/20 shadow-sm bg-status-in-progress/10">
+            <Card key={member.id} className="overflow-hidden rounded-2xl border-[var(--color-status-in-progress)]/20 shadow-card bg-status-in-progress/10">
               <div className="p-4 flex gap-4 items-center">
                 <div className="flex size-12 items-center justify-center rounded-2xl icon-orange  text-base font-extrabold shrink-0">
                   {getInitials(member.name)}
@@ -500,7 +544,7 @@ export default function TeamClient({
         {filtered.map((member) => {
           const jobCount = workload[member.id] ?? 0;
           return (
-            <Card key={member.id} className="overflow-hidden rounded-2xl border-border shadow-sm group hover:border-primary/30 transition-colors">
+            <Card key={member.id} className="overflow-hidden rounded-2xl border-border shadow-card group hover:border-primary/30 transition-colors">
               <div className="p-4 flex gap-4 items-start">
                 {/* Avatar with active dot */}
                 <div className="relative shrink-0">

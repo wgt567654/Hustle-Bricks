@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { STATUS_HEX } from "@/lib/status-colors";
 import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
+import { toast } from "@/lib/toast";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 type Tag = "residential" | "commercial" | "vip";
@@ -190,7 +191,7 @@ export default function ClientDetailClient({
     if (!client) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("clients").update({
+    const { error } = await supabase.from("clients").update({
       name: form.name.trim(),
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
@@ -199,6 +200,12 @@ export default function ClientDetailClient({
       notes: form.notes.trim() || null,
       recurring_plan: form.recurring_plan,
     }).eq("id", client.id);
+
+    if (error) {
+      setSaving(false);
+      toast.error("Couldn't save the client — try again.");
+      return;
+    }
 
     setClient((c) => c ? {
       ...c,
@@ -218,7 +225,12 @@ export default function ClientDetailClient({
     if (!client) return;
     setSavingNotes(true);
     const supabase = createClient();
-    await supabase.from("clients").update({ notes: notesValue.trim() || null }).eq("id", client.id);
+    const { error } = await supabase.from("clients").update({ notes: notesValue.trim() || null }).eq("id", client.id);
+    if (error) {
+      setSavingNotes(false);
+      toast.error("Couldn't save the notes — try again.");
+      return;
+    }
     setClient((c) => c ? { ...c, notes: notesValue.trim() || null } : c);
     setSavingNotes(false);
     setEditingNotes(false);
@@ -229,7 +241,7 @@ export default function ClientDetailClient({
     setActioningRequest(req.id);
     const supabase = createClient();
     const scheduledAt = new Date(`${req.requested_date}T${req.requested_time}:00`).toISOString();
-    await Promise.all([
+    const [jobRes, reqRes] = await Promise.all([
       supabase.from("jobs").insert({
         business_id: businessId,
         client_id: client.id,
@@ -240,6 +252,11 @@ export default function ClientDetailClient({
       }),
       supabase.from("booking_requests").update({ status: "accepted" }).eq("id", req.id),
     ]);
+    if (jobRes.error || reqRes.error) {
+      setActioningRequest(null);
+      toast.error("Couldn't accept the booking — try again.");
+      return;
+    }
     setBookingRequests((prev) => prev.filter((r) => r.id !== req.id));
     setActioningRequest(null);
     // Reload jobs to show the new one
@@ -254,7 +271,12 @@ export default function ClientDetailClient({
   async function declineBooking(reqId: string) {
     setActioningRequest(reqId);
     const supabase = createClient();
-    await supabase.from("booking_requests").update({ status: "declined" }).eq("id", reqId);
+    const { error } = await supabase.from("booking_requests").update({ status: "declined" }).eq("id", reqId);
+    if (error) {
+      setActioningRequest(null);
+      toast.error("Couldn't decline the request — try again.");
+      return;
+    }
     setBookingRequests((prev) => prev.filter((r) => r.id !== reqId));
     setActioningRequest(null);
   }
@@ -301,7 +323,7 @@ export default function ClientDetailClient({
         setShowBillingModal(false);
         setBillingForm({ amount: "", interval: "month", description: "" });
       } else {
-        alert(error ?? "Could not create subscription");
+        toast.error(error ?? "Couldn't create the subscription — try again.");
       }
     } finally {
       setSubmittingBilling(false);
@@ -358,7 +380,7 @@ export default function ClientDetailClient({
       <div className="flex flex-col gap-6 lg:flex-[3]">
 
       {/* Profile card */}
-      <Card className="rounded-3xl border-border shadow-sm overflow-hidden">
+      <Card className="rounded-3xl border-border shadow-card overflow-hidden">
         <div className="p-5 flex flex-col gap-4">
           {/* Avatar + name */}
           <div className="flex items-center gap-4">
@@ -462,21 +484,21 @@ export default function ClientDetailClient({
 
       {/* Revenue summary */}
       <div className="grid grid-cols-3 gap-3">
-        <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
+        <Card className="p-4 rounded-2xl border-border shadow-card flex flex-col gap-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Revenue</span>
           <span className="text-xl font-extrabold text-[var(--color-status-completed)] tracking-tight">
             {formatCurrencyRounded(lifetimeRevenue, currency)}
           </span>
           <span className="text-[10px] text-muted-foreground">lifetime</span>
         </Card>
-        <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
+        <Card className="p-4 rounded-2xl border-border shadow-card flex flex-col gap-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Outstanding</span>
           <span className={`text-xl font-extrabold tracking-tight ${outstanding > 0 ? "text-[var(--color-status-in-progress)]" : "text-[var(--color-status-completed)]"}`}>
             {outstanding > 0 ? formatCurrencyRounded(outstanding, currency) : "✓"}
           </span>
           <span className="text-[10px] text-muted-foreground">unpaid</span>
         </Card>
-        <Card className="p-4 rounded-2xl border-border shadow-sm flex flex-col gap-1">
+        <Card className="p-4 rounded-2xl border-border shadow-card flex flex-col gap-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Jobs</span>
           <span className="text-xl font-extrabold text-foreground tracking-tight">{jobs.length}</span>
           <span className="text-[10px] text-muted-foreground">{upcomingJobs.length} upcoming</span>
@@ -484,7 +506,7 @@ export default function ClientDetailClient({
       </div>
 
       {/* Property Notes */}
-      <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border-border shadow-card overflow-hidden">
         <div className="p-4 flex items-center justify-between border-b border-border/50">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[18px] text-[var(--color-status-in-progress)]" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>
@@ -554,7 +576,7 @@ export default function ClientDetailClient({
       {/* Auto-Billing */}
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Auto-Billing</h3>
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+        <Card className="rounded-2xl border-border shadow-card overflow-hidden">
           {activeBillingSub ? (
             <div className="p-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -685,7 +707,7 @@ export default function ClientDetailClient({
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Booking Requests</h3>
-            <span className="text-[10px] font-bold bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-full">{bookingRequests.length} pending</span>
+            <span className="text-[10px] font-bold status-in-progress px-2 py-0.5 rounded-full">{bookingRequests.length} pending</span>
           </div>
           {bookingRequests.map((req) => {
             const dateLabel = new Date(req.requested_date + "T12:00:00").toLocaleDateString("en-US", {
@@ -695,7 +717,7 @@ export default function ClientDetailClient({
             const timeLabel = `${h % 12 === 0 ? 12 : h % 12} ${h >= 12 ? "PM" : "AM"}`;
             const isActioning = actioningRequest === req.id;
             return (
-              <Card key={req.id} className="rounded-2xl border-amber-200 shadow-sm overflow-hidden">
+              <Card key={req.id} className="rounded-2xl border-amber-200 shadow-card overflow-hidden">
                 <div className="h-1 w-full bg-amber-400" />
                 <div className="p-4 flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-2">
@@ -703,7 +725,7 @@ export default function ClientDetailClient({
                       <p className="font-extrabold text-sm text-foreground">{dateLabel} · {timeLabel}</p>
                       {req.notes && <p className="text-xs text-muted-foreground line-clamp-2">{req.notes}</p>}
                     </div>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold shrink-0">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full status-in-progress text-[10px] font-bold shrink-0">
                       Pending
                     </span>
                   </div>
@@ -950,7 +972,7 @@ export default function ClientDetailClient({
               <button
                 onClick={saveEdit}
                 disabled={saving || !form.name.trim()}
-                className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
+                className="w-full py-3.5 rounded-full bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
               >
                 {saving ? "Saving…" : "Save Changes"}
               </button>
@@ -971,7 +993,7 @@ function JobCard({ job, onClick, currency }: { job: Job; onClick: () => void; cu
   return (
     <Card
       onClick={onClick}
-      className="overflow-hidden rounded-2xl border-border shadow-sm cursor-pointer hover:shadow-md hover:border-primary/20 transition-all"
+      className="overflow-hidden rounded-2xl border-border shadow-card cursor-pointer hover:border-primary/20 transition-all"
     >
       <div className="h-1 w-full" style={{ backgroundColor: color }} />
       <div className="p-4 flex items-center gap-3">

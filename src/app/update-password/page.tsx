@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +11,42 @@ export default function UpdatePasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
+
+  // Recovery links can arrive with the session in the URL fragment
+  // (#access_token=...&refresh_token=...). The PKCE-mode browser client
+  // ignores fragments, so consume them explicitly via setSession.
+  useEffect(() => {
+    const supabase = createClient();
+    let cancelled = false;
+    (async () => {
+      const hash = window.location.hash;
+      if (hash.includes("access_token")) {
+        const params = new URLSearchParams(hash.slice(1));
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token");
+        if (access_token && refresh_token) {
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (!error) {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+        }
+      }
+      for (let i = 0; i < 10; i++) {
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (data.session) {
+          setHasSession(true);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      if (!cancelled) setHasSession(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
@@ -48,6 +84,13 @@ export default function UpdatePasswordPage() {
         <Card className="p-6 rounded-2xl border-border shadow-sm flex flex-col gap-4">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
+            {hasSession === false && (
+              <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl px-3 py-2">
+                This reset link is invalid or has expired. Request a new one from the{" "}
+                <a href="/forgot-password" className="font-bold underline">reset page</a>.
+              </p>
+            )}
+
             {error && (
               <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl px-3 py-2">{error}</p>
             )}
@@ -81,7 +124,7 @@ export default function UpdatePasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 rounded-xl font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full mt-2 rounded-full font-bold py-3.5 text-sm bg-foreground text-background shadow-md hover:bg-foreground/90 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? "Updating…" : "Update password"}
             </button>

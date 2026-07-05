@@ -4,6 +4,18 @@
  * and the public API returns 404 for a fake quote.
  */
 import { test, expect } from '@playwright/test';
+import { createHmac } from 'node:crypto';
+import { resolve } from 'node:path';
+import { config as dotenvConfig } from 'dotenv';
+
+// Public quote APIs now require a signed link token (HMAC over `quote:{id}`,
+// signed with LINK_SIGNING_SECRET ?? CRON_SECRET — see src/lib/link-token.ts).
+// The secret lives in .env.local (dotenv does not override already-set vars).
+dotenvConfig({ path: resolve(__dirname, '../../.env.local') });
+const LINK_SECRET = process.env.LINK_SIGNING_SECRET ?? process.env.CRON_SECRET;
+function signQuoteToken(id: string): string {
+  return createHmac('sha256', LINK_SECRET!).update(`quote:${id}`).digest('hex').slice(0, 32);
+}
 
 test.describe('Quote detail (owner) — video proposal', () => {
   test('sales page loads without error', async ({ page }) => {
@@ -32,7 +44,8 @@ test.describe('Quote detail (owner) — video proposal', () => {
     if (notFound) { test.skip(); return; }
 
     await expect(page.locator('text=Video Proposal')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('text=Client Link')).toBeVisible({ timeout: 3000 });
+    // "Client Link" appears both as a heading and inside the copy button — target the heading
+    await expect(page.getByRole('heading', { name: 'Client Link' })).toBeVisible({ timeout: 3000 });
     await expect(page.getByRole('button', { name: /copy client link/i })).toBeVisible({ timeout: 3000 });
   });
 });
@@ -47,15 +60,33 @@ test.describe('Client quote page /q/[id]', () => {
     expect(body).toBeTruthy();
   });
 
-  test('public API returns 404 for fake quote', async ({ request }) => {
-    const res = await request.get('/api/quote-public/00000000-0000-0000-0000-000000000000');
-    expect(res.status()).toBe(404);
+  test('public API requires a signed token and 404s for fake quote', async ({ request }) => {
+    const fakeId = '00000000-0000-0000-0000-000000000000';
+
+    // Without a token the endpoint rejects with 403 before any lookup
+    const noToken = await request.get(`/api/quote-public/${fakeId}`);
+    expect(noToken.status()).toBe(403);
+
+    // With a validly signed token, a fake quote id returns 404
+    test.skip(!LINK_SECRET, 'No LINK_SIGNING_SECRET/CRON_SECRET available to sign tokens');
+    const withToken = await request.get(`/api/quote-public/${fakeId}?t=${signQuoteToken(fakeId)}`);
+    expect(withToken.status()).toBe(404);
   });
 
   test('quote-respond rejects non-sent quote action', async ({ request }) => {
-    const res = await request.post('/api/quote-respond', {
-      data: { quoteId: '00000000-0000-0000-0000-000000000000', action: 'accepted' },
+    const fakeId = '00000000-0000-0000-0000-000000000000';
+
+    // Without a token the endpoint rejects with 403 before any status check
+    const noToken = await request.post('/api/quote-respond', {
+      data: { quoteId: fakeId, action: 'accepted' },
     });
-    expect([404, 409]).toContain(res.status());
+    expect(noToken.status()).toBe(403);
+
+    // With a validly signed token, the fake quote fails the lookup/status checks
+    test.skip(!LINK_SECRET, 'No LINK_SIGNING_SECRET/CRON_SECRET available to sign tokens');
+    const withToken = await request.post('/api/quote-respond', {
+      data: { quoteId: fakeId, action: 'accepted', t: signQuoteToken(fakeId) },
+    });
+    expect([404, 409]).toContain(withToken.status());
   });
 });

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatCurrencyRounded } from "@/lib/currency";
+import { toast } from "@/lib/toast";
 
 type Payment = {
   id: string;
@@ -98,20 +99,27 @@ export default function PaymentsClient({
     setPaySaving(true);
     const supabase = createClient();
 
+    let error: { message: string } | null = null;
     if (payModal.payment) {
-      await supabase
+      ({ error } = await supabase
         .from("payments")
         .update({ status: "paid", paid_at: new Date().toISOString(), method: payMethod, amount: parseFloat(payAmount) || payModal.total })
-        .eq("id", payModal.payment.id);
+        .eq("id", payModal.payment.id));
     } else {
-      await supabase.from("payments").insert({
+      ({ error } = await supabase.from("payments").insert({
         business_id: businessId,
         job_id: payModal.id,
         amount: parseFloat(payAmount) || payModal.total,
         status: "paid",
         paid_at: new Date().toISOString(),
         method: payMethod,
-      });
+      }));
+    }
+
+    if (error) {
+      setPaySaving(false);
+      toast.error("Couldn't record the payment — try again.");
+      return;
     }
 
     const now = new Date().toISOString();
@@ -134,6 +142,7 @@ export default function PaymentsClient({
     );
     setPaySaving(false);
     setPayModal(null);
+    toast.success("Payment recorded");
   }
 
   const paidJobs = jobs.filter((j) => j.payment?.status === "paid");
@@ -394,7 +403,7 @@ export default function PaymentsClient({
               <button
                 onClick={confirmMarkPaid}
                 disabled={paySaving}
-                className="w-full py-3.5 rounded-2xl bg-[var(--color-status-completed)] text-white font-extrabold text-sm hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg shadow-md flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-full bg-[var(--color-status-completed)] text-white font-extrabold text-sm hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[20px]">attach_money</span>
                 {paySaving ? "Saving…" : `Record ${formatCurrency(parseFloat(payAmount || "0"), currency)} · ${METHOD_LABELS[payMethod] ?? payMethod}`}

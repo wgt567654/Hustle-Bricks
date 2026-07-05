@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { STATUS_HEX } from "@/lib/status-colors";
+import { toast } from "@/lib/toast";
 import { nearestNeighborTSP, buildGoogleMapsRouteUrls } from "@/lib/routeOptimizer";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
@@ -340,14 +341,17 @@ export default function CalendarClient({
       const data = await res.json();
       setGcalInviteResult(data);
     } catch {
-      // Swallow — non-critical
+      // Non-critical, but don't fail silently
+      toast.info("Google Calendar sync failed — the change is saved locally");
     }
     setGcalInviting(false);
   }
 
   async function disconnectGcal() {
     setGcalDisconnecting(true);
-    await fetch("/api/google-calendar/disconnect", { method: "DELETE" }).catch(() => {});
+    await fetch("/api/google-calendar/disconnect", { method: "DELETE" }).catch(() => {
+      toast.info("Google Calendar sync failed — the change is saved locally");
+    });
     setGcalConnected(false);
     setGcalDisconnecting(false);
   }
@@ -360,10 +364,15 @@ export default function CalendarClient({
       (a) => a.team_member_id === memberId && a.day_of_week === dayOfWeek
     );
     if (existing) {
-      await supabase.from("worker_availability").delete().eq("id", existing.id);
+      const { error } = await supabase.from("worker_availability").delete().eq("id", existing.id);
+      if (error) {
+        setSavingAvail(false);
+        toast.error("Couldn't update availability — try again.");
+        return;
+      }
       setAvailability((prev) => prev.filter((a) => a.id !== existing.id));
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("worker_availability")
         .insert({
           business_id: businessId,
@@ -374,6 +383,11 @@ export default function CalendarClient({
         })
         .select("id, team_member_id, day_of_week, start_time, end_time")
         .single();
+      if (error) {
+        setSavingAvail(false);
+        toast.error("Couldn't update availability — try again.");
+        return;
+      }
       if (data) setAvailability((prev) => [...prev, data]);
     }
     setSavingAvail(false);
@@ -384,10 +398,20 @@ export default function CalendarClient({
     setTogglingDate(true);
     const supabase = createClient();
     if (unavailDates.has(dateStr)) {
-      await supabase.from("blocked_dates").delete().eq("business_id", businessId).eq("blocked_date", dateStr);
+      const { error } = await supabase.from("blocked_dates").delete().eq("business_id", businessId).eq("blocked_date", dateStr);
+      if (error) {
+        setTogglingDate(false);
+        toast.error("Couldn't unblock that date — try again.");
+        return;
+      }
       setUnavailDates((prev) => { const next = new Set(prev); next.delete(dateStr); return next; });
     } else {
-      await supabase.from("blocked_dates").insert({ business_id: businessId, blocked_date: dateStr });
+      const { error } = await supabase.from("blocked_dates").insert({ business_id: businessId, blocked_date: dateStr });
+      if (error) {
+        setTogglingDate(false);
+        toast.error("Couldn't block that date — try again.");
+        return;
+      }
       setUnavailDates((prev) => new Set([...prev, dateStr]));
     }
     setTogglingDate(false);
@@ -396,13 +420,18 @@ export default function CalendarClient({
   async function saveSchedulingSettings(updates: Partial<typeof schedulingSettings>) {
     if (!businessId) return;
     setSavingSettings(false);
+    const previous = schedulingSettings;
     const next = { ...schedulingSettings, ...updates };
     setSchedulingSettings(next);
     const supabase = createClient();
-    await supabase.from("scheduling_settings").upsert(
+    const { error } = await supabase.from("scheduling_settings").upsert(
       { business_id: businessId, ...next },
       { onConflict: "business_id" }
     );
+    if (error) {
+      setSchedulingSettings(previous);
+      toast.error("Couldn't save scheduling settings — try again.");
+    }
   }
 
   function toggleUnavailDay(day: number) {
@@ -435,7 +464,7 @@ export default function CalendarClient({
     const scheduledAt = new Date(req.requested_date + "T12:00:00");
     scheduledAt.setHours(h, m, 0, 0);
 
-    const { data: job } = await supabase
+    const { data: job, error: jobError } = await supabase
       .from("jobs")
       .insert({
         business_id: businessId,
@@ -448,10 +477,22 @@ export default function CalendarClient({
       .select("id, status, total, scheduled_at, clients(name), job_line_items(description)")
       .single();
 
-    await supabase
+    if (jobError || !job) {
+      setProcessingBooking(null);
+      toast.error("Couldn't accept the booking — try again.");
+      return;
+    }
+
+    const { error: reqError } = await supabase
       .from("booking_requests")
       .update({ status: "confirmed" })
       .eq("id", req.id);
+
+    if (reqError) {
+      setProcessingBooking(null);
+      toast.error("Couldn't accept the booking — try again.");
+      return;
+    }
 
     setBookingRequests((prev) => prev.filter((r) => r.id !== req.id));
     if (job) {
@@ -463,7 +504,9 @@ export default function CalendarClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobId: job.id }),
-      }).catch(() => {});
+      }).catch(() => {
+        toast.info("Google Calendar sync failed — the change is saved locally");
+      });
       router.push(`/jobs/${job.id}`);
     }
     setProcessingBooking(null);
@@ -472,7 +515,12 @@ export default function CalendarClient({
   async function declineBooking(id: string) {
     setProcessingBooking(id);
     const supabase = createClient();
-    await supabase.from("booking_requests").update({ status: "declined" }).eq("id", id);
+    const { error } = await supabase.from("booking_requests").update({ status: "declined" }).eq("id", id);
+    if (error) {
+      setProcessingBooking(null);
+      toast.error("Couldn't decline the request — try again.");
+      return;
+    }
     setBookingRequests((prev) => prev.filter((r) => r.id !== id));
     setProcessingBooking(null);
   }
@@ -516,53 +564,63 @@ export default function CalendarClient({
       .select("id")
       .single();
 
-    if (!error && job && scheduleDescription) {
-      await supabase.from("job_line_items").insert({
+    if (error || !job) {
+      setScheduleSaving(false);
+      toast.error("Couldn't schedule the job — try again.");
+      return;
+    }
+
+    if (scheduleDescription) {
+      const { error: lineError } = await supabase.from("job_line_items").insert({
         job_id: job.id,
         description: scheduleDescription,
         quantity: 1,
         unit_price: parseFloat(scheduleTotal) || 0,
       });
+      if (lineError) toast.error("Job created, but the description couldn't be saved.");
     }
 
     // Save all crew members to job_crew table
-    if (!error && job && scheduleAssignedIds.length > 0) {
-      await supabase.from("job_crew").insert(
+    if (scheduleAssignedIds.length > 0) {
+      const { error: crewError } = await supabase.from("job_crew").insert(
         scheduleAssignedIds.map((mid) => ({ job_id: job.id, team_member_id: mid }))
       );
+      if (crewError) toast.error("Job created, but the crew couldn't be saved.");
     }
 
     setScheduleSaving(false);
 
-    if (!error && job) {
-      const { data: newJob } = await supabase
-        .from("jobs")
-        .select("id, status, total, scheduled_at, clients(name), job_line_items(description)")
-        .eq("id", job.id)
-        .single();
-      if (newJob) {
-        setJobs((prev) => [...prev, newJob as unknown as Job].sort((a, b) =>
-          (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? "")
-        ));
-      }
-      setScheduleSuccessJob({ id: job.id, assignedMembers });
+    const { data: newJob } = await supabase
+      .from("jobs")
+      .select("id, status, total, scheduled_at, clients(name), job_line_items(description)")
+      .eq("id", job.id)
+      .single();
+    if (newJob) {
+      setJobs((prev) => [...prev, newJob as unknown as Job].sort((a, b) =>
+        (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? "")
+      ));
+    }
+    setScheduleSuccessJob({ id: job.id, assignedMembers });
 
-      // Fire job assignment email in the background (non-blocking)
-      if (primaryMemberId) {
-        fetch("/api/email/job-assignment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId: job.id }),
-        }).catch(() => {});
-      }
-
-      // Sync to Google Calendar in the background (non-blocking)
-      fetch("/api/google-calendar/sync-job", {
+    // Fire job assignment email in the background (non-blocking)
+    if (primaryMemberId) {
+      fetch("/api/email/job-assignment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobId: job.id }),
-      }).catch(() => {});
+      }).catch(() => {
+        toast.info("Couldn't send the assignment email — the job is saved.");
+      });
     }
+
+    // Sync to Google Calendar in the background (non-blocking)
+    fetch("/api/google-calendar/sync-job", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: job.id }),
+    }).catch(() => {
+      toast.info("Google Calendar sync failed — the change is saved locally");
+    });
   }
 
   async function optimizeRoute() {
@@ -604,11 +662,14 @@ export default function CalendarClient({
 
     // Save route_order to DB
     const supabase = createClient();
-    await Promise.all(
+    const routeResults = await Promise.all(
       ordered.map((job, idx) =>
         supabase.from("jobs").update({ route_order: idx + 1 } as Record<string, unknown>).eq("id", job.id)
       )
     );
+    if (routeResults.some((r) => r.error)) {
+      toast.error("Couldn't save the route order — try again.");
+    }
 
     // Reorder displayed jobs for the selected day
     const orderedIds = new Set(ordered.map((j) => j.id));
@@ -719,7 +780,7 @@ export default function CalendarClient({
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Booking Requests
                 </p>
-                <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px] font-bold">
+                <Badge className="status-in-progress border-0 text-[10px] font-bold">
                   {bookingRequests.length} pending
                 </Badge>
               </div>
@@ -1767,7 +1828,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                       setScheduleSuccessJob(null);
                       router.push(`/jobs/${scheduleSuccessJob.id}`);
                     }}
-                    className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors"
+                    className="w-full py-3 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors"
                   >
                     View Job
                   </button>
@@ -1778,7 +1839,7 @@ CREATE POLICY "owner_manage_availability" ON worker_availability
                 <button
                   onClick={saveScheduledJob}
                   disabled={!scheduleTime || scheduleSaving}
-                  className="w-full py-3.5 rounded-2xl bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
+                  className="w-full py-3.5 rounded-full bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
                 >
                   {scheduleSaving ? "Scheduling…" : scheduleTime ? `Schedule at ${formatSlotLabel(scheduleTime)}` : "Pick a time above"}
                 </button>

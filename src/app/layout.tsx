@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import InstallPrompt from "@/components/InstallPrompt";
+import Toaster from "@/components/ui/toaster";
 
 const barlow = Barlow({
   variable: "--font-barlow",
@@ -62,6 +63,7 @@ export default function RootLayout({
           {children}
           <ServiceWorkerRegistration />
           <InstallPrompt />
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

@@ -21,17 +21,13 @@ test.describe('Intel page (owner)', () => {
     expect(hasEmpty || hasFeed).toBe(true);
   });
 
-  test('appears in the More navigation', async ({ page }) => {
-    await page.goto('/jobs');
-    const sidebarLink = page.locator('nav a[href="/intel"]').first();
-    const moreBtn = page.locator('button:has-text("More")').last();
-    const sidebarVisible = await sidebarLink.isVisible({ timeout: 2000 }).catch(() => false);
-    if (sidebarVisible) {
-      await expect(sidebarLink).toBeVisible();
-    } else {
-      await moreBtn.click();
-      await expect(page.locator('a[href="/intel"]')).toBeVisible({ timeout: 3000 });
-    }
+  test('appears in the Field navigation', async ({ page }) => {
+    // Intel now lives in the Field group's sub-navigation (visible on Field pages)
+    await page.goto('/heatmap');
+    const intelLink = page.locator('nav a[href="/intel"]').first();
+    await expect(intelLink).toBeVisible({ timeout: 5000 });
+    await intelLink.click();
+    await expect(page).toHaveURL(/\/intel/, { timeout: 8000 });
   });
 
   test('All filter chip is visible when intel exists', async ({ page }) => {

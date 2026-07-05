@@ -46,6 +46,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/sales",     label: "Pipeline", icon: "trending_up"   },
       { href: "/quotes",    label: "Quotes",   icon: "request_quote" },
       { href: "/payments",  label: "Payments", icon: "attach_money"  },
+      { href: "/services",  label: "Services", icon: "home_repair_service", ownerOnly: true },
     ],
   },
   {

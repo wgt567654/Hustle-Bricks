@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { sendSMS } from "@/lib/sms";
 import { formatCurrency } from "@/lib/currency";
+import { createClient as createServerSupabase } from "@/lib/supabase/server";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,6 +11,11 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  // Authenticate the caller via their session (anon client + cookies)
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { jobId } = await req.json();
   if (!jobId) return NextResponse.json({ error: "jobId required" }, { status: 400 });
 
@@ -18,7 +24,7 @@ export async function POST(req: NextRequest) {
     .select(`
       id, total, scheduled_at, completed_at, invoice_auto_sent_at, client_id,
       clients ( id, name, phone, email ),
-      businesses ( id, name, contact_email, currency, auto_invoice_enabled )
+      businesses ( id, name, contact_email, currency, auto_invoice_enabled, owner_id )
     `)
     .eq("id", jobId)
     .single();
@@ -31,12 +37,18 @@ export async function POST(req: NextRequest) {
     invoice_auto_sent_at: string | null;
     client_id: string | null;
     clients: { id: string; name: string; phone: string | null; email: string | null } | null;
-    businesses: { id: string; name: string | null; contact_email: string | null; currency: string | null; auto_invoice_enabled: boolean } | null;
+    businesses: { id: string; name: string | null; contact_email: string | null; currency: string | null; auto_invoice_enabled: boolean; owner_id: string } | null;
   };
 
   const j = job as unknown as JobData;
 
   if (!j) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+
+  // Authorize: only the owner of the business this job belongs to may trigger invoice notifications
+  if (!j.businesses || j.businesses.owner_id !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   if (j.businesses?.auto_invoice_enabled === false) {
     return NextResponse.json({ skipped: true, reason: "auto_invoice_disabled" });
   }

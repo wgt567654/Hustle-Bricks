@@ -145,7 +145,7 @@ export default function SignupPage() {
               </div>
               <button
                 type="submit"
-                className="w-full rounded-xl font-bold py-3.5 text-sm bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all"
+                className="w-full rounded-full font-bold py-3.5 text-sm bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all"
               >
                 Continue with email →
               </button>
@@ -186,7 +186,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading || password.length < 8}
-                className="w-full rounded-xl font-bold py-3.5 text-sm bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-full font-bold py-3.5 text-sm bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Creating account…" : "Create account →"}
               </button>

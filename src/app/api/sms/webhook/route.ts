@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { sendSMS } from "@/lib/sms";
+import { validateTwilioSignature } from "@/lib/twilio-signature";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,11 +18,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Bad content type" }, { status: 400 });
   }
 
-  const formData = await req.formData();
-  const fromPhone = formData.get("From") as string | null;
-  const toPhone   = formData.get("To")   as string | null;
-  const body      = formData.get("Body") as string | null;
-  const twilioSid = formData.get("MessageSid") as string | null;
+  // Read the raw body so the signature is computed over the exact POST params.
+  const rawBody = await req.text();
+  const formData = new URLSearchParams(rawBody);
+
+  // Validate X-Twilio-Signature (HMAC-SHA1 of full URL + sorted POST params,
+  // keyed by TWILIO_AUTH_TOKEN). Only enforced when the token is configured.
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (authToken) {
+    // Reconstruct the public URL Twilio signed: the webhook URL configured in
+    // the Twilio console is NEXT_PUBLIC_APP_URL + this route's path (+ query).
+    const appOrigin = (
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://hustlebricks.com"
+    ).replace(/\/+$/, "");
+    const signedUrl = `${appOrigin}${req.nextUrl.pathname}${req.nextUrl.search}`;
+
+    const params: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      params[key] = value;
+    });
+
+    const valid = validateTwilioSignature({
+      authToken,
+      signature: req.headers.get("x-twilio-signature"),
+      url: signedUrl,
+      params,
+    });
+
+    if (!valid) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
+  } else {
+    console.warn(
+      "[sms-webhook] TWILIO_AUTH_TOKEN not set — skipping Twilio signature validation"
+    );
+  }
+
+  const fromPhone = formData.get("From");
+  const toPhone   = formData.get("To");
+  const body      = formData.get("Body");
+  const twilioSid = formData.get("MessageSid");
 
   if (!fromPhone || !toPhone || !body) {
     return twiml();

@@ -322,7 +322,7 @@ export default function MessagesClient({
                 <button
                   onClick={sendBroadcast}
                   disabled={!broadcastText.trim() || sendingBroadcast}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-all active:scale-95"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-full bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-all active:scale-95"
                 >
                   <span className="material-symbols-outlined text-[18px]">campaign</span>
                   {sendingBroadcast ? "Sending…" : `Send to all ${members.length} members`}
@@ -396,7 +396,7 @@ export default function MessagesClient({
             <button
               onClick={createGroup}
               disabled={!newGroupName.trim() || creatingGroup || (newGroupType === "custom" && newGroupMembers.length === 0)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-all active:scale-95"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-full bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-all active:scale-95"
             >
               <span className="material-symbols-outlined text-[18px]">group_add</span>
               {creatingGroup ? "Creating…" : "Create Group"}

@@ -65,7 +65,7 @@ export default async function BookPage({
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-lg mx-auto px-5 py-10 pb-20">
         {/* Header */}
         <div className="text-center mb-8">
@@ -77,10 +77,10 @@ export default async function BookPage({
               className="h-14 w-auto mx-auto mb-4 object-contain"
             />
           )}
-          <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
             {biz.name}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Request a quote, schedule a service, or get in touch.
           </p>
         </div>
@@ -95,9 +95,9 @@ export default async function BookPage({
           blockedDates={blockedDates}
         />
 
-        <p className="text-center text-xs text-gray-400 mt-8">
+        <p className="text-center text-xs text-muted-foreground mt-8">
           Powered by{" "}
-          <span className="font-bold text-gray-500">HustleBricks</span>
+          <span className="font-bold text-foreground/70">HustleBricks</span>
         </p>
       </div>
     </div>

@@ -1048,7 +1048,7 @@ export default function JobsClient({
             <button
               type="submit"
               disabled={logSaving || (!logForm.client_id && !isNewClient)}
-              className="w-full h-12 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform mt-1"
+              className="w-full h-12 rounded-full bg-primary text-white font-bold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform mt-1"
             >
               {logSaving ? "Logging…" : logMode === "done" ? "Log Completed Job" : "Start Job Now"}
             </button>

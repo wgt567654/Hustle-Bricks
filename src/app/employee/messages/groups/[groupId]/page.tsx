@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 
 type GroupMessage = {
   id: string;
@@ -137,11 +138,15 @@ export default function EmployeeGroupThreadPage() {
     if (!group || (!content.trim() && !mediaUrl) || sending) return;
     setSending(true);
     const supabase = createClient();
-    const { data: inserted } = await supabase.from("team_group_messages")
+    const { data: inserted, error } = await supabase.from("team_group_messages")
       .insert({ group_id: groupId, business_id: group.business_id, sender_role: "employee", sender_member_id: group.my_member_id, content, message_type: type, media_url: mediaUrl ?? null })
       .select("id, sender_role, sender_member_id, content, created_at, message_type, media_url")
       .single();
-    if (inserted) setMessages((prev) => [...prev, inserted as GroupMessage]);
+    if (error || !inserted) {
+      toast.error("Message didn't send — try again");
+    } else {
+      setMessages((prev) => [...prev, inserted as GroupMessage]);
+    }
     setSending(false);
   }
 
@@ -155,6 +160,8 @@ export default function EmployeeGroupThreadPage() {
     if (!error) {
       const { data: { publicUrl } } = supabase.storage.from("chat-media").getPublicUrl(path);
       await sendMessage("", "photo", publicUrl);
+    } else {
+      toast.error("Photo couldn't be sent — try again");
     }
     setUploadingPhoto(false);
     e.target.value = "";
@@ -186,6 +193,8 @@ export default function EmployeeGroupThreadPage() {
     if (!error) {
       const { data: { publicUrl } } = supabase.storage.from("chat-media").getPublicUrl(path);
       await sendMessage("", "voice", publicUrl);
+    } else {
+      toast.error("Voice note couldn't be sent — try again");
     }
     setUploadingVoice(false);
     audioChunksRef.current = [];
@@ -262,7 +271,7 @@ export default function EmployeeGroupThreadPage() {
             style={{ lineHeight: "1.5" }} />
           {text.trim() ? (
             <button onClick={() => { sendMessage(text.trim()); setText(""); }} disabled={sending}
-              className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white disabled:opacity-40 active:scale-90 transition-all">
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-40 active:scale-90 transition-all">
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
             </button>
           ) : (

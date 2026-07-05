@@ -5,6 +5,7 @@ import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useVoiceNote } from "@/hooks/useVoiceNote";
+import { toast } from "@/lib/toast";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
 
@@ -33,11 +34,11 @@ type TimeEntry = {
   clocked_out_at: string | null;
 };
 
-const STATUS_META: Record<JobStatus, { label: string; color: string; bg: string }> = {
-  scheduled:   { label: "Scheduled",   color: "#007AFF", bg: "bg-primary/10" },
-  in_progress: { label: "In Progress", color: "#ea580c", bg: "bg-status-in-progress/10" },
-  completed:   { label: "Completed",   color: "#16a34a", bg: "bg-status-completed/10" },
-  cancelled:   { label: "Cancelled",   color: "#6b7280", bg: "bg-muted" },
+const STATUS_META: Record<JobStatus, { label: string; cls: string }> = {
+  scheduled:   { label: "Scheduled",   cls: "status-scheduled" },
+  in_progress: { label: "In Progress", cls: "status-in-progress" },
+  completed:   { label: "Completed",   cls: "status-completed" },
+  cancelled:   { label: "Cancelled",   cls: "status-cancelled" },
 };
 
 function formatScheduled(dateStr: string | null) {
@@ -214,7 +215,12 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     setSavingVoiceNote(true);
     const supabase = createClient();
     const newNote = job.notes ? job.notes + "\n" + voiceNoteText.trim() : voiceNoteText.trim();
-    await supabase.from("jobs").update({ notes: newNote }).eq("id", job.id);
+    const { error } = await supabase.from("jobs").update({ notes: newNote }).eq("id", job.id);
+    if (error) {
+      toast.error("Note couldn't be saved — try again");
+      setSavingVoiceNote(false);
+      return;
+    }
     setJob((j) => j ? { ...j, notes: newNote } : j);
     setVoiceNoteText("");
     setSavingVoiceNote(false);
@@ -228,8 +234,12 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     const supabase = createClient();
     const updates: Record<string, unknown> = { status };
     if (status === "completed") updates.completed_at = new Date().toISOString();
-    await supabase.from("jobs").update(updates).eq("id", job.id);
-    setJob((j) => j ? { ...j, status } : j);
+    const { error } = await supabase.from("jobs").update(updates).eq("id", job.id);
+    if (error) {
+      toast.error("Couldn't update job status — try again");
+    } else {
+      setJob((j) => j ? { ...j, status } : j);
+    }
     setUpdating(false);
   }
 
@@ -239,18 +249,26 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     const supabase = createClient();
 
     if (activeEntry) {
-      await supabase
+      const { error } = await supabase
         .from("time_entries")
         .update({ clocked_out_at: new Date().toISOString() })
         .eq("id", activeEntry.id);
-      setActiveEntry(null);
+      if (error) {
+        toast.error("Couldn't clock out — try again");
+      } else {
+        setActiveEntry(null);
+      }
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("time_entries")
         .insert({ employee_id: employeeId, job_id: job.id, business_id: job.business_id })
         .select("id, clocked_in_at, clocked_out_at")
         .single();
-      if (data) setActiveEntry(data as TimeEntry);
+      if (error || !data) {
+        toast.error("Couldn't clock in — try again");
+      } else {
+        setActiveEntry(data as TimeEntry);
+      }
     }
     setClocking(false);
   }
@@ -267,8 +285,14 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     if (!uploadError) {
       const { data: { publicUrl } } = supabase.storage.from("job-photos").getPublicUrl(path);
       const column = slot === "before" ? "before_photo_url" : "after_photo_url";
-      await supabase.from("jobs").update({ [column]: publicUrl }).eq("id", job.id);
-      setJob((j) => j ? { ...j, [column]: publicUrl } : j);
+      const { error: updateError } = await supabase.from("jobs").update({ [column]: publicUrl }).eq("id", job.id);
+      if (updateError) {
+        toast.error("Photo couldn't be saved — try again");
+      } else {
+        setJob((j) => j ? { ...j, [column]: publicUrl } : j);
+      }
+    } else {
+      toast.error("Photo couldn't be uploaded — try again");
     }
     setUploadingPhoto(null);
   }
@@ -277,7 +301,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     if (!job) return;
     setPaySaving(true);
     const supabase = createClient();
-    await supabase.from("payments").insert({
+    const { error } = await supabase.from("payments").insert({
       business_id: job.business_id,
       job_id: job.id,
       amount: parseFloat(payAmount) || job.total,
@@ -287,6 +311,10 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       notes: payNotes || null,
     });
     setPaySaving(false);
+    if (error) {
+      toast.error("Payment couldn't be recorded — try again");
+      return;
+    }
     setPaySuccess(true);
     setPaySection(null);
     setTimeout(() => setPaySuccess(false), 3000);
@@ -296,7 +324,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     if (!job || !tipAmount) return;
     setTipSaving(true);
     const supabase = createClient();
-    await supabase.from("payments").insert({
+    const { error } = await supabase.from("payments").insert({
       business_id: job.business_id,
       job_id: job.id,
       amount: parseFloat(tipAmount),
@@ -306,6 +334,10 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       notes: "Tip",
     });
     setTipSaving(false);
+    if (error) {
+      toast.error("Tip couldn't be recorded — try again");
+      return;
+    }
     setTipSuccess(true);
     setTipAmount("");
     setPaySection(null);
@@ -320,21 +352,30 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     const qty = parseFloat(supplyQty) || 1;
     const selectedItem = inventoryItems.find((i) => i.id === supplyItemId);
 
-    await supabase.from("inventory_usage").insert({
+    const { error } = await supabase.from("inventory_usage").insert({
       item_id: supplyItemId,
       job_id: job.id,
       quantity_used: qty,
       logged_by: employeeId,
       notes: supplyNotes || null,
     });
+    if (error) {
+      toast.error("Couldn't log supply usage — try again");
+      setSupplySaving(false);
+      return;
+    }
 
     // Decrement quantity for parts
     if (selectedItem?.category === "part") {
       const newQty = Math.max(0, selectedItem.quantity - qty);
-      await supabase.from("inventory_items").update({ quantity: newQty }).eq("id", supplyItemId);
-      setInventoryItems((items) =>
-        items.map((i) => i.id === supplyItemId ? { ...i, quantity: newQty } : i)
-      );
+      const { error: qtyError } = await supabase.from("inventory_items").update({ quantity: newQty }).eq("id", supplyItemId);
+      if (qtyError) {
+        toast.error("Usage logged, but stock count couldn't update");
+      } else {
+        setInventoryItems((items) =>
+          items.map((i) => i.id === supplyItemId ? { ...i, quantity: newQty } : i)
+        );
+      }
     }
 
     setSupplyItemId("");
@@ -409,11 +450,16 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
           .upload(path, blob, { upsert: true, contentType: "image/png" });
         if (!error) {
           const { data: { publicUrl } } = supabase.storage.from("signatures").getPublicUrl(path);
-          await supabase.from("jobs").update({
+          const { error: completeError } = await supabase.from("jobs").update({
             status: "completed",
             completed_at: new Date().toISOString(),
             signature_url: publicUrl,
           }).eq("id", job.id);
+          if (completeError) {
+            toast.error("Couldn't mark job complete — try again");
+            setSigSaving(false);
+            return;
+          }
           setJob((j) => j ? { ...j, status: "completed" } : j);
           setSigModalOpen(false);
           setSigSaving(false);
@@ -424,10 +470,15 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     }
 
     // Fallback: complete without signature
-    await supabase.from("jobs").update({
+    const { error: fallbackError } = await supabase.from("jobs").update({
       status: "completed",
       completed_at: new Date().toISOString(),
     }).eq("id", job.id);
+    if (fallbackError) {
+      toast.error("Couldn't mark job complete — try again");
+      setSigSaving(false);
+      return;
+    }
     setJob((j) => j ? { ...j, status: "completed" } : j);
     setSigModalOpen(false);
     setSigSaving(false);
@@ -451,7 +502,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     if (!job || !employeeId || !intelCompetitor.trim()) return;
     setIntelSaving(true);
     const supabase = createClient();
-    await supabase.from("competitor_intel").insert({
+    const { error } = await supabase.from("competitor_intel").insert({
       business_id: job.business_id,
       job_id: job.id,
       team_member_id: employeeId,
@@ -460,6 +511,11 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       price_amount: intelType === "price_info" && intelPrice ? parseFloat(intelPrice) : null,
       notes: intelNotes.trim() || null,
     });
+    if (error) {
+      toast.error("Couldn't save intel — try again");
+      setIntelSaving(false);
+      return;
+    }
     setIntelCompetitor("");
     setIntelType("truck_spotted");
     setIntelPrice("");
@@ -474,7 +530,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     if (!job || !expenseDesc.trim() || !expenseAmount) return;
     setExpenseSaving(true);
     const supabase = createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("expenses")
       .insert({
         job_id: job.id,
@@ -485,7 +541,12 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       })
       .select("id, description, amount, category, created_at")
       .single();
-    if (data) setExpenses((prev) => [...prev, data as { id: string; description: string; amount: number; category: string; created_at: string }]);
+    if (error || !data) {
+      toast.error("Expense couldn't be saved — try again");
+      setExpenseSaving(false);
+      return;
+    }
+    setExpenses((prev) => [...prev, data as { id: string; description: string; amount: number; category: string; created_at: string }]);
     setExpenseDesc("");
     setExpenseAmount("");
     setExpenseCategory("materials");
@@ -501,7 +562,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
     const supabase = createClient();
     const heatNote = { hot: "Hot lead", warm: "Warm lead", cool: "Just browsing" }[refHeat];
     const fullNotes = [heatNote, refNotes.trim()].filter(Boolean).join(" — ");
-    await supabase.from("leads").insert({
+    const { error } = await supabase.from("leads").insert({
       business_id: job.business_id,
       name: refName.trim(),
       address: refAddress.trim(),
@@ -511,6 +572,11 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       notes: fullNotes || null,
       referral_job_id: job.id,
     });
+    if (error) {
+      toast.error("Referral couldn't be saved — try again");
+      setRefSaving(false);
+      return;
+    }
     setRefName("");
     setRefAddress("");
     setRefPhone("");
@@ -574,20 +640,20 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             <span className="text-xs text-muted-foreground">{job.clients?.name ?? ""}</span>
           )}
         </div>
-        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${meta.bg}`} style={{ color: meta.color }}>
+        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${meta.cls}`}>
           {meta.label}
         </span>
       </div>
 
       {/* Job info card */}
-      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
         {job.clients?.address && (
           <div className="p-4 flex items-start gap-3 border-b border-border/50">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
               <span className="material-symbols-outlined text-[17px]">location_on</span>
             </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Address</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Address</span>
               <span className="text-sm text-foreground">{job.clients.address}</span>
               <a
                 href={`https://maps.apple.com/?q=${encodeURIComponent(job.clients.address)}`}
@@ -604,7 +670,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             <span className="material-symbols-outlined text-[17px]">schedule</span>
           </div>
           <div className="flex flex-col flex-1">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Scheduled</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Scheduled</span>
             <span className="text-sm text-foreground">{formatScheduled(job.scheduled_at)}</span>
           </div>
         </div>
@@ -615,7 +681,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
               <span className="material-symbols-outlined text-[17px]">call</span>
             </div>
             <div className="flex flex-col flex-1">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Client Phone</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Client Phone</span>
               <a href={`tel:${job.clients.phone}`} className="text-sm font-bold text-primary">
                 {job.clients.phone}
               </a>
@@ -629,7 +695,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
               <span className="material-symbols-outlined text-[17px]">notes</span>
             </div>
             <div className="flex flex-col flex-1">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Notes</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Notes</span>
               <span className="text-sm text-foreground">{job.notes}</span>
             </div>
           </div>
@@ -638,7 +704,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
         {/* Voice Note */}
         <div className="p-4 flex flex-col gap-3 border-t border-border/40">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Add Note</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Add Note</span>
             {voice.supported && (
               <button
                 type="button"
@@ -679,9 +745,9 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
 
       {/* Services */}
       {job.job_line_items.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
           <div className="px-4 pt-3 pb-2">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Services</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Services</span>
           </div>
           {job.job_line_items.map((item, i) => (
             <div key={item.id} className={`px-4 py-3 flex items-center justify-between ${i > 0 ? "border-t border-border/40" : ""}`}>
@@ -730,7 +796,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
         <button
           onClick={() => updateStatus("in_progress")}
           disabled={updating}
-          className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+          className="w-full py-4 rounded-full bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
             play_circle
@@ -743,7 +809,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
         <button
           onClick={() => setSigModalOpen(true)}
           disabled={updating}
-          className="w-full py-4 rounded-2xl bg-[var(--color-status-completed)] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
+          className="w-full py-4 rounded-full bg-[var(--color-status-completed)] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
             check_circle
@@ -754,7 +820,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
 
       {/* ── Upsell suggestions ── */}
       {job.status === "completed" && (upsellLoading || upsellSuggestions.length > 0) && (
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
           <div className="px-4 pt-3.5 pb-3 flex items-center gap-2.5 border-b border-border/50">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
               <span className="material-symbols-outlined text-[17px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
@@ -794,7 +860,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             const uploading = uploadingPhoto === slot;
             return (
               <div key={slot} className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide text-center">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider text-center">
                   {slot}
                 </span>
                 <button
@@ -884,7 +950,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
 
         {/* Cash / Check form */}
         {paySection === "cash" && (
-          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-4">
+          <div className="rounded-2xl border border-border bg-card shadow-card p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-foreground">Cash / Check Payment</span>
               <button onClick={() => setPaySection(null)} className="text-xs font-bold text-muted-foreground">Cancel</button>
@@ -943,7 +1009,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             <button
               onClick={collectPayment}
               disabled={paySaving || !payAmount}
-              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {paySaving ? "Recording…" : `Record $${payAmount || "0.00"} Payment`}
             </button>
@@ -952,7 +1018,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
 
         {/* Stripe / Card link */}
         {paySection === "stripe" && (
-          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-4">
+          <div className="rounded-2xl border border-border bg-card shadow-card p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-foreground">Send Payment Link</span>
               <button onClick={() => setPaySection(null)} className="text-xs font-bold text-muted-foreground">Cancel</button>
@@ -974,7 +1040,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             {job.clients?.phone && (
               <a
                 href={`sms:${job.clients.phone}?body=${encodeURIComponent(`Hi ${job.clients.name}! Here's your invoice link: ${invoiceUrl}`)}`}
-                className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-primary/20 active:scale-[0.98] transition-all"
+                className="w-full py-3.5 rounded-full bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-primary/20 active:scale-[0.98] transition-all"
               >
                 <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>sms</span>
                 Text Link to Client
@@ -985,7 +1051,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
 
         {/* Tip */}
         {paySection === "tip" && (
-          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-4">
+          <div className="rounded-2xl border border-border bg-card shadow-card p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-foreground">Record a Tip</span>
               <button onClick={() => setPaySection(null)} className="text-xs font-bold text-muted-foreground">Cancel</button>
@@ -1009,7 +1075,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             <button
               onClick={recordTip}
               disabled={tipSaving || !tipAmount || parseFloat(tipAmount) <= 0}
-              className="w-full py-3.5 rounded-xl bg-[var(--color-status-completed)] text-white font-bold text-sm shadow-md shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-[var(--color-status-completed)] text-white font-bold text-sm shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {tipSaving ? "Recording…" : `Record $${tipAmount || "0.00"} Tip`}
             </button>
@@ -1029,7 +1095,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             </div>
           )}
 
-          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3">
+          <div className="rounded-2xl border border-border bg-card shadow-card p-4 flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Item</label>
               <select
@@ -1073,7 +1139,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             <button
               onClick={logSupplyUsage}
               disabled={supplySaving || !supplyItemId}
-              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {supplySaving ? "Logging…" : "Log Usage"}
             </button>
@@ -1084,7 +1150,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       {/* ── Expense Log ── */}
       <div className="flex flex-col gap-3">
         <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Log an Expense</h2>
-        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card shadow-card overflow-hidden">
 
           {/* Existing expenses */}
           {expenses.length > 0 && (
@@ -1204,7 +1270,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             </div>
           </button>
         ) : (
-          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-4">
+          <div className="rounded-2xl border border-border bg-card shadow-card p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-foreground">Report Competitor</span>
               <button onClick={() => setIntelOpen(false)} className="text-xs font-bold text-muted-foreground">Cancel</button>
@@ -1282,7 +1348,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             <button
               onClick={submitIntel}
               disabled={intelSaving || !intelCompetitor.trim()}
-              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {intelSaving ? "Logging…" : "Log Intel"}
             </button>
@@ -1318,7 +1384,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             </div>
           </button>
         ) : (
-          <div className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-4">
+          <div className="rounded-2xl border border-border bg-card shadow-card p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-foreground">Log a Neighbor Lead</span>
               <button onClick={() => setRefOpen(false)} className="text-xs font-bold text-muted-foreground">Cancel</button>
@@ -1400,7 +1466,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
             <button
               onClick={submitReferral}
               disabled={refSaving || !refName.trim() || !refAddress.trim()}
-              className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full py-3.5 rounded-full bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {refSaving ? "Logging…" : "Add to Pipeline"}
             </button>
@@ -1457,7 +1523,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
                 <button
                   onClick={saveSignatureAndComplete}
                   disabled={sigSaving}
-                  className="flex-[2] py-3 rounded-xl text-sm font-bold bg-[var(--color-status-completed)] text-white shadow-md shadow-md active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-[2] py-3 rounded-full text-sm font-bold bg-[var(--color-status-completed)] text-white shadow-md active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                     check_circle

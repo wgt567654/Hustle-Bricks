@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { signLinkToken } from "@/lib/link-token";
 import QuoteDetailClient from "./QuoteDetailClient";
 
 type QuoteStatus = "draft" | "sent" | "accepted" | "declined";
@@ -72,12 +73,17 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
     }
   }
 
+  // Signed token for the public /q/{id} link — computed server-side only
+  // (the HMAC secret must never reach the client).
+  const shareToken = quote ? signLinkToken("quote", quote.id) : null;
+
   return (
     <QuoteDetailClient
       initialQuote={quote}
       initialBusinessId={businessId}
       initialCurrency={currency}
       initialLinkedJobId={linkedJobId}
+      shareToken={shareToken}
     />
   );
 }
