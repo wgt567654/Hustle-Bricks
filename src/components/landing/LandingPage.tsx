@@ -128,18 +128,19 @@ function Hero() {
         </div>
 
         <h1 className="text-5xl md:text-7xl font-display font-bold leading-[1.05] mb-6" style={{ color: "oklch(0.220 0.031 260)" }}>
-          Run your business.
+          Your business. Your workflow.
           <br />
           <span
             className="text-transparent bg-clip-text"
             style={{ backgroundImage: "linear-gradient(90deg, oklch(0.470 0.082 229), oklch(0.685 0.148 237))" }}
           >
-            Not the other way around.
+            Your operating system.
           </span>
         </h1>
 
         <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed" style={{ color: "oklch(0.551 0.023 264)" }}>
-          HustleBricks puts your jobs, clients, payments, and team in one place — so you spend less time juggling and more time growing.
+          Jobs, clients, payments, and your team in one place — in an app that
+          reshapes itself around how your company actually works.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
@@ -162,6 +163,61 @@ function Hero() {
 
         <p className="text-sm" style={{ color: "oklch(0.551 0.023 264 / 0.70)" }}>7-day free trial · No credit card required</p>
       </div>
+    </section>
+  );
+}
+
+// ─── Customization showcase ───────────────────────────────────────────────────
+
+const customizationPoints = [
+  { icon: "palette", title: "Your look", desc: "Pick your accent color, corners, and density — the whole app re-skins instantly." },
+  { icon: "grid_view", title: "Your modules", desc: "Hide features you don't use, pin the ones you live in. The nav is yours." },
+  { icon: "edit_note", title: "Your words", desc: "Every automated text and email is editable, with live preview." },
+  { icon: "dashboard_customize", title: "Your dashboard", desc: "Resize, reorder, and hide widgets until home looks like your morning." },
+];
+
+const swatches = [229, 155, 293, 45, 20, 70];
+
+function CustomizationShowcase() {
+  return (
+    <section className="py-6" style={{ background: "white" }}>
+      <SectionCard className="py-16 px-8">
+        <div className="text-center mb-4">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            {swatches.map((h) => (
+              <span
+                key={h}
+                className="size-5 rounded-full"
+                style={{ background: `oklch(0.55 0.11 ${h})` }}
+              />
+            ))}
+          </div>
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-3" style={{ color: "oklch(0.220 0.031 260)" }}>
+            Software that adapts to you
+          </h2>
+          <p className="text-base md:text-lg max-w-xl mx-auto" style={{ color: "oklch(0.551 0.023 264)" }}>
+            Most software makes you work its way. HustleBricks ships with a
+            Customize Studio — statuses, fields, themes, automations, even the
+            AI&apos;s personality are yours to shape.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4 mt-10 max-w-3xl mx-auto">
+          {customizationPoints.map((p) => (
+            <div key={p.title} className="flex items-start gap-3 rounded-2xl p-4" style={{ background: "oklch(0.977 0.003 229)" }}>
+              <span
+                className="material-symbols-outlined flex size-10 shrink-0 items-center justify-center rounded-xl text-[20px]"
+                style={{ color: "oklch(0.470 0.082 229)", background: "oklch(0.470 0.082 229 / 0.10)" }}
+              >
+                {p.icon}
+              </span>
+              <div>
+                <p className="font-semibold text-sm" style={{ color: "oklch(0.220 0.031 260)" }}>{p.title}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "oklch(0.551 0.023 264)" }}>{p.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
     </section>
   );
 }
@@ -861,6 +917,7 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
       <FeatureCards />
+      <CustomizationShowcase />
       <DetailSections />
       <Pricing />
       <FAQ />

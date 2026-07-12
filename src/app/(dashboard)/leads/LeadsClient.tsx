@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type LeadStage = "new" | "contacted" | "quoted" | "won" | "lost";
+type LeadStage = string;
 
 type Lead = {
   id: string;
@@ -35,12 +35,22 @@ const SCORE_CONFIG = {
   cold: { label: "Cold", bg: "bg-gray-400/10",   color: "#9ca3af", dot: "bg-gray-400"   },
 } as const;
 
-const STAGES: { value: LeadStage; label: string; color: string; bg: string; icon: string }[] = [
-  { value: "new",       label: "New",       color: "#6b7280", bg: "bg-gray-500/10",   icon: "person_add" },
-  { value: "contacted", label: "Contacted", color: "#007AFF", bg: "bg-primary/10",  icon: "phone_in_talk" },
-  { value: "quoted",    label: "Quoted",    color: "#f59e0b", bg: "bg-amber-500/10",  icon: "request_quote" },
-  { value: "won",       label: "Won",       color: "#16a34a", bg: "bg-green-600/10",  icon: "check_circle" },
-  { value: "lost",      label: "Lost",      color: "#dc2626", bg: "bg-red-600/10",    icon: "cancel" },
+type StageDef = { value: LeadStage; label: string; color: string; icon: string };
+
+const STAGE_ICONS: Record<string, string> = {
+  new: "person_add",
+  contacted: "phone_in_talk",
+  quoted: "request_quote",
+  won: "check_circle",
+  lost: "cancel",
+};
+
+const DEFAULT_STAGES: StageDef[] = [
+  { value: "new",       label: "New",       color: "#6b7280", icon: "person_add" },
+  { value: "contacted", label: "Contacted", color: "#007AFF", icon: "phone_in_talk" },
+  { value: "quoted",    label: "Quoted",    color: "#f59e0b", icon: "request_quote" },
+  { value: "won",       label: "Won",       color: "#16a34a", icon: "check_circle" },
+  { value: "lost",      label: "Lost",      color: "#dc2626", icon: "cancel" },
 ];
 
 const SOURCES = ["Referral", "Google", "Door to Door", "Social Media", "Flyer", "Repeat", "Other"];
@@ -56,12 +66,25 @@ const BLANK: Omit<Lead, "id" | "created_at"> = {
 export default function LeadsClient({
   initialLeads,
   initialBusinessId,
+  customStages,
 }: {
   initialLeads: Lead[];
   initialBusinessId: string | null;
+  customStages?: { key: string; label: string; color: string }[];
 }) {
   const router = useRouter();
   const supabase = createClient();
+
+  // Business-defined pipeline vocabulary (Settings → Customize → Statuses);
+  // falls back to the built-in five stages.
+  const STAGES: StageDef[] = customStages?.length
+    ? customStages.map((s) => ({
+        value: s.key,
+        label: s.label,
+        color: s.color,
+        icon: STAGE_ICONS[s.key] ?? "flag",
+      }))
+    : DEFAULT_STAGES;
 
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [loading, setLoading] = useState(false);
@@ -319,7 +342,9 @@ export default function LeadsClient({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 px-4 lg:px-8">
           {filtered.map((lead) => {
-            const stage = STAGES.find((s) => s.value === lead.stage)!;
+            const stage =
+              STAGES.find((s) => s.value === lead.stage) ??
+              ({ value: lead.stage, label: lead.stage, color: "#6b7280", icon: "flag" } as StageDef);
             const apptDate = lead.preferred_date
               ? new Date(lead.preferred_date + "T00:00:00").toLocaleDateString([], { month: "short", day: "numeric" })
               : null;
@@ -333,8 +358,8 @@ export default function LeadsClient({
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-extrabold text-sm text-foreground">{lead.name}</span>
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${stage.bg}`}
-                          style={{ color: stage.color }}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                          style={{ color: stage.color, backgroundColor: `${stage.color}1A` }}
                         >
                           <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                             {stage.icon}

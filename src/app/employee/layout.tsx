@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import EmployeeShell from "./EmployeeShell";
+import ThemeStyle from "@/components/ThemeStyle";
+import { getCustomization } from "@/lib/customization";
 
 export default async function EmployeeLayout({
   children,
@@ -26,9 +28,12 @@ export default async function EmployeeLayout({
   if (!tm.is_active && tm.is_pending) redirect("/employee-pending");
   if (!tm.is_active) redirect("/onboarding");
 
+  const customization = await getCustomization(supabase, tm.business_id);
+
   return (
-    <EmployeeShell employeeName={tm.name}>
-      {children}
-    </EmployeeShell>
+    <>
+      <ThemeStyle theme={customization.theme} />
+      <EmployeeShell employeeName={tm.name}>{children}</EmployeeShell>
+    </>
   );
 }

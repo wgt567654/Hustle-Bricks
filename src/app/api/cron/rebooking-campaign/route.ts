@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendSMS } from "@/lib/sms";
+import { getAutomatedTemplate, renderTemplate } from "@/lib/automated-messages";
 
 export async function GET(req: NextRequest) {
   const supabaseAdmin = createClient(
@@ -72,9 +73,10 @@ export async function GET(req: NextRequest) {
       if (client.last_rebooking_sent_at && client.last_rebooking_sent_at >= recontactCutoff) continue;
 
       const firstName = client.name.split(" ")[0];
-      const body =
-        `Hi ${firstName}! It's ${biz.name} — it's been a while since your last service. ` +
-        `We'd love to have you back! Just reply here and we'll get you scheduled. 😊`;
+      const body = renderTemplate(
+        await getAutomatedTemplate(supabaseAdmin, biz.id, "rebooking"),
+        { CustomerName: firstName, CompanyName: biz.name }
+      );
 
       const result = await sendSMS({
         to: client.phone,

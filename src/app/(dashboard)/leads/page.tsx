@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { getBusinessId } from "@/lib/supabase/get-business";
+import { getStatuses, statusesFor } from "@/lib/statuses";
 import LeadsClient from "./LeadsClient";
 
-type LeadStage = "new" | "contacted" | "quoted" | "won" | "lost";
+type LeadStage = string;
 
 type Lead = {
   id: string;
@@ -44,5 +45,19 @@ export default async function LeadsPage() {
     leads = (data ?? []) as Lead[];
   }
 
-  return <LeadsClient initialLeads={leads} initialBusinessId={businessId} />;
+  const customStages = businessId
+    ? statusesFor(await getStatuses(supabase, businessId), "lead").map((s) => ({
+        key: s.key,
+        label: s.label,
+        color: s.color,
+      }))
+    : undefined;
+
+  return (
+    <LeadsClient
+      initialLeads={leads}
+      initialBusinessId={businessId}
+      customStages={customStages}
+    />
+  );
 }

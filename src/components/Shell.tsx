@@ -7,80 +7,8 @@ import { useTheme } from 'next-themes';
 import { createClient } from '@/lib/supabase/client';
 import { STATUS_HEX } from '@/lib/status-colors';
 import GlobalSearch from '@/components/GlobalSearch';
-
-type NavSubItem = { href: string; label: string; icon: string; ownerOnly?: boolean };
-type NavGroup = { label: string; icon: string; ownerOnly?: boolean; items: NavSubItem[] };
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: "Home",
-    icon: "home",
-    ownerOnly: true,
-    items: [
-      { href: "/home", label: "Home", icon: "home" },
-    ],
-  },
-  {
-    label: "Jobs",
-    icon: "work",
-    items: [
-      { href: "/jobs",     label: "All Jobs",  icon: "list_alt"       },
-      { href: "/calendar", label: "Calendar",  icon: "calendar_month" },
-      { href: "/bookings", label: "Bookings",  icon: "book_online"    },
-    ],
-  },
-  {
-    label: "Clients",
-    icon: "group",
-    items: [
-      { href: "/clients", label: "Clients", icon: "contacts"      },
-      { href: "/leads",   label: "Leads",   icon: "person_search" },
-      { href: "/inbox",   label: "Inbox",   icon: "chat"          },
-      { href: "/plans",   label: "Plans",   icon: "autorenew"     },
-    ],
-  },
-  {
-    label: "Sales",
-    icon: "trending_up",
-    items: [
-      { href: "/sales",     label: "Pipeline", icon: "trending_up"   },
-      { href: "/quotes",    label: "Quotes",   icon: "request_quote" },
-      { href: "/payments",  label: "Payments", icon: "attach_money"  },
-      { href: "/services",  label: "Services", icon: "home_repair_service", ownerOnly: true },
-    ],
-  },
-  {
-    label: "Team",
-    icon: "badge",
-    ownerOnly: true,
-    items: [
-      { href: "/team",        label: "Members",    icon: "badge"    },
-      { href: "/messages",    label: "Chat",       icon: "forum"    },
-      { href: "/territories", label: "Territories",icon: "pin_drop" },
-    ],
-  },
-  {
-    label: "Reports",
-    icon: "bar_chart",
-    ownerOnly: true,
-    items: [
-      { href: "/analytics",            label: "Analytics",    icon: "leaderboard"       },
-      { href: "/reports/mileage",      label: "Mileage",      icon: "local_gas_station" },
-      { href: "/reports/profitability",label: "Profitability",icon: "trending_up"       },
-      { href: "/reports/commission",   label: "Commission",   icon: "emoji_events"      },
-    ],
-  },
-  {
-    label: "Field",
-    icon: "map",
-    items: [
-      { href: "/canvassing", label: "Map",       icon: "map"         },
-      { href: "/heatmap",    label: "Heat Map",  icon: "whatshot",   ownerOnly: true },
-      { href: "/intel",      label: "Intel",     icon: "visibility", ownerOnly: true },
-      { href: "/inventory",  label: "Inventory", icon: "inventory_2",ownerOnly: true },
-    ],
-  },
-];
+import { resolveModules } from '@/lib/modules';
+import type { ModulesSettings } from '@/lib/customization';
 
 type Notification = {
   id: string;
@@ -278,7 +206,15 @@ async function fetchNotifications(): Promise<Notification[]> {
   return notes;
 }
 
-export default function Shell({ children, role = "owner" }: { children: React.ReactNode; role?: string }) {
+export default function Shell({
+  children,
+  role = "owner",
+  modules,
+}: {
+  children: React.ReactNode;
+  role?: string;
+  modules?: ModulesSettings;
+}) {
   const pathname    = usePathname();
   const router      = useRouter();
   const { theme, setTheme } = useTheme();
@@ -295,7 +231,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
   const isMapPage = pathname === "/canvassing" || pathname.startsWith("/canvassing/")
     || pathname === "/map" || pathname.startsWith("/map/");
 
-  const visibleGroups = NAV_GROUPS.filter(g => !g.ownerOnly || isOwner);
+  const visibleGroups = resolveModules(modules, isOwner);
 
   const activeGroup = visibleGroups.find(g =>
     g.items.some(item => pathname === item.href || pathname.startsWith(item.href + "/"))
@@ -377,7 +313,7 @@ export default function Shell({ children, role = "owner" }: { children: React.Re
                 className="hidden sm:block text-[13px] font-extrabold tracking-wide uppercase text-foreground"
                 style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
               >
-                Hustle Bricks
+                HustleBricks
               </span>
             </Link>
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendSMS } from "@/lib/sms";
+import { getAutomatedTemplate, renderTemplate } from "@/lib/automated-messages";
 
 export async function GET(req: NextRequest) {
   const supabaseAdmin = createClient(
@@ -62,9 +63,10 @@ export async function GET(req: NextRequest) {
     const reviewUrl = job.businesses!.google_review_url!;
     const phone = job.clients!.phone!;
 
-    const body =
-      `Hi ${clientName}! This is ${bizName}. We just finished up and hope everything looks great. ` +
-      `If we did a good job, would you mind leaving us a quick review? It means the world to us:\n${reviewUrl}`;
+    const body = renderTemplate(
+      await getAutomatedTemplate(supabaseAdmin, job.business_id, "review_request"),
+      { CustomerName: clientName, CompanyName: bizName, ReviewLink: reviewUrl }
+    );
 
     const result = await sendSMS({
       to: phone,

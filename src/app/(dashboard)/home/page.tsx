@@ -6,6 +6,12 @@ import { UserGreeting } from "@/components/UserGreeting";
 import { STATUS_HEX, STATUS_CLASS, CHART_COLORS } from "@/lib/status-colors";
 import { formatCurrencyRounded } from "@/lib/currency";
 import RevenueChart from "./RevenueChart";
+import DashboardGrid, {
+  type LayoutItem,
+  type WidgetMeta,
+} from "@/components/dashboard/DashboardGrid";
+import { DEFAULT_CUSTOMIZATION, getCustomization } from "@/lib/customization";
+import { resolveQuickActions } from "@/lib/quick-actions";
 
 type TodayJob = {
   id: string;
@@ -384,65 +390,74 @@ export default async function HomePage() {
       .slice(0, 8);
   }
 
-  return (
-    <div className="flex flex-col gap-5 px-4 lg:px-8 py-4 max-w-xl mx-auto lg:max-w-none pb-8">
+  // ---- Customizable workspace: business quick actions + per-user layout ----
+  const customization = biz
+    ? await getCustomization(supabase, biz.id)
+    : DEFAULT_CUSTOMIZATION;
+  const quickActions = resolveQuickActions(customization.quickActions);
+  const QA_COLORS = [
+    CHART_COLORS.violet,
+    CHART_COLORS.blue,
+    CHART_COLORS.green,
+    CHART_COLORS.orange,
+  ];
 
-      {/* Section 1: Welcome + Quick Actions */}
-      <div className="flex flex-col gap-3">
-        <UserGreeting />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+  let savedLayout: LayoutItem[] | null = null;
+  if (biz && userId) {
+    try {
+      const { data: dash } = await supabase
+        .from("dashboards")
+        .select("layout")
+        .eq("user_id", userId)
+        .eq("business_id", biz.id)
+        .eq("is_default", true)
+        .maybeSingle();
+      savedLayout = (dash?.layout as LayoutItem[] | null) ?? null;
+    } catch {
+      // dashboards table not migrated yet — default layout
+    }
+  }
+
+  const WIDGETS: WidgetMeta[] = [
+    { id: "welcome", label: "Greeting", icon: "waving_hand", defaultSpan: 6 },
+    { id: "quick_actions", label: "Quick Actions", icon: "bolt", defaultSpan: 6 },
+    { id: "kpis", label: "Key Numbers", icon: "monitoring", defaultSpan: 6 },
+    { id: "todays_schedule", label: "Today's Schedule", icon: "today", defaultSpan: 4 },
+    { id: "needs_attention", label: "Needs Attention", icon: "notifications_active", defaultSpan: 2 },
+    { id: "employee_status", label: "Employee Status", icon: "badge", defaultSpan: 2 },
+    { id: "revenue_chart", label: "7-Day Revenue", icon: "bar_chart", defaultSpan: 2 },
+    { id: "recent_activity", label: "Recent Activity", icon: "history", defaultSpan: 2 },
+  ];
+
+  const slots: Record<string, React.ReactNode> = {
+    welcome: <UserGreeting />,
+    quick_actions: (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {quickActions.map((action, i) => (
           <Link
-            href="/jobs"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition-all"
+            key={action.id}
+            href={action.href}
+            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-all ${
+              i === 0
+                ? "bg-primary text-primary-foreground"
+                : "bg-card border border-border text-foreground"
+            }`}
           >
             <span
               className="material-symbols-outlined text-[18px]"
-              style={{ fontVariationSettings: "'FILL' 1" }}
+              style={{
+                fontVariationSettings: "'FILL' 1",
+                ...(i === 0 ? {} : { color: QA_COLORS[i % QA_COLORS.length] }),
+              }}
             >
-              add_circle
+              {action.icon}
             </span>
-            New Job
+            {action.label}
           </Link>
-          <Link
-            href="/quotes/new"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-card border border-border font-bold text-sm active:scale-95 transition-all text-foreground"
-          >
-            <span
-              className="material-symbols-outlined text-[18px]"
-              style={{ color: CHART_COLORS.blue, fontVariationSettings: "'FILL' 1" }}
-            >
-              request_quote
-            </span>
-            New Quote
-          </Link>
-          <Link
-            href="/clients"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-card border border-border font-bold text-sm active:scale-95 transition-all text-foreground"
-          >
-            <span
-              className="material-symbols-outlined text-[18px]"
-              style={{ color: CHART_COLORS.green, fontVariationSettings: "'FILL' 1" }}
-            >
-              person_add
-            </span>
-            Add Client
-          </Link>
-          <Link
-            href="/payments"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-card border border-border font-bold text-sm active:scale-95 transition-all text-foreground"
-          >
-            <span
-              className="material-symbols-outlined text-[18px]"
-              style={{ color: CHART_COLORS.orange, fontVariationSettings: "'FILL' 1" }}
-            >
-              attach_money
-            </span>
-            Collect Payment
-          </Link>
-        </div>
+        ))}
       </div>
-
-      {/* Section 2: KPI Stats Row */}
+    ),
+    kpis: (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="rounded-2xl p-4 flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
@@ -515,12 +530,9 @@ export default async function HomePage() {
           <p className="text-[11px] text-muted-foreground">Unpaid jobs</p>
         </Card>
       </div>
-
-      {/* Section 3: Two-column main */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-
-        {/* Today's Schedule */}
-        <Card className="lg:col-span-3 rounded-2xl p-0 overflow-hidden">
+    ),
+    todays_schedule: (
+      <Card className="h-full rounded-2xl p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
@@ -592,13 +604,10 @@ export default async function HomePage() {
               })}
             </div>
           )}
-        </Card>
-
-        {/* Right column */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
-
-          {/* Needs Attention */}
-          <Card className="rounded-2xl p-0 overflow-hidden">
+      </Card>
+    ),
+    needs_attention: (
+      <Card className="h-full rounded-2xl p-0 overflow-hidden">
             <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span
@@ -651,10 +660,10 @@ export default async function HomePage() {
                 ))}
               </div>
             )}
-          </Card>
-
-          {/* Employee Status */}
-          <Card className="rounded-2xl p-0 overflow-hidden">
+      </Card>
+    ),
+    employee_status: (
+      <Card className="h-full rounded-2xl p-0 overflow-hidden">
             <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
               <span
                 className="material-symbols-outlined text-[18px]"
@@ -703,15 +712,10 @@ export default async function HomePage() {
                 })}
               </div>
             )}
-          </Card>
-        </div>
-      </div>
-
-      {/* Section 4: Bottom row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-        {/* 7-Day Revenue Sparkline */}
-        <Card className="rounded-2xl overflow-hidden">
+      </Card>
+    ),
+    revenue_chart: (
+      <Card className="h-full rounded-2xl overflow-hidden">
           <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
             <span
               className="material-symbols-outlined text-[18px]"
@@ -724,10 +728,10 @@ export default async function HomePage() {
           <div className="p-4 h-40">
             <RevenueChart data={sparkline} />
           </div>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card className="rounded-2xl p-0 overflow-hidden">
+      </Card>
+    ),
+    recent_activity: (
+      <Card className="h-full rounded-2xl p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
             <span
               className="material-symbols-outlined text-[18px]"
@@ -771,8 +775,18 @@ export default async function HomePage() {
               ))}
             </div>
           )}
-        </Card>
-      </div>
+      </Card>
+    ),
+  };
+
+  return (
+    <div className="mx-auto flex max-w-xl flex-col px-4 py-4 pb-8 lg:max-w-none lg:px-8">
+      <DashboardGrid
+        businessId={biz?.id ?? ""}
+        widgets={WIDGETS}
+        slots={slots}
+        savedLayout={savedLayout}
+      />
     </div>
   );
 }

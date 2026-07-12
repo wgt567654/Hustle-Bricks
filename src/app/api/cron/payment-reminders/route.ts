@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendSMS } from "@/lib/sms";
 import { formatCurrency } from "@/lib/currency";
+import {
+  getAutomatedTemplate,
+  renderTemplate,
+  type AutomatedMessageKey,
+} from "@/lib/automated-messages";
 
-const STEPS: [number, number, (firstName: string, bizName: string, amount: string, link: string) => string][] = [
-  [1,  3 * 24, (n, b, a, l) => `Hi ${n}, just a friendly reminder that your invoice of ${a} from ${b} is due. Pay anytime here:\n${l}`],
-  [2,  7 * 24, (n, b, a, l) => `Hi ${n}, ${b} here — your invoice of ${a} is still outstanding. Easy payment options available:\n${l}`],
-  [3, 14 * 24, (n, b, a, l) => `Hi ${n}, final reminder from ${b} regarding your balance of ${a}. Please pay at your earliest convenience:\n${l}`],
+// [step, delay in hours, template key] — bodies editable in Customize Studio.
+const STEPS: [number, number, AutomatedMessageKey][] = [
+  [1, 3 * 24, "payment_reminder_1"],
+  [2, 7 * 24, "payment_reminder_2"],
+  [3, 14 * 24, "payment_reminder_3"],
 ];
 
 export async function GET(req: NextRequest) {
@@ -76,11 +82,19 @@ export async function GET(req: NextRequest) {
     const invoiceLink = `${process.env.NEXT_PUBLIC_APP_URL}/invoice/${job.id}`;
     const phone = job.clients!.phone!;
 
-    for (const [step, delayHours, buildMessage] of STEPS) {
+    for (const [step, delayHours, templateKey] of STEPS) {
       if (alreadySentSteps.has(step)) continue;
       if (now < completedAt + delayHours * 60 * 60 * 1000) continue;
 
-      const body = buildMessage(firstName, bizName, amount, invoiceLink);
+      const body = renderTemplate(
+        await getAutomatedTemplate(supabaseAdmin, job.business_id, templateKey),
+        {
+          CustomerName: firstName,
+          CompanyName: bizName,
+          InvoiceAmount: amount,
+          InvoiceLink: invoiceLink,
+        }
+      );
       const result = await sendSMS({
         to: phone,
         body,

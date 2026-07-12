@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { getBusinessId } from "@/lib/supabase/get-business";
+import { getCustomization } from "@/lib/customization";
+import {
+  BIGGEST_CHALLENGES,
+  BUSINESS_STAGES,
+  GROWTH_PRIORITIES,
+  JOB_VALUE_RANGES,
+  TEAM_SIZES,
+} from "@/lib/onboarding/config";
 import Anthropic from "@anthropic-ai/sdk";
 import { sendSMS } from "@/lib/sms";
 
@@ -305,12 +313,68 @@ export async function POST(req: NextRequest) {
 
   const today = new Date().toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 
+  const { aiPersonality } = await getCustomization(supabase, businessId);
+
+  // Business profile captured during guided setup — columns come from
+  // onboarding_v3.sql, so tolerate their absence.
+  let businessContext = "";
+  {
+    const { data: biz, error } = await supabase
+      .from("businesses")
+      .select(
+        "team_size, business_stage, avg_job_value_range, monthly_revenue_goal, growth_priorities, biggest_challenge"
+      )
+      .eq("id", businessId)
+      .maybeSingle();
+    if (!error && biz) {
+      const label = (
+        opts: { key: string; label: string }[],
+        key: string | null
+      ) => opts.find((o) => o.key === key)?.label;
+      const parts: string[] = [];
+      const team = label(TEAM_SIZES, biz.team_size);
+      if (team) parts.push(`team size: ${team}`);
+      const stage = label(BUSINESS_STAGES, biz.business_stage);
+      if (stage) parts.push(`business stage: ${stage}`);
+      const jobVal = label(JOB_VALUE_RANGES, biz.avg_job_value_range);
+      if (jobVal) parts.push(`typical job value: ${jobVal}`);
+      if (biz.monthly_revenue_goal)
+        parts.push(
+          `monthly revenue goal: $${Number(biz.monthly_revenue_goal).toLocaleString()}`
+        );
+      const priorities = ((biz.growth_priorities ?? []) as string[])
+        .map((k) => label(GROWTH_PRIORITIES, k))
+        .filter(Boolean);
+      if (priorities.length)
+        parts.push(`current priorities: ${priorities.join(", ")}`);
+      const challenge = label(BIGGEST_CHALLENGES, biz.biggest_challenge);
+      if (challenge) parts.push(`biggest challenge: ${challenge}`);
+      if (parts.length)
+        businessContext = ` Owner profile from setup — weave this into your advice naturally: ${parts.join("; ")}.`;
+    }
+  }
+
+  const TONE_GUIDES: Record<string, string> = {
+    professional: "Keep a professional, capable tone.",
+    friendly: "Keep a warm, friendly, approachable tone.",
+    luxury: "Keep a refined, white-glove, premium tone.",
+    minimal: "Be as brief as possible — short sentences, no filler.",
+    technical: "Be precise and technical; include exact figures.",
+    funny: "Be lightly witty while staying useful and respectful.",
+    formal: "Keep a formal, courteous tone.",
+  };
+
   const systemPrompt =
     `You are a business operations assistant for a home services company using HustleBricks. ` +
     `Today is ${today}. You have access to tools to query business data and take actions. ` +
     `Be concise. When showing lists, use bullet points. Format currency as $X.XX. ` +
     `Before sending any SMS, always show the exact message text in your response so the user can see what was sent. ` +
-    `When asked to do something you can't do with your tools, say so clearly.`;
+    `When asked to do something you can't do with your tools, say so clearly. ` +
+    (TONE_GUIDES[aiPersonality.tone] ?? TONE_GUIDES.professional) +
+    businessContext +
+    (aiPersonality.instructions.trim()
+      ? ` The business owner has set these permanent instructions — always follow them: ${aiPersonality.instructions.trim()}`
+      : "");
 
   // Agentic loop — keep going until Claude stops calling tools (max 5 rounds)
   let response = await anthropic.messages.create({

@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendSMS } from "@/lib/sms";
+import {
+  getAutomatedTemplate,
+  renderTemplate,
+  type AutomatedMessageKey,
+} from "@/lib/automated-messages";
 
-// The three follow-up steps: [step number, delay in hours, message builder]
-const STEPS: [number, number, (firstName: string, bizName: string) => string][] = [
-  [1, 24,  (n, b) => `Hi ${n}, just checking in on the quote we sent from ${b}. Any questions? We're happy to walk you through it!`],
-  [2, 72,  (n, b) => `Hi ${n}, ${b} here again. Did you get a chance to look over your quote? Let us know if you'd like to adjust anything or move forward!`],
-  [3, 168, (n, b) => `Hi ${n}, last check-in from ${b} on your quote. We'd love to earn your business — just reply here or give us a call. Thanks!`],
+// The three follow-up steps: [step number, delay in hours, template key]
+// Bodies are business-editable in Settings → Customize → Message Templates.
+const STEPS: [number, number, AutomatedMessageKey][] = [
+  [1, 24, "quote_follow_up_1"],
+  [2, 72, "quote_follow_up_2"],
+  [3, 168, "quote_follow_up_3"],
 ];
 
 export async function GET(req: NextRequest) {
@@ -66,11 +72,14 @@ export async function GET(req: NextRequest) {
     const bizName = quote.businesses!.name;
     const phone = quote.clients!.phone!;
 
-    for (const [step, delayHours, buildMessage] of STEPS) {
+    for (const [step, delayHours, templateKey] of STEPS) {
       if (alreadySentSteps.has(step)) continue;
       if (now < sentAt + delayHours * 60 * 60 * 1000) continue;
 
-      const body = buildMessage(firstName, bizName);
+      const body = renderTemplate(
+        await getAutomatedTemplate(supabaseAdmin, quote.business_id, templateKey),
+        { CustomerName: firstName, CompanyName: bizName }
+      );
       const result = await sendSMS({
         to: phone,
         body,

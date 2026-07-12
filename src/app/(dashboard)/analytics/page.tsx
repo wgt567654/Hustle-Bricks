@@ -13,14 +13,29 @@ export default async function AnalyticsPage() {
   let totalExpenses = 0;
   let plans: ServicePlan[] = [];
   let currency = "USD";
+  let goal: number | null = null;
 
   if (businessId) {
-    const { data: bizData } = await supabase
+    // monthly_revenue_goal requires onboarding_v3.sql — fall back gracefully
+    const { data: bizData, error: bizErr } = await supabase
       .from("businesses")
-      .select("currency")
+      .select("currency, monthly_revenue_goal")
       .eq("id", businessId)
       .single();
-    currency = bizData?.currency ?? "USD";
+    if (!bizErr) {
+      currency = bizData?.currency ?? "USD";
+      goal =
+        bizData?.monthly_revenue_goal != null
+          ? Number(bizData.monthly_revenue_goal)
+          : null;
+    } else {
+      const { data: fallback } = await supabase
+        .from("businesses")
+        .select("currency")
+        .eq("id", businessId)
+        .single();
+      currency = fallback?.currency ?? "USD";
+    }
 
     const [jobsRes, quotesRes, membersRes, expensesRes, plansRes] = await Promise.all([
       supabase
@@ -62,6 +77,8 @@ export default async function AnalyticsPage() {
       initialTotalExpenses={totalExpenses}
       initialPlans={plans}
       initialCurrency={currency}
+      initialGoal={goal}
+      businessId={businessId}
     />
   );
 }

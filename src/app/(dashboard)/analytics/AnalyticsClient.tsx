@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrencyRounded } from "@/lib/currency";
 import { CHART_COLORS } from "@/lib/status-colors";
 
@@ -293,6 +294,8 @@ export default function AnalyticsClient({
   initialTotalExpenses,
   initialPlans,
   initialCurrency,
+  initialGoal = null,
+  businessId = null,
 }: {
   initialJobs: Job[];
   initialQuotes: Quote[];
@@ -300,6 +303,8 @@ export default function AnalyticsClient({
   initialTotalExpenses: number;
   initialPlans: ServicePlan[];
   initialCurrency: string;
+  initialGoal?: number | null;
+  businessId?: string | null;
 }) {
   const router = useRouter();
   const [currency]                        = useState(initialCurrency);
@@ -308,17 +313,30 @@ export default function AnalyticsClient({
   const [teamMembers]                     = useState<Member[]>(initialTeamMembers);
   const [totalExpenses]                   = useState(initialTotalExpenses);
   const [plans]                           = useState<ServicePlan[]>(initialPlans);
-  const [goal, setGoal]                   = useState(0);
+  const [goal, setGoal]                   = useState(initialGoal ?? 0);
 
   const [dateFilter, setDateFilter] = useState<DateFilter>(() => ({
     preset: "month",
     ...getPresetRange("month"),
   }));
 
+  // localStorage is the legacy fallback for goals saved before onboarding_v3
   useEffect(() => {
+    if (initialGoal != null) return;
     const savedGoal = localStorage.getItem("hb_monthly_revenue_goal");
     if (savedGoal) setGoal(Number(savedGoal));
-  }, []);
+  }, [initialGoal]);
+
+  function handleGoalChange(n: number) {
+    setGoal(n);
+    if (!businessId) return;
+    // best-effort persist; pre-migration DBs simply keep the localStorage copy
+    createClient()
+      .from("businesses")
+      .update({ monthly_revenue_goal: n })
+      .eq("id", businessId)
+      .then(() => {});
+  }
 
   // ── Filtered subsets ───────────────────────────────────────────────────────
 
@@ -604,7 +622,7 @@ export default function AnalyticsClient({
           <GoalBarChart
             series={goalSeries}
             goal={goal}
-            onGoalChange={setGoal}
+            onGoalChange={handleGoalChange}
             currency={currency}
           />
 

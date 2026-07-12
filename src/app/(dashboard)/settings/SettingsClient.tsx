@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -914,6 +915,9 @@ export default function SettingsClient({
     { id: "share", label: "Share Form", icon: "share" },
   ];
   const ALL_NAV = [...NAV_GLOBAL, ...NAV_CONFIG];
+  const NAV_CUSTOMIZE: { href: string; label: string; icon: string }[] = [
+    { href: "/settings/customize", label: "Customize Studio", icon: "palette" },
+  ];
   const SECTION_META: Record<Section, { label: string; desc: string }> = {
     company: { label: "Company", desc: "Business name, service areas, and contact info." },
     billing: { label: "Billing", desc: "Stripe Connect, subscription plan, tax and pay rates." },
@@ -955,6 +959,18 @@ export default function SettingsClient({
               {item.label}
             </button>
           ))}
+          <p className="px-2 pt-5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Customization</p>
+          {NAV_CUSTOMIZE.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left text-foreground/70 hover:bg-muted/60 hover:text-foreground"
+            >
+              <span className="material-symbols-outlined text-[17px]">{item.icon}</span>
+              {item.label}
+              <span className="ml-auto material-symbols-outlined text-[14px] text-muted-foreground/50">arrow_forward</span>
+            </Link>
+          ))}
           <p className="px-2 pt-5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Feature Configurations</p>
           {NAV_CONFIG.map((item) => (
             <button
@@ -992,6 +1008,15 @@ export default function SettingsClient({
               >
                 {item.label}
               </button>
+            ))}
+            {NAV_CUSTOMIZE.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold transition-colors bg-muted text-muted-foreground"
+              >
+                {item.label}
+              </Link>
             ))}
           </div>
         </div>
