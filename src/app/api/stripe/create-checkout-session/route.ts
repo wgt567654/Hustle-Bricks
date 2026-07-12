@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // Verify user owns this business
   const { data: business } = await supabase
     .from("businesses")
-    .select("id, stripe_customer_id")
+    .select("id, stripe_customer_id, stripe_subscription_id")
     .eq("id", businessId)
     .eq("owner_id", user.id)
     .single();
@@ -56,12 +56,25 @@ export async function POST(req: NextRequest) {
 
   const origin = req.headers.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
+  // Only first-time subscribers get the free trial — resubscribers pay right away
+  const isFirstSubscription = !business.stripe_subscription_id;
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
+    // No card required to start the trial; if none is on file when it ends,
+    // Stripe pauses the subscription instead of attempting a charge.
+    ...(isFirstSubscription ? { payment_method_collection: "if_required" as const } : {}),
     subscription_data: {
-      trial_period_days: 7,
+      ...(isFirstSubscription
+        ? {
+            trial_period_days: 7,
+            trial_settings: {
+              end_behavior: { missing_payment_method: "pause" as const },
+            },
+          }
+        : {}),
       metadata: { business_id: businessId, plan },
     },
     success_url: `${origin}/onboarding/success?session_id={CHECKOUT_SESSION_ID}`,

@@ -69,6 +69,11 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/booking") ||
     pathname.startsWith("/api/stripe/create-payment-intent") ||
     pathname.startsWith("/api/stripe/confirm-payment") ||
+    // Stripe webhook deliveries carry no auth cookies — these routes verify
+    // the Stripe signature themselves.
+    pathname.startsWith("/api/stripe/webhook") ||
+    pathname.startsWith("/api/stripe/subscription-webhook") ||
+    pathname.startsWith("/api/stripe/connect/webhook") ||
     pathname.startsWith("/api/quotes/request") ||
     pathname.startsWith("/q/");
 
