@@ -165,6 +165,49 @@ Reviewed github.com/wgt567654/Hustle-Bricks @ `23c4300` (2026-07-12). The co-dev
 5b. **Quote → schedule chain** ✅ DONE 2026-07-19 (late night): quotes carry optional proposed_date/time (owner + employee builders; supabase/quote_proposed_schedule.sql applied); public /q page shows "Proposed service time"; acceptance auto-creates a pending booking request + notifies owner (alongside pre-existing job creation + SMS). Verified live: accept → request in owner inbox w/ quote reference → approve → scheduled job. Gap-fill applied: quotes.video_url column was missing from all SQL files (ad-hoc dashboard column) — added to DB; get-business.ts limit(1) made deterministic with created_at ordering.
 6. **CFoam onboarding + deploy** to hustlebricks.ai from this repo (standalone repo — mono-repo split no longer needed).
 
+## 9. Sprint 2 — Quoting & Money (spec drafted 2026-07-20, pre-grill)
+
+Three interlocking items, ordered by dependency and effort. Everything here builds on verified Sprint 1 systems (services catalog w/ existing `duration_mins`, quote builders, booking capacity API, canvassing conversion, commission report, pay rules).
+
+### 2.1 Duration-aware scheduling (smallest — wire-up, not greenfield)
+Today every booking consumes one uniform 1-hour slot regardless of the service; a 3-hour detail and a 20-minute window wash book identically. Change:
+- Public booking + quote-accept bookings compute job duration = sum of selected services' `duration_mins` (fallback 60).
+- Capacity API blocks the FULL window: a slot is offered only if a worker is free (availability ∩ existing bookings) for the entire duration starting at that slot.
+- `jobs.duration_mins` set from services at creation; dispatch `findBestMember` already accepts durationMins — feed it the real value.
+- Open Qs: slot granularity (hour vs 30-min), travel/cleanup buffer between jobs, whether long jobs can span past business close.
+
+### 2.2 Sold-by commission attribution (foundation for 2.3)
+Commission currently credits the job's assigned WORKER; the vision pays the SELLER. Change:
+- `quotes.created_by_member_id` + `jobs.sold_by_member_id` (propagated on quote-accept / canvassing conversion / manual owner selection).
+- Commission ledger keys off sold_by; labor pay (Sprint 1 pay rules) stays separate — one person can earn both streams on one job.
+- Open Qs: owner-sold jobs (no commission by default?), accrual trigger (job completed vs invoice paid), backfill/fallback for jobs with no sold_by.
+
+### 2.3 Lead-source commission rates (builds on 2.2)
+Different pay for self-generated leads (door-to-door) vs house leads (website inbound, dispatched to quote). Change:
+- `jobs.lead_source`: 'canvassing' | 'website' | 'manual' — auto-tagged (canvassing conversion → canvassing; public booking/quote-request → website; owner-created → manual).
+- Business settings: two commission rates — self-generated rate and house-lead rate; optional per-member override (extends Sprint 1 member override).
+- Commission computation picks the rate by (member override → business rate for the job's lead_source).
+- Open Qs: actual default rates for CFoam, whether referrals need their own source category now.
+
+### Also noted (customer self-quote): already exists as the public "Get a Quote" → lead flow; per-business on/off toggle worth confirming/adding. Estimated-time on services: already exists (`services.duration_mins`), edited in the service catalog — 2.1 makes it matter.
+
+### Grilled decisions (2026-07-20)
+
+| Topic | Decision |
+|---|---|
+| Slot granularity | **30-minute start times** (:00 and :30); a booking blocks the full summed duration of its services from that start. |
+| Travel buffer | **No fixed buffer** — jobs may abut; crews self-manage via accept/decline. The *real* answer is drive-time-aware scheduling: proximity info ships in 2.4, and drive-time-as-dynamic-buffer is Sprint 3. |
+| Commission accrual | **On customer payment** (any method incl. cash/Venmo): 'pending' at completion → 'owed' when payment is recorded. No commission on uncollected work. |
+| Owner-sold jobs | **Track commission anyway** — every job gets a commission entry (owner-sold flagged as such, no payout expected) so cost-of-sale/unit economics are always visible. Implementation: `sold_by_member_id` nullable + `sold_by_owner` flag (owner has no team_members row). |
+| Default rates | **15% self-generated / 5% house lead**, business-configurable in Settings; per-member override extends the Sprint 1 override. |
+| Seller-who-also-works | **Both streams, always**: commission (selling) + labor pay rule (working) as separate line items on the same job. |
+| Lead sources | canvassing / website / manual for now; enum kept extensible (referral etc. later). |
+| Sequencing | **Run the sprint in order 2.1 → 2.2 → 2.3 → 2.4 as one release**; Wil's pilot starts when the sprint lands. |
+| Geo awareness | **2.4 in this sprint (tier 1)**: geocode jobs + worker home bases; assign modal shows distance/drive estimate from each candidate's previous booking (or home base); auto-propose ranks nearest qualified available first. Informational — owner still confirms. Founder task: create GOOGLE_MAPS_API_KEY. Sprint 3: drive-time as dynamic buffer + AI dispatcher (rank whole day: schedule × skills × geography via the existing Claude assistant infra). |
+
+### 2.4 Geo-aware dispatch v1 (added post-grill, 2026-07-20)
+Ingredients already present: job/client addresses, canvassing lat/lng, team_members home_address, mileage tracking, Maps key slot. Build: geocode-on-save for jobs + worker home bases (Google Geocoding, cached in columns); proximity computation (previous-booking-that-day else home base → new job); "~N min away" chips in the owner assign modal; findBestMember prefers nearest among qualified+available. Straight-line × road factor is acceptable for v1; true route times are Sprint 3.
+
 ### Open questions for next session
 - **Which database?** Live hustlebricks.com Supabase (may hold real CFoam data — ask son/co-dev) vs. fresh shared-account project + full migration run. Need SUPABASE_SERVICE_ROLE_KEY either way.
 - Access to co-dev's Vercel (or new Vercel project from this repo → hustlebricks.ai)?
