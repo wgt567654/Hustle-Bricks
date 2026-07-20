@@ -2,73 +2,74 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { sendSMS } from "@/lib/sms";
-import { validateTwilioSignature } from "@/lib/twilio-signature";
+import { verifyTelnyxSignature } from "@/lib/telnyx-signature";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Twilio delivers incoming SMS as an HTTP POST with application/x-www-form-urlencoded body.
-// Required fields: From (sender), To (your Twilio number), Body (message text).
-// Returns TwiML — an empty <Response/> means "no auto-reply".
+// Telnyx delivers webhooks as an HTTP POST with a JSON body:
+//   { data: { event_type, payload: { from: { phone_number }, to: [{ phone_number }], text, id } } }
+// event_type "message.received" is an inbound text; "message.sent"/"message.finalized"
+// are delivery receipts we simply acknowledge with 200.
+type TelnyxWebhook = {
+  data?: {
+    event_type?: string;
+    payload?: {
+      id?: string;
+      text?: string;
+      from?: { phone_number?: string };
+      to?: { phone_number?: string }[];
+    };
+  };
+};
+
 export async function POST(req: NextRequest) {
-  const contentType = req.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/x-www-form-urlencoded")) {
-    return NextResponse.json({ error: "Bad content type" }, { status: 400 });
-  }
-
-  // Read the raw body so the signature is computed over the exact POST params.
+  // Read the raw body so the signature is verified over the exact bytes sent.
   const rawBody = await req.text();
-  const formData = new URLSearchParams(rawBody);
 
-  // Validate X-Twilio-Signature (HMAC-SHA1 of full URL + sorted POST params,
-  // keyed by TWILIO_AUTH_TOKEN). Only enforced when the token is configured.
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (authToken) {
-    // Reconstruct the public URL Twilio signed: the webhook URL configured in
-    // the Twilio console is NEXT_PUBLIC_APP_URL + this route's path (+ query).
-    const appOrigin = (
-      process.env.NEXT_PUBLIC_APP_URL ?? "https://hustlebricks.com"
-    ).replace(/\/+$/, "");
-    const signedUrl = `${appOrigin}${req.nextUrl.pathname}${req.nextUrl.search}`;
-
-    const params: Record<string, string> = {};
-    formData.forEach((value, key) => {
-      params[key] = value;
-    });
-
-    const valid = validateTwilioSignature({
-      authToken,
-      signature: req.headers.get("x-twilio-signature"),
-      url: signedUrl,
-      params,
-    });
-
-    if (!valid) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-    }
-  } else {
-    console.warn(
-      "[sms-webhook] TWILIO_AUTH_TOKEN not set — skipping Twilio signature validation"
-    );
+  // Verify the Ed25519 signature over `${timestamp}|${rawBody}` with Telnyx's
+  // public key. Skips gracefully (log-and-continue) when TELNYX_PUBLIC_KEY is unset.
+  const valid = verifyTelnyxSignature(
+    rawBody,
+    req.headers.get("telnyx-signature-ed25519"),
+    req.headers.get("telnyx-timestamp")
+  );
+  if (!valid) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
   }
 
-  const fromPhone = formData.get("From");
-  const toPhone   = formData.get("To");
-  const body      = formData.get("Body");
-  const twilioSid = formData.get("MessageSid");
+  let event: TelnyxWebhook;
+  try {
+    event = JSON.parse(rawBody) as TelnyxWebhook;
+  } catch {
+    return NextResponse.json({ error: "Bad JSON" }, { status: 400 });
+  }
+
+  const eventType = event.data?.event_type;
+
+  // Delivery-receipt / non-inbound events — acknowledge and no-op.
+  if (eventType !== "message.received") {
+    return ok();
+  }
+
+  const payload = event.data?.payload;
+  const fromPhone = payload?.from?.phone_number ?? null;
+  const toPhone = payload?.to?.[0]?.phone_number ?? null;
+  const body = payload?.text ?? null;
+  const messageId = payload?.id ?? null;
 
   if (!fromPhone || !toPhone || !body) {
-    return twiml();
+    return ok();
   }
 
-  // Find the business that owns this Twilio number.
-  const twilioFromEnv = process.env.TWILIO_FROM_NUMBER ?? "";
+  // Find the business that owns this number.
+  const telnyxFromEnv = process.env.TELNYX_FROM_NUMBER ?? "";
   const { data: business } = await supabaseAdmin
     .from("businesses")
     .select("id, name, ai_sms_enabled")
-    .or(`twilio_number.eq.${toPhone},twilio_number.eq.${twilioFromEnv}`)
+    .or(`twilio_number.eq.${toPhone},twilio_number.eq.${telnyxFromEnv}`)
     .limit(1)
     .maybeSingle();
 
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
   let aiEnabled: boolean = (business as { ai_sms_enabled?: boolean } | null)?.ai_sms_enabled ?? false;
   const bizName: string = (business as { name?: string } | null)?.name ?? "";
 
-  if (!businessId && twilioFromEnv && toPhone === twilioFromEnv) {
+  if (!businessId && telnyxFromEnv && toPhone === telnyxFromEnv) {
     const { data: anyBiz } = await supabaseAdmin
       .from("businesses")
       .select("id, name, ai_sms_enabled")
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
     aiEnabled = (anyBiz as { ai_sms_enabled?: boolean } | null)?.ai_sms_enabled ?? false;
   }
 
-  if (!businessId) return twiml();
+  if (!businessId) return ok();
 
   // Find client by their phone number
   const normalized = normalizePhone(fromPhone);
@@ -105,14 +106,14 @@ export async function POST(req: NextRequest) {
     from_phone:  fromPhone,
     to_phone:    toPhone,
     body:        body.trim(),
-    twilio_sid:  twilioSid,
+    twilio_sid:  messageId,
     read_at:     null,
   });
 
   // Always honour STOP/opt-out without AI involvement
   const upperBody = body.trim().toUpperCase();
   if (["STOP", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"].includes(upperBody)) {
-    return twiml();
+    return ok();
   }
 
   // AI auto-response if enabled and Anthropic key is present
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return twiml();
+  return ok();
 }
 
 async function generateAndSendAIReply({
@@ -228,11 +229,8 @@ async function generateAndSendAIReply({
   }
 }
 
-function twiml() {
-  return new NextResponse("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response/>", {
-    status: 200,
-    headers: { "Content-Type": "text/xml" },
-  });
+function ok() {
+  return NextResponse.json({ received: true }, { status: 200 });
 }
 
 function normalizePhone(raw: string): string | null {

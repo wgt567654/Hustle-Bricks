@@ -17,7 +17,7 @@ interface NotifyOwnerOptions {
 /**
  * Best-effort owner notification for demand events (new booking request,
  * accepted quote, …). Email sends immediately when RESEND_API_KEY is set;
- * SMS goes through the sms_queue (delivered now if Twilio creds exist,
+ * SMS goes through the sms_queue (delivered now if Telnyx creds exist,
  * otherwise queued until they do). Never throws — a failed notification
  * must not fail the customer-facing action that triggered it.
  */

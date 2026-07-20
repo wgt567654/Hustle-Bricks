@@ -66,7 +66,7 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-bold tracking-tight mb-2">Service providers</h2>
             <p className="text-muted-foreground">
               We rely on a small set of processors to run the service: Supabase (database and
-              authentication), Stripe (payments), Resend (email delivery), Twilio (SMS), Google
+              authentication), Stripe (payments), Resend (email delivery), Telnyx (SMS), Google
               (calendar sync and maps, when you connect them), and our hosting provider. Each
               receives only what it needs to perform its function.
             </p>

@@ -40,27 +40,22 @@ export async function sendSMS(opts: SendSMSOptions): Promise<SendSMSResult> {
 
   const queueId: string = queued.id;
 
-  // If Twilio credentials are present, send immediately.
+  // If Telnyx credentials are present, send immediately.
   // When you're ready to go live, add these to your .env.local:
-  //   TWILIO_ACCOUNT_SID=ACxxxx
-  //   TWILIO_AUTH_TOKEN=xxxx
-  //   TWILIO_FROM_NUMBER=+1xxxxxxxxxx
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_FROM_NUMBER;
+  //   TELNYX_API_KEY=KEYxxxx
+  //   TELNYX_FROM_NUMBER=+1xxxxxxxxxx
+  const apiKey = process.env.TELNYX_API_KEY;
+  const fromNumber = process.env.TELNYX_FROM_NUMBER;
 
-  if (accountSid && authToken && fromNumber) {
+  if (apiKey && fromNumber) {
     try {
-      const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-      const creds = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-
-      const res = await fetch(url, {
+      const res = await fetch("https://api.telnyx.com/v2/messages", {
         method: "POST",
         headers: {
-          Authorization: `Basic ${creds}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
         },
-        body: new URLSearchParams({ To: phone, From: fromNumber, Body: body }).toString(),
+        body: JSON.stringify({ from: fromNumber, to: phone, text: body }),
       });
 
       if (res.ok) {
@@ -73,7 +68,9 @@ export async function sendSMS(opts: SendSMSOptions): Promise<SendSMSResult> {
       }
 
       const errData = await res.json().catch(() => ({}));
-      const errMsg = (errData as { message?: string }).message ?? `Twilio error ${res.status}`;
+      const errMsg =
+        (errData as { errors?: { detail?: string }[] }).errors?.[0]?.detail ??
+        `Telnyx error ${res.status}`;
       await supabaseAdmin
         .from("sms_queue")
         .update({ status: "failed", error: errMsg })
@@ -89,7 +86,7 @@ export async function sendSMS(opts: SendSMSOptions): Promise<SendSMSResult> {
     }
   }
 
-  // No provider configured — logged to queue, will send when Twilio is added.
+  // No provider configured — logged to queue, will send when Telnyx is added.
   await supabaseAdmin
     .from("sms_queue")
     .update({ status: "pending" })
@@ -117,7 +114,7 @@ async function logOutbound(opts: {
   metadata?: Record<string, unknown>;
 }) {
   const { to, body, businessId, clientId, metadata } = opts;
-  const fromNumber = process.env.TWILIO_FROM_NUMBER ?? "system";
+  const fromNumber = process.env.TELNYX_FROM_NUMBER ?? "system";
   const normalized = normalizePhone(to);
 
   // Resolve client_id: use explicit id if provided, otherwise look up by phone.
