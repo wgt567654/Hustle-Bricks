@@ -30,10 +30,25 @@ function dateKey(d: Date) {
 }
 
 function formatSlot(slot: string) {
-  const [h] = slot.split(":").map(Number);
+  const [h, m] = slot.split(":").map(Number);
   const suffix = h >= 12 ? "PM" : "AM";
   const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour} ${suffix}`;
+  return m ? `${hour}:${String(m).padStart(2, "0")} ${suffix}` : `${hour} ${suffix}`;
+}
+
+function toMins(hhmm: string) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** "≈ 45 min", "≈ 1 hr", "≈ 1.5 hr", "≈ 2 hr 15 min" */
+function formatDuration(mins: number) {
+  if (mins < 60) return `≈ ${mins} min`;
+  const h = Math.floor(mins / 60);
+  const rem = mins % 60;
+  if (rem === 0) return `≈ ${h} hr`;
+  if (rem === 30) return `≈ ${h}.5 hr`;
+  return `≈ ${h} hr ${rem} min`;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -117,31 +132,57 @@ export default function BookWidget({
     [calYear, calMonthIdx]
   );
 
-  const timeSlots = useMemo(() => {
+  // Total estimated duration of the selected services (fallback 60 min)
+  const requestedDuration = useMemo(() => {
+    const total = catalog
+      .filter((s) => selectedServiceIds.includes(s.id))
+      .reduce((sum, s) => sum + (s.duration_mins ?? 60), 0);
+    return total > 0 ? total : 60;
+  }, [catalog, selectedServiceIds]);
+
+  // Slot starts every 30 minutes; the whole service window must fit before
+  // close. Used as a fallback while capacity hasn't loaded — once the
+  // capacity response arrives, its keys are the authoritative slot list.
+  const localSlots = useMemo(() => {
     if (!selectedDate) return [];
     const dow = new Date(selectedDate + "T12:00:00").getDay();
     const config = dayHours[String(dow)] ?? { from: "08:00", until: "18:00" };
-    const [fromH] = config.from.split(":").map(Number);
-    const [untilH] = config.until.split(":").map(Number);
-    return Array.from({ length: Math.max(0, untilH - fromH) }, (_, i) =>
-      `${String(fromH + i).padStart(2, "0")}:00`
-    );
-  }, [selectedDate, dayHours]);
+    const fromM = toMins(config.from);
+    const untilM = toMins(config.until);
+    const slots: string[] = [];
+    for (let t = fromM; t + requestedDuration <= untilM; t += 30) {
+      slots.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+    }
+    return slots;
+  }, [selectedDate, dayHours, requestedDuration]);
 
-  // Reset time when date changes
+  const timeSlots = useMemo(
+    () => (slotCapacity !== null ? Object.keys(slotCapacity).sort() : localSlots),
+    [slotCapacity, localSlots]
+  );
+
+  // Reset time when date or duration changes (the slot grid changes with both)
   // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing pattern; task 3.3 is styling-only
-  useEffect(() => { setSelectedTime(null); }, [selectedDate]);
+  useEffect(() => { setSelectedTime(null); }, [selectedDate, requestedDuration]);
 
-  // Fetch slot capacity when a date is selected
+  // Fetch slot capacity when a date is selected, and refetch when the
+  // service selection (and therefore the requested duration) changes.
+  const serviceIdsKey = selectedServiceIds.join(",");
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing pattern; task 3.3 is styling-only
     if (!selectedDate || intent !== "schedule") { setSlotCapacity(null); return; }
     setLoadingCapacity(true);
-    fetch(`/api/booking/capacity?businessId=${businessId}&date=${selectedDate}`)
+    const params = new URLSearchParams({
+      businessId,
+      date: selectedDate,
+      duration: String(requestedDuration),
+    });
+    if (serviceIdsKey) params.set("service_ids", serviceIdsKey);
+    fetch(`/api/booking/capacity?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => { setSlotCapacity(data); setLoadingCapacity(false); })
       .catch(() => { setSlotCapacity(null); setLoadingCapacity(false); });
-  }, [selectedDate, businessId, intent]);
+  }, [selectedDate, businessId, intent, requestedDuration, serviceIdsKey]);
 
   function toggleService(id: string) {
     setSelectedServiceIds((prev) =>
@@ -172,7 +213,13 @@ export default function BookWidget({
 
     if (intent === "schedule") {
       url = "/api/booking/public";
-      body = { ...body, date: selectedDate, time: selectedTime, notes: mergedNotes };
+      body = {
+        ...body,
+        date: selectedDate,
+        time: selectedTime,
+        notes: mergedNotes,
+        duration_mins: requestedDuration,
+      };
       if (selectedServiceIds.length > 0) {
         body.services = selectedServiceNames;
         body.service_ids = selectedServiceIds;
@@ -434,7 +481,12 @@ export default function BookWidget({
             </div>
           )}
 
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Pick a Date & Time</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Pick a Date & Time</p>
+            <span className="text-xs font-bold text-primary bg-primary/10 rounded-full px-2.5 py-1 shrink-0">
+              {formatDuration(requestedDuration)}
+            </span>
+          </div>
 
           {/* Month nav */}
           <div>
@@ -627,7 +679,9 @@ export default function BookWidget({
             <p className="font-extrabold text-foreground">
               {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
-            <p className="text-sm text-muted-foreground mt-0.5">{formatSlot(selectedTime)}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {formatSlot(selectedTime)} · {formatDuration(requestedDuration)}
+            </p>
           </div>
         )}
 

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const { data: job } = await supabaseAdmin
     .from("jobs")
     .select(`
-      id, scheduled_at, duration_mins, business_id, assigned_member_id, total,
+      id, scheduled_at, duration_mins, business_id, assigned_member_id, total, geo_lat, geo_lng,
       clients ( name, address, phone ),
       businesses ( name, contact_email, owner_id ),
       job_line_items ( description, service_id )
@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
     business_id: string;
     assigned_member_id: string | null;
     total: number;
+    geo_lat: number | null;
+    geo_lng: number | null;
     clients: { name: string; address: string | null; phone: string | null } | null;
     businesses: { name: string | null; contact_email: string | null; owner_id: string } | null;
     job_line_items: { description: string; service_id: string | null }[];
@@ -65,6 +67,8 @@ export async function POST(req: NextRequest) {
     durationMins: j.duration_mins ?? 60,
     excludeJobId: j.id,
     serviceIds,
+    jobLat: j.geo_lat,
+    jobLng: j.geo_lng,
   });
 
   if (!match) return NextResponse.json({ assigned: null, reason: "no_available_member" });

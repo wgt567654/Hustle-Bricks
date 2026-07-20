@@ -34,9 +34,10 @@ export async function POST(req: NextRequest) {
     .from("quotes")
     .select(`
       id, status, total, notes, business_id, client_id, proposed_date, proposed_time,
+      created_by_member_id, lead_source,
       clients ( id, name, phone, email ),
       businesses ( id, name, contact_phone, contact_email ),
-      quote_line_items ( description, quantity, unit_price )
+      quote_line_items ( description, quantity, unit_price, service_id )
     `)
     .eq("id", quoteId)
     .single();
@@ -50,9 +51,11 @@ export async function POST(req: NextRequest) {
     client_id: string | null;
     proposed_date: string | null;
     proposed_time: string | null;
+    created_by_member_id: string | null;
+    lead_source: string | null;
     clients: { id: string; name: string; phone: string | null; email: string | null } | null;
     businesses: { id: string; name: string | null; contact_phone: string | null; contact_email: string | null } | null;
-    quote_line_items: { description: string; quantity: number; unit_price: number }[];
+    quote_line_items: { description: string; quantity: number; unit_price: number; service_id: string | null }[];
   };
 
   const q = quote as unknown as QuoteRow;
@@ -85,9 +88,11 @@ async function handleAccepted(
     client_id: string | null;
     proposed_date: string | null;
     proposed_time: string | null;
+    created_by_member_id: string | null;
+    lead_source: string | null;
     clients: { id: string; name: string; phone: string | null; email: string | null } | null;
     businesses: { id: string; name: string | null; contact_phone: string | null; contact_email: string | null } | null;
-    quote_line_items: { description: string; quantity: number; unit_price: number }[];
+    quote_line_items: { description: string; quantity: number; unit_price: number; service_id: string | null }[];
   }
 ) {
   const bizName = q.businesses?.name ?? "Your service provider";
@@ -100,6 +105,26 @@ async function handleAccepted(
   // Postgres `time` comes back as "HH:MM:SS" — booking_requests.requested_time
   // is text in "HH:MM" form (BookingsClient appends ":00" when scheduling).
   const proposedTime = q.proposed_time ? q.proposed_time.slice(0, 5) : null;
+
+  // Duration = sum of the quoted services' duration_mins (fallback 60).
+  const serviceIds = Array.from(
+    new Set(q.quote_line_items.map((li) => li.service_id).filter((id): id is string => !!id))
+  );
+  let durationMins = 60;
+  if (serviceIds.length > 0) {
+    const { data: serviceRows } = await supabase
+      .from("services")
+      .select("id, duration_mins")
+      .in("id", serviceIds);
+    const durations = new Map(
+      ((serviceRows ?? []) as { id: string; duration_mins: number | null }[]).map((s) => [s.id, s.duration_mins ?? 0])
+    );
+    const summed = q.quote_line_items.reduce(
+      (sum, li) => sum + (li.service_id ? durations.get(li.service_id) ?? 0 : 0),
+      0
+    );
+    if (summed > 0) durationMins = summed;
+  }
 
   // 0a. Proposed schedule → pending booking request in the owner's Bookings queue
   if (q.client_id && q.proposed_date && proposedTime) {
@@ -121,6 +146,7 @@ async function handleAccepted(
         business_id: q.business_id,
         requested_date: q.proposed_date,
         requested_time: proposedTime,
+        duration_mins: durationMins,
         notes: bookingNotes,
         status: "pending",
       });
@@ -148,6 +174,9 @@ async function handleAccepted(
       status: "scheduled",
       total: q.total,
       notes: q.notes,
+      sold_by_member_id: q.created_by_member_id,
+      sold_by_owner: q.created_by_member_id === null,
+      lead_source: q.lead_source ?? "manual",
     })
     .select("id")
     .single();

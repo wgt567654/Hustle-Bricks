@@ -99,6 +99,7 @@ export default function NewQuotePage() {
         total,
         notes: notesValue,
         created_by_member_id: memberId,
+        lead_source: "self_generated",
         proposed_date: proposedDate || null,
         proposed_time: proposedTime || null,
       })

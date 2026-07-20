@@ -10,7 +10,7 @@ export default async function BookingsPage() {
   if (businessId) {
     const { data } = await supabase
       .from("booking_requests")
-      .select("id, requested_date, requested_time, notes, created_at, client_id, clients(id, name, address)")
+      .select("id, requested_date, requested_time, duration_mins, notes, created_at, client_id, clients(id, name, address)")
       .eq("business_id", businessId)
       .eq("status", "pending")
       .order("created_at", { ascending: false });

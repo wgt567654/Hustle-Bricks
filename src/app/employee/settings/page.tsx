@@ -68,6 +68,14 @@ export default function EmployeeSettingsPage() {
     setHomeAddress(addressInput.trim());
     setEditingAddress(false);
     setSavingAddress(false);
+
+    // Fire-and-forget: geocode the new home address for geo-aware dispatch.
+    // Degrades silently when no Maps API key is configured server-side.
+    fetch("/api/geo/geocode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "member", id: memberId }),
+    }).catch(() => {});
   }
 
   async function signOut() {

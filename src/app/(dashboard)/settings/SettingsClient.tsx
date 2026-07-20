@@ -33,6 +33,8 @@ export type SettingsBusiness = {
   city: string | null;
   tax_rate: number | null;
   commission_rate: number | null;
+  commission_rate_self_gen: number | null;
+  commission_rate_house: number | null;
   mileage_rate_per_mile: number | null;
   sms_reminders_enabled: boolean | null;
   smart_scheduling_enabled: boolean | null;
@@ -148,6 +150,8 @@ export default function SettingsClient({
   // Tax & commission
   const [taxRate, setTaxRate] = useState(business.tax_rate != null ? String(business.tax_rate) : "8.00");
   const [commissionRate, setCommissionRate] = useState(business.commission_rate != null ? String(business.commission_rate) : "5.00");
+  const [commissionRateSelfGen, setCommissionRateSelfGen] = useState(business.commission_rate_self_gen != null ? String(business.commission_rate_self_gen) : "15.00");
+  const [commissionRateHouse, setCommissionRateHouse] = useState(business.commission_rate_house != null ? String(business.commission_rate_house) : "5.00");
   const [mileageRate, setMileageRate] = useState(business.mileage_rate_per_mile != null ? String(business.mileage_rate_per_mile) : "0.70");
   const [editingTax, setEditingTax] = useState(false);
   const [editingCommission, setEditingCommission] = useState(false);
@@ -570,7 +574,11 @@ export default function SettingsClient({
     if (!businessId) return;
     setSavingCommission(true);
     const supabase = createClient();
-    const { error } = await supabase.from("businesses").update({ commission_rate: parseFloat(commissionRate) || 0 }).eq("id", businessId);
+    const { error } = await supabase.from("businesses").update({
+      commission_rate: parseFloat(commissionRate) || 0,
+      commission_rate_self_gen: parseFloat(commissionRateSelfGen) || 0,
+      commission_rate_house: parseFloat(commissionRateHouse) || 0,
+    }).eq("id", businessId);
     setSavingCommission(false);
     if (error) {
       toast.error("Couldn't save the commission rate — try again.");
@@ -1999,7 +2007,7 @@ export default function SettingsClient({
                   </div>
                   <div className="flex flex-col">
                     <span className="font-bold text-sm text-foreground">Sales Commissions</span>
-                    <span className="text-xs text-muted-foreground">Default Rate: {commissionRate}%</span>
+                    <span className="text-xs text-muted-foreground">Self-gen: {commissionRateSelfGen}% · House: {commissionRateHouse}%</span>
                   </div>
                 </div>
                 <button onClick={() => setEditingCommission((v) => !v)} className="text-xs font-bold text-primary">
@@ -2007,23 +2015,59 @@ export default function SettingsClient({
                 </button>
               </div>
               {editingCommission && (
-                <div className="px-4 pb-4 flex gap-2 items-center">
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={commissionRate}
-                      onChange={(e) => setCommissionRate(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
+                <div className="px-4 pb-4 flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Self-generated leads %</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={commissionRateSelfGen}
+                        onChange={(e) => setCommissionRateSelfGen(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Paid when the rep found the customer (canvassing, own quote).</p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">House leads %</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={commissionRateHouse}
+                        onChange={(e) => setCommissionRateHouse(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Paid on website and owner-assigned leads. Per-rep overrides in Team win over both.</p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Legacy default %</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={commissionRate}
+                        onChange={(e) => setCommissionRate(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Still used by employee earnings estimates and canvassing analytics.</p>
                   </div>
                   <button
                     onClick={saveCommission}
                     disabled={savingCommission}
-                    className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
+                    className="self-end px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
                   >
                     {savingCommission ? "Saving…" : "Save"}
                   </button>

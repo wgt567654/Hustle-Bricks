@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/currency";
 import { getDefaultTemplate, interpolateTemplate } from "@/lib/messageTemplates";
+import { haversineMiles, driveMinutesEstimate } from "@/lib/geo";
 import { toast } from "@/lib/toast";
 
 type JobStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
@@ -20,6 +21,8 @@ type TeamMember = {
   id: string;
   name: string;
   email: string | null;
+  home_lat?: number | null;
+  home_lng?: number | null;
 };
 
 type AvailabilityStatus = "available" | "busy" | "off" | "unknown";
@@ -270,6 +273,8 @@ export default function JobDetailClient({
   const [memberAvailability, setMemberAvailability] = useState<Record<string, AvailabilityStatus>>({});
   // Skill-aware qualification for the current job's services (empty → job has no services, show no badges)
   const [memberQualification, setMemberQualification] = useState<Record<string, boolean>>({});
+  // Geo-aware drive-time estimate per member (empty → no geo info available, show no chips)
+  const [memberDriveMins, setMemberDriveMins] = useState<Record<string, number>>({});
   const [assignSaving, setAssignSaving] = useState(false);
   const [editDurationMins, setEditDurationMins] = useState<number | null>(null);
   const [durationHours, setDurationHours] = useState(0);
@@ -791,6 +796,94 @@ export default function JobDetailClient({
     );
   }
 
+  // Geo-aware "~N min away" chips (Sprint 2.4). Best-effort and fully silent:
+  // any missing coords (no Maps API key, no addresses, geocode failure) simply
+  // yields no chip for that member. Never blocks or delays assignment.
+  //
+  // Per member, origin = their latest same-day job with coords (assigned or on
+  // crew, scheduled before this job's time), else their home coords.
+  async function computeDriveTimes(members: TeamMember[]) {
+    try {
+      if (!job?.scheduled_at) return;
+      const supabase = createClient();
+
+      // Job coords: read persisted geo, else geocode via the API when the
+      // client has an address (the endpoint persists on success).
+      const { data: geoRow } = await supabase
+        .from("jobs")
+        .select("geo_lat, geo_lng")
+        .eq("id", job.id)
+        .maybeSingle();
+      let jobLat: number | null = (geoRow as { geo_lat: number | null } | null)?.geo_lat ?? null;
+      let jobLng: number | null = (geoRow as { geo_lng: number | null } | null)?.geo_lng ?? null;
+
+      if ((jobLat == null || jobLng == null) && job.clients?.address) {
+        const res = await fetch("/api/geo/geocode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "job", id: job.id }),
+        }).catch(() => null);
+        if (res?.ok) {
+          const d = (await res.json().catch(() => null)) as { lat: number | null; lng: number | null } | null;
+          jobLat = d?.lat ?? null;
+          jobLng = d?.lng ?? null;
+        }
+      }
+      if (jobLat == null || jobLng == null) return; // no geo info → no chips
+      const jobPoint = { lat: jobLat, lng: jobLng };
+
+      // One batched fetch: that day's earlier geo-tagged jobs + their crews.
+      const jobStart = new Date(job.scheduled_at);
+      const dayStart = new Date(jobStart);
+      dayStart.setHours(0, 0, 0, 0);
+      const { data: dayJobs } = await supabase
+        .from("jobs")
+        .select("id, scheduled_at, assigned_member_id, geo_lat, geo_lng, job_crew(team_member_id)")
+        .eq("business_id", businessId)
+        .neq("id", job.id)
+        .in("status", ["scheduled", "in_progress"])
+        .not("scheduled_at", "is", null)
+        .not("geo_lat", "is", null)
+        .not("geo_lng", "is", null)
+        .gte("scheduled_at", dayStart.toISOString())
+        .lt("scheduled_at", jobStart.toISOString())
+        .order("scheduled_at", { ascending: false });
+
+      type DayJob = {
+        scheduled_at: string;
+        assigned_member_id: string | null;
+        geo_lat: number;
+        geo_lng: number;
+        job_crew: { team_member_id: string }[];
+      };
+      const earlierJobs = (dayJobs ?? []) as unknown as DayJob[];
+
+      // Latest earlier job per member (list is sorted newest-first).
+      const latestJobOrigin = new Map<string, { lat: number; lng: number }>();
+      for (const dj of earlierJobs) {
+        const memberIds = [
+          ...(dj.assigned_member_id ? [dj.assigned_member_id] : []),
+          ...(dj.job_crew ?? []).map((c) => c.team_member_id),
+        ];
+        for (const mid of memberIds) {
+          if (!latestJobOrigin.has(mid)) latestJobOrigin.set(mid, { lat: dj.geo_lat, lng: dj.geo_lng });
+        }
+      }
+
+      const mins: Record<string, number> = {};
+      for (const m of members) {
+        const origin =
+          latestJobOrigin.get(m.id) ??
+          (m.home_lat != null && m.home_lng != null ? { lat: m.home_lat, lng: m.home_lng } : null);
+        if (!origin) continue; // no origin coords → no chip
+        mins[m.id] = driveMinutesEstimate(haversineMiles(origin, jobPoint));
+      }
+      setMemberDriveMins(mins);
+    } catch {
+      // Geo is decorative — never surface errors or console noise.
+    }
+  }
+
   function sortMembers(members: TeamMember[], avail: Record<string, AvailabilityStatus>): TeamMember[] {
     const priority = (s: AvailabilityStatus) => {
       if (s === "available") return 0;
@@ -809,7 +902,7 @@ export default function JobDetailClient({
     const supabase = createClient();
     const { data: members } = await supabase
       .from("team_members")
-      .select("id, name, email")
+      .select("id, name, email, home_lat, home_lng")
       .eq("business_id", businessId)
       .eq("is_active", true)
       .order("name");
@@ -831,6 +924,10 @@ export default function JobDetailClient({
 
     const qual = await computeQualification(memberList);
     setMemberQualification(qual);
+
+    // Kick off geo chips in the background — never blocks the modal opening.
+    setMemberDriveMins({});
+    void computeDriveTimes(memberList);
 
     setAssignModalOpen(true);
   }
@@ -2043,6 +2140,11 @@ export default function JobDetailClient({
                               }`}
                             >
                               {memberQualification[m.id] ? "Qualified" : "Not certified"}
+                            </span>
+                          )}
+                          {m.id in memberDriveMins && (
+                            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold bg-muted text-muted-foreground">
+                              ~{memberDriveMins[m.id]} min away
                             </span>
                           )}
                           {status !== "unknown" && (

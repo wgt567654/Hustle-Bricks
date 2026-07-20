@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  const { business_id, name, email, phone, address, date, time, notes, services, service_ids } = body;
+  const { business_id, name, email, phone, address, date, time, notes, services, service_ids, duration_mins } = body;
 
   if (!business_id || !name || !date || !time) {
     return NextResponse.json(
@@ -69,6 +69,23 @@ export async function POST(req: NextRequest) {
       { error: "One or more fields are invalid or too long" },
       { status: 400 }
     );
+  }
+
+  // Estimated duration in minutes: optional, integer, 15..480, default 60.
+  let durationMins = 60;
+  if (duration_mins !== undefined && duration_mins !== null) {
+    if (
+      typeof duration_mins !== "number" ||
+      !Number.isInteger(duration_mins) ||
+      duration_mins < 15 ||
+      duration_mins > 480
+    ) {
+      return NextResponse.json(
+        { error: "duration_mins must be an integer between 15 and 480" },
+        { status: 400 }
+      );
+    }
+    durationMins = duration_mins;
   }
 
   const supabase = adminClient();
@@ -137,6 +154,9 @@ export async function POST(req: NextRequest) {
     requested_time: time,
     notes: storedNotes,
     status: "pending",
+    duration_mins: durationMins,
+    service_ids:
+      Array.isArray(service_ids) && service_ids.length > 0 ? service_ids : null,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

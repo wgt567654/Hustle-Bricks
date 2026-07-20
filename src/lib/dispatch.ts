@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { haversineMiles } from "@/lib/geo";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +19,11 @@ export type DispatchResult = {
  *   1. Has employee_availability covering the job window for that day of week
  *   2. Has no conflicting scheduled/in_progress job during the same window
  *
+ * When jobLat/jobLng are provided, candidates are ranked by straight-line
+ * distance from their home coordinates first (members without home coords
+ * sort last but remain eligible). Without job coords the behavior is
+ * unchanged (alphabetical) — geo is purely additive and never blocks.
+ *
  * Returns null if no qualified member is found (caller should still create the job).
  */
 export async function findBestMember({
@@ -26,12 +32,16 @@ export async function findBestMember({
   durationMins = 60,
   excludeJobId,
   serviceIds,
+  jobLat,
+  jobLng,
 }: {
   businessId: string;
   scheduledAt: string;
   durationMins?: number;
   excludeJobId?: string;
   serviceIds?: string[];
+  jobLat?: number | null;
+  jobLng?: number | null;
 }): Promise<DispatchResult> {
   const jobStart = new Date(scheduledAt);
   const jobEnd = new Date(jobStart.getTime() + durationMins * 60_000);
@@ -42,7 +52,7 @@ export async function findBestMember({
   const [{ data: members }, { data: avail }, { data: conflictJobs }] = await Promise.all([
     supabaseAdmin
       .from("team_members")
-      .select("id, name, email, phone")
+      .select("id, name, email, phone, home_lat, home_lng")
       .eq("business_id", businessId)
       .eq("is_active", true)
       .eq("is_pending", false)
@@ -84,7 +94,14 @@ export async function findBestMember({
     ])
   );
 
-  type MemberRow = { id: string; name: string; email: string | null; phone: string | null };
+  type MemberRow = {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    home_lat: number | null;
+    home_lng: number | null;
+  };
   const memberRows = (members ?? []) as MemberRow[];
 
   // Qualification filter (skipped when no serviceIds provided → backward compatible).
@@ -120,7 +137,21 @@ export async function findBestMember({
     }
   }
 
-  for (const m of memberRows) {
+  // Geo-aware ranking (Sprint 2.4): when job coords are known, prefer the
+  // closest qualified+available candidate by home location. Members without
+  // home coords rank last (Infinity) but stay eligible. Ties / no job coords
+  // fall back to the existing alphabetical order from the query.
+  let rankedRows = memberRows;
+  if (jobLat != null && jobLng != null) {
+    const jobPoint = { lat: jobLat, lng: jobLng };
+    const distanceOf = (m: MemberRow) =>
+      m.home_lat != null && m.home_lng != null
+        ? haversineMiles({ lat: m.home_lat, lng: m.home_lng }, jobPoint)
+        : Number.POSITIVE_INFINITY;
+    rankedRows = [...memberRows].sort((a, b) => distanceOf(a) - distanceOf(b));
+  }
+
+  for (const m of rankedRows) {
     if (qualifiedIds && !qualifiedIds.has(m.id)) continue; // not certified for the job's services
     if (busyIds.has(m.id)) continue;
 

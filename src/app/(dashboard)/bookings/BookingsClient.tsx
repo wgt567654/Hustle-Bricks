@@ -9,6 +9,7 @@ export type BookingRequest = {
   id: string;
   requested_date: string;
   requested_time: string;
+  duration_mins: number | null;
   notes: string | null;
   created_at: string;
   client_id: string;
@@ -16,8 +17,19 @@ export type BookingRequest = {
 };
 
 function formatRequestedTime(time: string) {
-  const [h] = time.split(":").map(Number);
-  return `${h % 12 === 0 ? 12 : h % 12}:00 ${h >= 12 ? "PM" : "AM"}`;
+  const [h, m] = time.split(":").map(Number);
+  const mm = String(m || 0).padStart(2, "0");
+  return `${h % 12 === 0 ? 12 : h % 12}:${mm} ${h >= 12 ? "PM" : "AM"}`;
+}
+
+/** "≈ 45 min", "≈ 1 hr", "≈ 1.5 hr", "≈ 2 hr 15 min" */
+function formatDuration(mins: number) {
+  if (mins < 60) return `≈ ${mins} min`;
+  const h = Math.floor(mins / 60);
+  const rem = mins % 60;
+  if (rem === 0) return `≈ ${h} hr`;
+  if (rem === 30) return `≈ ${h}.5 hr`;
+  return `≈ ${h} hr ${rem} min`;
 }
 
 function formatRequestedDate(date: string) {
@@ -57,6 +69,9 @@ export default function BookingsClient({
         client_id: req.client_id,
         status: "scheduled",
         scheduled_at: scheduledAt,
+        duration_mins: req.duration_mins ?? 60,
+        lead_source: "website",
+        sold_by_owner: true,
         total: 0,
         notes: req.notes || null,
       }).select("id").single(),
@@ -131,7 +146,7 @@ export default function BookingsClient({
                       {formatRequestedDate(req.requested_date)}
                     </span>
                     <span className="text-xs text-amber-600/80 dark:text-amber-500/80">
-                      {formatRequestedTime(req.requested_time)}
+                      {formatRequestedTime(req.requested_time)} · {formatDuration(req.duration_mins ?? 60)}
                     </span>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +20,11 @@ type Client = {
   id: string;
   name: string;
   tag: string;
+};
+
+type TeamMember = {
+  id: string;
+  name: string;
 };
 
 const LEAD_SOURCES = [
@@ -86,6 +91,9 @@ export default function NewQuoteClient({
   const [newClientSaving, setNewClientSaving] = useState(false);
   const [newClientError, setNewClientError] = useState<string | null>(null);
 
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [soldByMemberId, setSoldByMemberId] = useState("");
+
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [applyTax, setApplyTax] = useState(false);
   const [discount, setDiscount] = useState("");
@@ -94,6 +102,19 @@ export default function NewQuoteClient({
   const [proposedTime, setProposedTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!businessId) return;
+    const supabase = createClient();
+    supabase
+      .from("team_members")
+      .select("id, name")
+      .eq("business_id", businessId)
+      .eq("is_active", true)
+      .eq("is_pending", false)
+      .order("name")
+      .then(({ data }) => setTeamMembers((data ?? []) as TeamMember[]));
+  }, [businessId]);
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
   const filteredClients = clients.filter((c) =>
@@ -178,6 +199,8 @@ export default function NewQuoteClient({
         status,
         total,
         notes: notes.trim() || null,
+        lead_source: "manual",
+        created_by_member_id: soldByMemberId || null,
         proposed_date: proposedDate || null,
         proposed_time: proposedTime || null,
       })
@@ -267,6 +290,24 @@ export default function NewQuoteClient({
           </button>
         )}
       </section>
+
+      {/* Sold By */}
+      {teamMembers.length > 0 && (
+        <section>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Sold By</h3>
+          <select
+            value={soldByMemberId}
+            onChange={(e) => setSoldByMemberId(e.target.value)}
+            className="flex h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="">Owner</option>
+            {teamMembers.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground/70 mt-1.5 px-1">Commission is credited to the seller when the job completes.</p>
+        </section>
+      )}
 
       {/* Services Grid */}
       <section>
