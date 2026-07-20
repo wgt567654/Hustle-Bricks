@@ -25,6 +25,8 @@ type Quote = {
   created_at: string;
   notes: string | null;
   video_url: string | null;
+  proposed_date: string | null;
+  proposed_time: string | null;
   client_id: string;
   clients: {
     name: string;
@@ -41,6 +43,15 @@ const STATUS_BADGE: Record<QuoteStatus, { label: string; className: string }> = 
   accepted: { label: "Won",         className: `${STATUS_CLASS.accepted} border-0` },
   declined: { label: "Lost",        className: `${STATUS_CLASS.declined} border-0` },
 };
+
+function formatProposedSchedule(date: string, time: string | null) {
+  const dateStr = new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+  });
+  if (!time) return dateStr;
+  const [h, m] = time.split(":").map(Number);
+  return `${dateStr} · ${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
 
 const STATUS_COLOR: Record<QuoteStatus, string> = {
   draft:    STATUS_HEX.draft,
@@ -279,6 +290,25 @@ export default function QuoteDetailClient({
               </span>
             </div>
           </div>
+
+          {quote.proposed_date && (
+            <>
+              <Separator className="bg-border/50" />
+
+              {/* Proposed service time */}
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <span className="material-symbols-outlined text-[20px]">schedule</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70 mb-0.5">Proposed service time</span>
+                  <span className="text-sm font-bold text-foreground">
+                    {formatProposedSchedule(quote.proposed_date, quote.proposed_time)}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
         </div>
 

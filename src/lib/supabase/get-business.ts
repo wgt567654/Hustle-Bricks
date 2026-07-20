@@ -14,6 +14,7 @@ export async function getBusinessId(supabase: SupabaseClient): Promise<string | 
     .from("businesses")
     .select("id")
     .eq("owner_id", userId)
+    .order("created_at", { ascending: true })
     .limit(1);
   if (bizList && bizList.length > 0) return bizList[0].id;
 

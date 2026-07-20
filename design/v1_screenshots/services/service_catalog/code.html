@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HustleBricks Service Catalog</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0b5eda", // HustleBlue
+                        "brick-red": "#d92b2b",
+                        "brick-yellow": "#facc15",
+                        "brick-green": "#1f9e4e", // Updated slightly darker green for better contrast on white text
+                        "brick-purple": "#563085", // Matching the purple from user image reference
+                        "background-light": "#f8f9fa", // Slightly cooler grey for that clean M3 feel
+                        "background-dark": "#101722",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1e293b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    boxShadow: {
+                        "elevation-1": "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+                        "elevation-2": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                        "fab": "0 10px 15px -3px rgba(11, 94, 218, 0.3), 0 4px 6px -2px rgba(11, 94, 218, 0.1)",
+                        "fab-green": "0 10px 15px -3px rgba(34, 197, 94, 0.3), 0 4px 6px -2px rgba(34, 197, 94, 0.1)",
+                        "fab-purple": "0 10px 15px -3px rgba(86, 48, 133, 0.3), 0 4px 6px -2px rgba(86, 48, 133, 0.1)",
+                    }
+                },
+            },
+        }
+    </script>
+<style>.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }.toggle-checkbox:checked {
+            right: 0;
+            border-color: #22c55e;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #22c55e;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased transition-colors duration-200">
+<div class="relative min-h-screen w-full flex flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden border-x border-slate-200 dark:border-slate-800">
+<header class="sticky top-0 z-20 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-4 py-2">
+<div class="flex items-center justify-between h-14">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined text-[24px]">tune</span>
+</button>
+<div class="flex items-center justify-center">
+<div class="bg-brick-green text-white px-3 py-1 font-black text-xl tracking-tighter rounded-sm relative shadow-sm">
+            SERVICES
+            <div class="absolute -top-[4px] left-[4px] w-[6px] h-[4px] bg-brick-green"></div>
+<div class="absolute -top-[4px] left-[14px] w-[6px] h-[4px] bg-brick-green"></div>
+<div class="absolute -top-[4px] left-[24px] w-[6px] h-[4px] bg-brick-green"></div>
+<div class="absolute -top-[4px] right-[4px] w-[6px] h-[4px] bg-brick-green"></div>
+<div class="absolute -top-[4px] right-[14px] w-[6px] h-[4px] bg-brick-green"></div>
+</div>
+</div>
+<div class="flex items-center justify-center w-10 h-10">
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-slate-300 dark:border-slate-700">
+<img alt="User profile avatar of a smiling student" class="w-full h-full object-cover" data-alt="User profile avatar of a smiling student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEXrLdpwiSPIXXGazWLEVnP9yUNawSQ_L6398ihM6TJg1pHfGqrUAghIuYIJk22OI0omNA8MuxpR4rmj0Y2UDUe6o2Qqx0fZ5J592kV-9gAQ1UsRbxEtCgdh8eDJcIFSW7JMmCWws4PYNs14ysX_afG005jCcfgpDlMniVQZFgPezR7Qh2SaHNkuONpiB1--Upg_2OgaqC0_aDFp8Ha5IJdh6_zHJgIriXHFXe_usrBAJU6yiQMww7b1-t7d3g75vW_-s_ABwxG_M"/>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto px-4 pb-24 pt-4">
+<div class="mb-6 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 p-5 flex flex-col gap-3 shadow-sm border border-emerald-100 dark:border-emerald-900/50 relative overflow-hidden">
+<div class="flex items-start justify-between z-10 relative">
+<div class="flex flex-col gap-0 max-w-[65%]">
+<span class="text-3xl font-black uppercase tracking-tighter text-brick-purple leading-none mb-2">
+                AI TIP
+            </span>
+<h2 class="text-lg font-bold text-slate-900 dark:text-white leading-tight">Your Inventory Critique</h2>
+</div>
+<div class="w-24 h-24 -mt-2 -mr-2 relative flex items-center justify-center">
+<svg class="w-20 h-20 drop-shadow-xl transform rotate-[-6deg]" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2C12 8 16 12 22 12C16 12 12 16 12 22C12 16 8 12 2 12C8 12 12 8 12 2Z" fill="url(#gemini-gradient)"></path>
+<defs>
+<linearGradient gradientUnits="userSpaceOnUse" id="gemini-gradient" x1="2" x2="22" y1="2" y2="22">
+<stop stop-color="#0b5eda"></stop> 
+<stop offset="1" stop-color="#563085"></stop> 
+</linearGradient>
+</defs>
+</svg>
+</div>
+</div>
+<div class="z-10 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-lg p-3 border border-emerald-200/50 dark:border-emerald-600/50">
+<p class="text-sm text-slate-700 dark:text-slate-300 leading-snug">
+<span class="font-bold text-green-600 dark:text-green-400">Recommendation:</span> Adding a "Premium Package" to your Lawn Mowing service could increase revenue by 15%. Consider bundling edging and leaf blowing.
+        </p>
+</div>
+<div class="absolute -bottom-10 -left-10 w-32 h-32 bg-green-200 dark:bg-green-900/20 rounded-full blur-2xl z-0"></div>
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-200 dark:bg-emerald-900/20 rounded-full blur-2xl z-0"></div>
+</div>
+<div class="flex items-center justify-between mb-3 px-1">
+<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Active Services</h3>
+<span class="text-xs font-medium bg-blue-100 text-primary px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300">3 Active</span>
+</div>
+<div class="group relative flex flex-col gap-0 bg-surface-light dark:bg-surface-dark rounded-xl shadow-elevation-1 hover:shadow-elevation-2 transition-shadow duration-200 mb-4 overflow-hidden border border-slate-100 dark:border-slate-800/50">
+<div class="p-4 flex gap-4 items-start">
+<div class="w-20 h-20 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-700 overflow-hidden relative">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Close up of a green lawn mower on fresh grass" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCsBtsntiXoxODH2LHklgDlE_wCbgQZY6BMxb-r1JyZKNllYDnORScI80t2EnIn6hXt3vrR9-BNjyIoUZ34ihKTc4221gEcgrNa5Kl_9NB7DkT2VHJlBnEchmYjOpT0TWCKcVuJ05SHGXcTt3IXErdU-h_qvNTa-MUSQ1yJm44QT2yuPql33tRMzVKUF7ySfgRRVuIMNd1-T1rjnPia-mdS4eB3Y_fL2xZrWoY56Vt8MS6SPd6oEgmKCL4szTfyZP6ayFwZBJyl0uE');">
+</div>
+</div>
+<div class="flex-1 min-w-0 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate">Lawn Mowing</h4>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 -mr-2 -mt-1 p-1">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">Front and backyard trimming included.</p>
+<div class="flex items-center justify-between mt-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                                $25.00<span class="text-xs font-normal text-slate-500 ml-1">/hr</span>
+</span>
+<div class="flex items-center">
+<label class="flex items-center cursor-pointer relative" for="toggle1">
+<input checked="" class="sr-only peer" id="toggle1" type="checkbox"/>
+<div class="w-10 h-6 bg-slate-200 dark:bg-slate-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brick-green"></div>
+</label>
+</div>
+</div>
+</div>
+</div>
+<div class="h-1 w-full bg-brick-green/80"></div>
+</div>
+<div class="group relative flex flex-col gap-0 bg-surface-light dark:bg-surface-dark rounded-xl shadow-elevation-1 hover:shadow-elevation-2 transition-shadow duration-200 mb-4 overflow-hidden border border-slate-100 dark:border-slate-800/50">
+<div class="p-4 flex gap-4 items-start">
+<div class="w-20 h-20 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-700 overflow-hidden relative">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Stack of mathematics textbooks and a calculator on a desk" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAVw9ysMFa3uUiVBCliJVBYdpm0AlDY6RhIsZFdCMydNznzDrvkDEmmCQPvcs85cfYf9u4SG-e7nOozwH6NefXnyhkFWRg4UrcDqtHdcf7xWx2CKrRcx2dU9Kldr7OfN6sw5D18UHjGRKn0xFqeGK4KMxP3hUpk-ig_0hs3zkAfvXuyjXL88Ngscd4fde0idE1MK7dWGsklWL7TnlSM9ZXU1Hsnje_H5P3bpd8n4QOpop3iCfYlD7C55v-eaZE6kQ51erZ3U7GhRqw');">
+</div>
+</div>
+<div class="flex-1 min-w-0 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="text-base font-bold text-slate-900 dark:text-white truncate">Math Tutoring</h4>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 -mr-2 -mt-1 p-1">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">Algebra &amp; Geometry for high schoolers.</p>
+<div class="flex items-center justify-between mt-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                                $40.00<span class="text-xs font-normal text-slate-500 ml-1">/session</span>
+</span>
+<div class="flex items-center">
+<label class="flex items-center cursor-pointer relative" for="toggle2">
+<input checked="" class="sr-only peer" id="toggle2" type="checkbox"/>
+<div class="w-10 h-6 bg-slate-200 dark:bg-slate-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brick-green"></div>
+</label>
+</div>
+</div>
+</div>
+</div>
+<div class="h-1 w-full bg-brick-green/80"></div>
+</div>
+<div class="flex items-center justify-between mb-3 mt-6 px-1 opacity-75">
+<h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Inactive</h3>
+</div>
+<div class="group relative flex flex-col gap-0 bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 mb-4 overflow-hidden opacity-75 hover:opacity-100 transition-opacity">
+<div class="p-4 flex gap-4 items-start">
+<div class="w-20 h-20 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-700 overflow-hidden relative grayscale">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="Golden retriever dog walking on a leash in a park" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBui8WR_xR0q3Js18chTQUz27jm067gjRs721zhDCYhXNFxyytDEKtiJTBLEW5Ka9Dsu3go9PE16FAL2zRmdeUVSKL9KuuAMC-GLUvoRmp9H0I2BQHy4nhTztWMf03RtX5Fy72QWcXyV3raZS4Y7mKsjL_N0XPmJhN2PBRcHiAuudkSZQwGOK0e1aG1z86Yt50mQ_ELf2IYrMg9A9jijHxM_TbanQ70kpYFHTPA_5TcgXJhONlQ-wiw_umWOgFLfphFf7WJxmxDu28');">
+</div>
+</div>
+<div class="flex-1 min-w-0 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<h4 class="text-base font-bold text-slate-700 dark:text-slate-300 truncate">Dog Walking</h4>
+<button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 -mr-2 -mt-1 p-1">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<p class="text-sm text-slate-400 dark:text-slate-500 line-clamp-1">Currently unavailable for new clients.</p>
+<div class="flex items-center justify-between mt-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-bold bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                $15.00<span class="text-xs font-normal text-slate-400 ml-1">/walk</span>
+</span>
+<div class="flex items-center">
+<label class="flex items-center cursor-pointer relative" for="toggle3">
+<input class="sr-only peer" id="toggle3" type="checkbox"/>
+<div class="w-10 h-6 bg-slate-200 dark:bg-slate-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brick-green"></div>
+</label>
+</div>
+</div>
+</div>
+</div>
+<div class="h-1 w-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+<div class="h-20"></div>
+</main>
+<div class="absolute bottom-6 w-full px-4 z-30 flex items-center justify-center gap-3">
+<button class="flex-1 flex items-center justify-center gap-2 bg-brick-green hover:bg-green-600 text-white h-14 rounded-[16px] shadow-fab-green transform transition-all active:scale-95">
+<span class="material-symbols-outlined text-[24px]">add</span>
+<span class="font-bold tracking-wide">Add Service</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-2 bg-brick-purple hover:bg-purple-800 text-white h-14 rounded-[16px] shadow-fab-purple transform transition-all active:scale-95">
+<span class="material-symbols-outlined text-[24px]">work</span>
+<span class="font-bold tracking-wide">Add to Job</span>
+</button>
+</div>
+</div>
+</body></html>

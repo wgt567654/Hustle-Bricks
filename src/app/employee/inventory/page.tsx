@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 
 type InventoryItem = {
   id: string;
@@ -45,16 +46,11 @@ export default function EmployeeInventoryPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: tm } = await supabase
-        .from("team_members")
-        .select("id, business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
-      if (!tm) return;
+      const { membership } = await getActiveMembership(supabase);
+      if (!membership) return;
 
-      const memberId   = (tm as unknown as { id: string }).id;
-      const businessId = (tm as unknown as { business_id: string }).business_id;
+      const memberId   = membership.member_id;
+      const businessId = membership.business_id;
 
       const [{ data: itemData }, { data: assignData }] = await Promise.all([
         supabase

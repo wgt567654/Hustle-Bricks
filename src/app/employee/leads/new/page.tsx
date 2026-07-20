@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { toast } from "@/lib/toast";
 
@@ -39,13 +40,8 @@ export default function NewLeadPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
-        .from("team_members")
-        .select("business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
-      if (data) setBusinessId((data as unknown as { business_id: string }).business_id);
+      const { membership } = await getActiveMembership(supabase);
+      if (membership) setBusinessId(membership.business_id);
     }
     load();
   }, []);

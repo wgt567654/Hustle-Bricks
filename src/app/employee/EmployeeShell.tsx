@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
+import { setActiveBusinessCookie } from "@/lib/employee-membership-client";
 
 const NAV = [
   { href: "/employee",              label: "Today",     icon: "home",          exact: true  },
@@ -24,15 +25,20 @@ const SIDEBAR_NAV = [
 export default function EmployeeShell({
   children,
   employeeName,
+  memberships = [],
+  activeBusinessId,
 }: {
   children: React.ReactNode;
   employeeName: string;
+  memberships?: { businessId: string; businessName: string }[];
+  activeBusinessId?: string;
 }) {
   const pathname = usePathname();
   const router   = useRouter();
   const { theme, setTheme } = useTheme();
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [teamMenuOpen, setTeamMenuOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const isMapPage = pathname === "/employee/canvassing";
   const isPrimaryPage = NAV.some(({ href, exact }) =>
@@ -60,6 +66,20 @@ export default function EmployeeShell({
   }
 
   const firstName = employeeName.split(" ")[0];
+  const activeBusinessName =
+    memberships.find((m) => m.businessId === activeBusinessId)?.businessName ??
+    "Employee Portal";
+  const canSwitchTeams = memberships.length > 1;
+
+  function switchTeam(businessId: string) {
+    if (businessId === activeBusinessId) {
+      setTeamMenuOpen(false);
+      return;
+    }
+    setActiveBusinessCookie(businessId);
+    // Full reload so every server component re-reads the cookie.
+    window.location.href = "/employee";
+  }
 
   return (
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
@@ -296,9 +316,45 @@ export default function EmployeeShell({
                 </span>
               </div>
             )}
-            <div className="flex flex-col">
-              <span className="text-[11px] text-muted-foreground font-medium leading-none">Employee Portal</span>
-              <span className="text-sm font-extrabold text-foreground leading-tight">{firstName}</span>
+            <div className="relative flex flex-col">
+              {canSwitchTeams ? (
+                <button
+                  type="button"
+                  onClick={() => setTeamMenuOpen((o) => !o)}
+                  className="flex items-center gap-0.5 text-left"
+                >
+                  <span className="flex flex-col">
+                    <span className="text-[11px] text-muted-foreground font-medium leading-none">{activeBusinessName}</span>
+                    <span className="text-sm font-extrabold text-foreground leading-tight">{firstName}</span>
+                  </span>
+                  <span className="material-symbols-outlined text-[16px] text-muted-foreground">unfold_more</span>
+                </button>
+              ) : (
+                <>
+                  <span className="text-[11px] text-muted-foreground font-medium leading-none">{activeBusinessName}</span>
+                  <span className="text-sm font-extrabold text-foreground leading-tight">{firstName}</span>
+                </>
+              )}
+              {teamMenuOpen && canSwitchTeams && (
+                <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-card p-1 shadow-lg">
+                  <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Switch team</p>
+                  {memberships.map((m) => (
+                    <button
+                      key={m.businessId}
+                      type="button"
+                      onClick={() => switchTeam(m.businessId)}
+                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                        m.businessId === activeBusinessId ? "font-extrabold text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      <span className="truncate">{m.businessName}</span>
+                      {m.businessId === activeBusinessId && (
+                        <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

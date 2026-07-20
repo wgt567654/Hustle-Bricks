@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import { buildGoogleMapsRouteUrls } from "@/lib/routeOptimizer";
 import { toast } from "@/lib/toast";
 
@@ -81,14 +82,10 @@ export default function EmployeeHomePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: tm } = await supabase
-        .from("team_members")
-        .select("id, name, business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
+      const { membership } = await getActiveMembership(supabase);
 
-      if (!tm) return;
+      if (!membership) return;
+      const tm = { id: membership.member_id, business_id: membership.business_id };
       setEmployeeId(tm.id);
       setBusinessId(tm.business_id);
 

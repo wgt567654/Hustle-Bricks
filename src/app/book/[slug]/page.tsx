@@ -44,18 +44,25 @@ export default async function BookPage({
 
   if (!biz) notFound();
 
-  // Fetch scheduling settings and blocked dates for the calendar
-  const [{ data: schedData }, { data: blockedData }] = await Promise.all([
-    supabase
-      .from("scheduling_settings")
-      .select("unavailable_days, day_hours")
-      .eq("business_id", biz.id)
-      .maybeSingle(),
-    supabase
-      .from("blocked_dates")
-      .select("blocked_date")
-      .eq("business_id", biz.id),
-  ]);
+  // Fetch scheduling settings, blocked dates, and the active service catalog
+  const [{ data: schedData }, { data: blockedData }, { data: servicesData }] =
+    await Promise.all([
+      supabase
+        .from("scheduling_settings")
+        .select("unavailable_days, day_hours")
+        .eq("business_id", biz.id)
+        .maybeSingle(),
+      supabase
+        .from("blocked_dates")
+        .select("blocked_date")
+        .eq("business_id", biz.id),
+      supabase
+        .from("services")
+        .select("id, name, price, unit, duration_mins")
+        .eq("business_id", biz.id)
+        .eq("is_active", true)
+        .order("name"),
+    ]);
 
   const unavailableDays: number[] = schedData?.unavailable_days ?? [0, 6];
   const dayHours: Record<string, { from: string; until: string }> =
@@ -63,6 +70,13 @@ export default async function BookPage({
   const blockedDates: string[] = (blockedData ?? []).map(
     (r: { blocked_date: string }) => r.blocked_date
   );
+  const services: {
+    id: string;
+    name: string;
+    price: number;
+    unit: string;
+    duration_mins: number | null;
+  }[] = servicesData ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -93,6 +107,7 @@ export default async function BookPage({
           unavailableDays={unavailableDays}
           dayHours={dayHours}
           blockedDates={blockedDates}
+          services={services}
         />
 
         <p className="text-center text-xs text-muted-foreground mt-8">

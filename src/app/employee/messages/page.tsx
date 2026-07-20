@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import { toast } from "@/lib/toast";
 import { STATUS_CLASS } from "@/lib/status-colors";
 
@@ -273,20 +274,16 @@ export default function EmployeeMessagesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled || !user) return;
 
-      const { data: tm } = await supabase
-        .from("team_members")
-        .select("id, business_id, is_active")
-        .eq("user_id", user.id)
-        .single();
+      const { membership, memberships } = await getActiveMembership(supabase);
       if (cancelled) return;
-      if (!tm) { setLoading(false); return; }
-      if (!(tm as unknown as { is_active: boolean }).is_active) {
-        setNotApproved(true);
+      if (!membership) {
+        // Memberships exist but none active → awaiting approval.
+        if (memberships.length > 0) setNotApproved(true);
         setLoading(false);
         return;
       }
-      const tmId = tm.id;
-      const bizId = (tm as unknown as { business_id: string }).business_id;
+      const tmId = membership.member_id;
+      const bizId = membership.business_id;
       setTeamMemberId(tmId);
       setBusinessId(bizId);
 

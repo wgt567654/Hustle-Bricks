@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Quote Inventory - HustleBricks</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5B3288", 
+                        "primary-hover": "#4a2870", 
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221010",
+                        "brick-yellow": "#F2CD37",
+                        "brick-blue": "#0055BF",
+                        "brick-green": "#237841",
+                        "brick-purple": "#5B3288",
+                        "ai-gradient-start": "#E0F2F1",
+                        "ai-gradient-end": "#B2DFDB",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                    boxShadow: {
+                        'material': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                        'material-md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'fab': '0 4px 12px rgba(91, 50, 136, 0.3), 0 8px 32px rgba(91, 50, 136, 0.2)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }.no-scrollbar {
+            -ms-overflow-style: none;scrollbar-width: none;}
+        body {
+            min-height: max(884px, 100dvh);
+        }
+        .lego-font {
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#181111] dark:text-white transition-colors duration-200">
+<div class="relative flex h-full min-h-screen w-full max-w-md mx-auto flex-col bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden border-x border-[#e6dbdb] dark:border-[#3a2e2e]">
+<header class="sticky top-0 z-20 bg-white dark:bg-[#2a1a1a] shadow-sm">
+<div class="flex items-center p-4 pb-2 justify-between">
+<button class="text-[#181111] dark:text-white flex size-12 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<div class="flex-1 flex justify-center">
+<div class="bg-primary text-white px-3 py-1 rounded-sm flex items-center justify-center relative shadow-sm">
+<div class="absolute -top-1 left-1.5 w-2.5 h-1.5 bg-primary rounded-t-sm"></div>
+<div class="absolute -top-1 left-5 w-2.5 h-1.5 bg-primary rounded-t-sm"></div>
+<div class="absolute -top-1 right-5 w-2.5 h-1.5 bg-primary rounded-t-sm"></div>
+<div class="absolute -top-1 right-1.5 w-2.5 h-1.5 bg-primary rounded-t-sm"></div>
+<span class="lego-font text-xl tracking-tighter leading-none pt-0.5">JOBS</span>
+</div>
+</div>
+<div class="flex size-12 items-center justify-end">
+<button class="flex size-10 items-center justify-center overflow-hidden rounded-full bg-gray-100 dark:bg-white/10 text-[#181111] dark:text-white">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlJsZEUzsYJoOPbSGdc8D08G47ylrQ_u17pFzj_jpXpDl7tIkgTlzg0mtBiDJCbaVMet-Ry_Gn13pCuER5FfUfdWFK4nXvQa2nKJwHyRhgGtugm3URYacrtUfN3pbQksFBnnAGpYc3BzQET9DCrNjJdd3yl_FXvnFzSChmGeVRwCvHnJ4XENk_WtBFgw6o5x8wRsmFfbqVHa_D9d4mJZwAMfX3L6ZCsK34HiurH7UrzWvDRY4JaHgJUW42paYypGUEF6lk9A4vVvg"/>
+</button>
+</div>
+</div>
+<div class="px-0">
+<div class="flex overflow-x-auto no-scrollbar border-b border-[#e6dbdb] dark:border-[#3a2e2e]">
+<button class="group flex min-w-[25%] flex-col items-center justify-center border-b-[3px] border-b-primary text-primary pb-3 pt-2 flex-1 px-4 transition-all">
+<span class="text-sm font-bold leading-normal tracking-[0.015em]">Unsent</span>
+<span class="mt-1 flex size-1.5 rounded-full bg-primary opacity-100 transition-opacity"></span>
+</button>
+<button class="group flex min-w-[25%] flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#896161] dark:text-[#aca0a0] hover:text-[#5e4141] dark:hover:text-[#dcdcdc] pb-3 pt-2 flex-1 px-4 transition-all">
+<span class="text-sm font-bold leading-normal tracking-[0.015em]">Unsigned</span>
+<span class="mt-1 flex size-1.5 rounded-full bg-transparent group-hover:bg-[#e6dbdb] opacity-0 group-hover:opacity-100 transition-opacity"></span>
+</button>
+<button class="group flex min-w-[25%] flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#896161] dark:text-[#aca0a0] hover:text-[#5e4141] dark:hover:text-[#dcdcdc] pb-3 pt-2 flex-1 px-4 transition-all">
+<span class="text-sm font-bold leading-normal tracking-[0.015em]">Unpaid</span>
+<span class="mt-1 flex size-1.5 rounded-full bg-transparent group-hover:bg-[#e6dbdb] opacity-0 group-hover:opacity-100 transition-opacity"></span>
+</button>
+<button class="group flex min-w-[25%] flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#896161] dark:text-[#aca0a0] hover:text-[#5e4141] dark:hover:text-[#dcdcdc] pb-3 pt-2 flex-1 px-4 transition-all">
+<span class="text-sm font-bold leading-normal tracking-[0.015em]">Paid</span>
+<span class="mt-1 flex size-1.5 rounded-full bg-transparent group-hover:bg-[#e6dbdb] opacity-0 group-hover:opacity-100 transition-opacity"></span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto pb-24 p-4 space-y-4 bg-background-light dark:bg-background-dark">
+<div class="rounded-2xl bg-gradient-to-br from-[#F3E5F5] to-[#E1BEE7] dark:from-[#311B4B] dark:to-[#4A148C] p-5 relative overflow-hidden shadow-sm border border-white/50 dark:border-white/10">
+<div class="absolute top-4 right-4 text-primary dark:text-[#E1BEE7] opacity-80">
+<svg fill="currentColor" height="32" viewBox="0 0 24 24" width="32" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"></path>
+</svg>
+</div>
+<h3 class="text-2xl font-black text-primary dark:text-[#E1BEE7] mb-1 tracking-tight flex items-center gap-2">
+                    AI TIP
+                </h3>
+<p class="text-sm font-bold text-[#4a3a3a] dark:text-[#E1BEE7]/90 mb-4">Your Inventory Critique</p>
+<div class="bg-white/60 dark:bg-black/20 backdrop-blur-sm rounded-xl p-3 text-sm text-[#4a3a3a] dark:text-[#dedede] leading-relaxed border border-white/40 dark:border-white/5">
+<span class="font-bold text-primary dark:text-[#E1BEE7]">Recommendation:</span> You have <span class="font-bold">3 drafts</span> waiting. Sending them now could increase your likelihood of booking by 15%.
+                </div>
+</div>
+<article class="flex flex-col rounded-xl bg-white dark:bg-[#2a1a1a] shadow-material overflow-hidden border border-transparent dark:border-[#3a2e2e]">
+<div class="relative h-32 w-full bg-gray-100 dark:bg-[#1a1010] overflow-hidden group">
+<div class="grid grid-cols-2 h-full w-full">
+<div class="bg-cover bg-center h-full border-r border-white/20" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCv9ugg_jVQNc58t3v3nipuRFGsx7frSGWxFC3LB7b8q3HqHqGjpk1i3R_xchgwID2rv9AVvH9vepOR4h9i6ZVklc9lEmDf71B98Ot9H1pXh201bL4ztxYncYSLvqZiDY8aEQ-uhoFDrXbRBkVxxwtFj0m-4NRR7C9vrty722mMieRJaP78mew6VCZVhyGFu5f7RZhuorjfg8cugMuW4okDDvE2qY0Y7fJWh15Kw9XwKnLQy-LKUoDWJmdBMyXFmcz6EQnURzmUGY8");'></div>
+<div class="bg-cover bg-center h-full" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC8dkrD7NFEG12oIz9MZyCF5bFMMXKsu9D-EYKhiaJpGwnxvATMSSxnMIbftmZwOnMativXqVKGPE_Lp4A9tx3KDYAjOP3CiiqGK8ALyHw1IouWf1seas4vNtjqx-Y0A28BhZXX2yNbdoFpxR7qSQ3qL-BopgJnPecb8VqnoL5cZMmy4DV4PwjxLmRxCbayvoGYafFpUZRcUxIURaaokOFgxiStG7gmwQu75Eg7s3X1vVeCCe5T2Ry6h-2xTSAa8v_z5-2PNFOGRPs");'></div>
+</div>
+<div class="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors"></div>
+<div class="absolute top-3 right-3 bg-white/90 dark:bg-black/80 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm border border-gray-100 dark:border-white/10">
+<p class="text-[10px] font-bold uppercase tracking-wider text-brick-yellow flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">edit_note</span> Draft
+                        </p>
+</div>
+</div>
+<div class="p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="text-[#181111] dark:text-white text-lg font-bold leading-tight">Mrs. Robinson</h3>
+<p class="text-[#896161] dark:text-[#aca0a0] text-sm font-medium mt-1">Lawn Care + Garden Clean</p>
+</div>
+<div class="text-right">
+<p class="text-primary text-lg font-bold">$125.00</p>
+<p class="text-xs text-gray-400 dark:text-gray-500">Created 2h ago</p>
+</div>
+</div>
+<div class="h-px bg-gray-100 dark:bg-[#3a2e2e] w-full"></div>
+<div class="flex gap-3 pt-1">
+<button class="flex-1 flex items-center justify-center h-10 px-4 rounded-lg border border-[#e6dbdb] dark:border-[#4a3a3a] text-primary dark:text-white text-sm font-bold bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/5 active:scale-95 transition-all">
+                            Edit
+                        </button>
+<button class="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary-hover active:scale-95 transition-all gap-2">
+<span class="material-symbols-outlined text-[18px]">send</span>
+                            Send
+                        </button>
+</div>
+</div>
+</article>
+<article class="flex flex-col rounded-xl bg-white dark:bg-[#2a1a1a] shadow-material overflow-hidden border border-transparent dark:border-[#3a2e2e]">
+<div class="relative h-24 w-full bg-gray-100 dark:bg-[#1a1010] overflow-hidden">
+<div class="grid grid-cols-3 h-full w-full">
+<div class="bg-cover bg-center h-full border-r border-white/20" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAmHGkt9tQpw05wLdCGuFoxFyLYyL1T5raVBwUXWNrZY63y6pHJAe_JE2qPgBDeDmWzdGYlBHNCAPUgzk-LkcsCQcjB1HUrN1hqeTkSDAvHyutkpIi7VHMyQ49W2vEC30XCaRzd7L3W2jUNVy6kRTVwLIcIpqxWBZe5Gq5nzjDemxaiUmm8mg28RMm-2H6a2icwyIfo2a4gL7vkzjMvFbVk6u5NvIRxZ2HwPJgbA3J_I4WP9WbCEGe9Z4jYT3ok3nWspNhmlfsP9vU");'></div>
+<div class="bg-brick-blue/10 flex items-center justify-center h-full border-r border-white/20">
+<span class="material-symbols-outlined text-brick-blue text-3xl">pets</span>
+</div>
+<div class="bg-cover bg-center h-full" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuByW8DQZjN3ZYOzTcliBkGYVf49hAnJBcLUUK4h6vUOBe1Wprd8k98gp3aWspa6cenCzSwYp2TcGK9cCsdliZ9DU_YrkgTnyqMYwuKnhbHDes4ajzXPhpuM-Q52Z872TGxeombex5m4EYBcwSqvmEz1t-cY4SK7-WVxG-eOJi703YxjBiO7MPEeya4ThEq-sHuxrI1JIAQm7ih4nfRWRS3Ez3hN5ehBt8GsUqgydlxeTMC61S3zZljq2driX26d-3UEngXkl5-S-NA");'></div>
+</div>
+<div class="absolute top-2 right-2 bg-white/90 dark:bg-black/80 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-sm border border-gray-100 dark:border-white/10">
+<p class="text-[10px] font-bold uppercase tracking-wider text-brick-yellow">Draft</p>
+</div>
+</div>
+<div class="p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="flex gap-3">
+<div>
+<h3 class="text-[#181111] dark:text-white text-lg font-bold leading-tight">Mr. Smith</h3>
+<p class="text-[#896161] dark:text-[#aca0a0] text-sm font-medium mt-1">Dog Walking - Premium Bundle</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-primary text-lg font-bold">$45.00</p>
+<p class="text-xs text-gray-400 dark:text-gray-500">5h ago</p>
+</div>
+</div>
+<div class="h-px bg-gray-100 dark:bg-[#3a2e2e] w-full my-1"></div>
+<div class="flex gap-3">
+<button class="flex-1 flex items-center justify-center h-10 px-4 rounded-lg border border-[#e6dbdb] dark:border-[#4a3a3a] text-primary dark:text-white text-sm font-bold bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-white/5 active:scale-95 transition-all">
+                            Edit
+                        </button>
+<button class="flex-1 flex items-center justify-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary-hover active:scale-95 transition-all gap-2">
+<span class="material-symbols-outlined text-[18px]">send</span>
+                            Send
+                        </button>
+</div>
+</div>
+</article>
+<article class="flex flex-col rounded-xl bg-white dark:bg-[#2a1a1a] shadow-material overflow-hidden border border-transparent dark:border-[#3a2e2e] opacity-80">
+<div class="flex h-full">
+<div class="w-1.5 bg-gray-300 dark:bg-gray-600"></div>
+<div class="flex-1 p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="text-[#181111] dark:text-white text-base font-bold leading-tight">Campus Coffee Run</h3>
+<p class="text-[#896161] dark:text-[#aca0a0] text-sm font-medium mt-1">Bulk Order</p>
+</div>
+<div class="text-right">
+<p class="text-gray-500 dark:text-gray-400 text-lg font-bold">$60.00</p>
+<p class="text-xs text-gray-400 dark:text-gray-500">2d ago</p>
+</div>
+</div>
+<div class="flex justify-end gap-3 pt-2">
+<button class="text-xs font-bold text-primary hover:underline uppercase tracking-wide">
+                                Resume
+                            </button>
+<button class="text-xs font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 uppercase tracking-wide">
+                                Delete
+                            </button>
+</div>
+</div>
+</div>
+</article>
+<div class="h-16"></div>
+</main>
+<button class="absolute bottom-24 right-4 z-30 flex size-14 items-center justify-center rounded-2xl bg-primary text-white shadow-fab hover:bg-primary-hover hover:scale-105 active:scale-95 transition-all duration-300 group">
+<span class="material-symbols-outlined text-[32px] group-hover:rotate-90 transition-transform">add</span>
+</button>
+<nav class="sticky bottom-0 z-40 w-full bg-white dark:bg-[#2a1a1a] border-t border-[#e6dbdb] dark:border-[#3a2e2e] pb-safe">
+<div class="flex justify-around items-center h-16">
+<a class="flex flex-col items-center justify-center w-full h-full text-[#896161] dark:text-[#aca0a0] hover:text-[#5e4141] dark:hover:text-[#dcdcdc] transition-colors gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-primary transition-colors gap-1" href="#">
+<span class="material-symbols-outlined text-[24px] font-variation-settings-fill">request_quote</span>
+<span class="text-[10px] font-bold">Quotes</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-[#896161] dark:text-[#aca0a0] hover:text-[#5e4141] dark:hover:text-[#dcdcdc] transition-colors gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]">receipt_long</span>
+<span class="text-[10px] font-medium">Invoices</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-[#896161] dark:text-[#aca0a0] hover:text-[#5e4141] dark:hover:text-[#dcdcdc] transition-colors gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</div>
+</nav>
+</div>
+<style>
+        .font-variation-settings-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }.pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+
+</body></html>

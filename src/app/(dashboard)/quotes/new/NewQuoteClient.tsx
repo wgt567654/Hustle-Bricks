@@ -90,6 +90,8 @@ export default function NewQuoteClient({
   const [applyTax, setApplyTax] = useState(false);
   const [discount, setDiscount] = useState("");
   const [notes, setNotes] = useState("");
+  const [proposedDate, setProposedDate] = useState("");
+  const [proposedTime, setProposedTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -176,6 +178,8 @@ export default function NewQuoteClient({
         status,
         total,
         notes: notes.trim() || null,
+        proposed_date: proposedDate || null,
+        proposed_time: proposedTime || null,
       })
       .select("id")
       .single();
@@ -338,6 +342,33 @@ export default function NewQuoteClient({
           </div>
         </section>
       )}
+
+      {/* Proposed Schedule */}
+      <section>
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Proposed Schedule <span className="normal-case font-medium text-muted-foreground/60">(optional)</span></h3>
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-4 flex gap-3">
+          <div className="flex-1 flex flex-col gap-1">
+            <label className="text-xs font-semibold text-muted-foreground">Date</label>
+            <input
+              type="date"
+              value={proposedDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setProposedDate(e.target.value)}
+              className="h-10 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+          <div className="flex-1 flex flex-col gap-1">
+            <label className="text-xs font-semibold text-muted-foreground">Time</label>
+            <input
+              type="time"
+              value={proposedTime}
+              onChange={(e) => setProposedTime(e.target.value)}
+              className="h-10 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground/70 mt-1.5 px-1">If the client accepts, this time lands in your Bookings queue as a pending request.</p>
+      </section>
 
       {/* Totals & Adjustments */}
       <section className="mt-2 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">

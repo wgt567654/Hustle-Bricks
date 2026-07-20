@@ -52,6 +52,23 @@ const ROLE_LABELS: Record<Role, string> = {
   sales: "Sales",
 };
 
+type PayType = "hourly" | "percent" | "flat";
+
+type PayRuleRow = {
+  id: string | null;
+  service_id: string;
+  pay_type: PayType;
+  rate: string;
+};
+
+type ServiceOption = { id: string; name: string };
+
+const PAY_TYPE_OPTIONS: { value: PayType; label: string }[] = [
+  { value: "hourly", label: "$/hr" },
+  { value: "percent", label: "% of job" },
+  { value: "flat", label: "Flat $" },
+];
+
 const HOURS = Array.from({ length: 17 }, (_, i) => {
   const h = i + 6;
   const label = `${h > 12 ? h - 12 : h}:00 ${h >= 12 ? "PM" : "AM"}`;
@@ -114,6 +131,10 @@ export default function TeamClient({
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [editForm, setEditForm] = useState({ name: "", email: "", role: "member" as Role, certifications: [] as string[], hourly_rate: "", commission_rate: "" });
   const [editSaving, setEditSaving] = useState(false);
+  const [services, setServices] = useState<ServiceOption[] | null>(null);
+  const [payLoading, setPayLoading] = useState(false);
+  const [payDefault, setPayDefault] = useState<{ id: string | null; pay_type: PayType; rate: string }>({ id: null, pay_type: "hourly", rate: "" });
+  const [payOverrides, setPayOverrides] = useState<PayRuleRow[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [confirmDeleteAccountMember, setConfirmDeleteAccountMember] = useState<TeamMember | null>(null);
@@ -163,6 +184,125 @@ export default function TeamClient({
       hourly_rate: member.hourly_rate != null && member.hourly_rate > 0 ? String(member.hourly_rate) : "",
       commission_rate: member.commission_rate != null ? String(member.commission_rate) : "",
     });
+    loadPayData(member.id);
+  }
+
+  async function loadPayData(memberId: string) {
+    setPayLoading(true);
+    setPayDefault({ id: null, pay_type: "hourly", rate: "" });
+    setPayOverrides([]);
+    const supabase = createClient();
+    const [rulesRes, servicesRes] = await Promise.all([
+      supabase
+        .from("member_pay_rules")
+        .select("id, service_id, pay_type, rate")
+        .eq("team_member_id", memberId),
+      services === null && businessId
+        ? supabase.from("services").select("id, name").eq("business_id", businessId).eq("is_active", true).order("name")
+        : Promise.resolve({ data: null }),
+    ]);
+
+    if (servicesRes.data) setServices(servicesRes.data as ServiceOption[]);
+
+    const rules = (rulesRes.data ?? []) as { id: string; service_id: string | null; pay_type: PayType; rate: number }[];
+    const def = rules.find((r) => r.service_id === null);
+    if (def) setPayDefault({ id: def.id, pay_type: def.pay_type, rate: String(def.rate) });
+    setPayOverrides(
+      rules
+        .filter((r) => r.service_id !== null)
+        .map((r) => ({ id: r.id, service_id: r.service_id as string, pay_type: r.pay_type, rate: String(r.rate) }))
+    );
+    setPayLoading(false);
+  }
+
+  // PostgREST upsert can't target the (team_member_id, service_id) unique
+  // constraint when service_id is null, so each rule is saved via
+  // select-existing → update-by-id, else insert.
+  async function savePayRules(memberId: string): Promise<boolean> {
+    if (!businessId) return true;
+    const supabase = createClient();
+
+    // Default rule (service_id is null)
+    const { data: existingDefault, error: defError } = await supabase
+      .from("member_pay_rules")
+      .select("id")
+      .eq("team_member_id", memberId)
+      .is("service_id", null)
+      .maybeSingle();
+    if (defError) return false;
+
+    const defaultRate = payDefault.rate.trim() === "" ? NaN : parseFloat(payDefault.rate);
+    if (Number.isNaN(defaultRate)) {
+      if (existingDefault) {
+        const { error } = await supabase.from("member_pay_rules").delete().eq("id", existingDefault.id);
+        if (error) return false;
+      }
+    } else if (existingDefault) {
+      const { error } = await supabase
+        .from("member_pay_rules")
+        .update({ pay_type: payDefault.pay_type, rate: defaultRate })
+        .eq("id", existingDefault.id);
+      if (error) return false;
+    } else {
+      const { error } = await supabase.from("member_pay_rules").insert({
+        business_id: businessId,
+        team_member_id: memberId,
+        service_id: null,
+        pay_type: payDefault.pay_type,
+        rate: defaultRate,
+      });
+      if (error) return false;
+    }
+
+    // Per-service overrides
+    for (const row of payOverrides) {
+      const rate = parseFloat(row.rate);
+      if (!row.service_id || Number.isNaN(rate)) continue;
+      if (row.id) {
+        const { error } = await supabase
+          .from("member_pay_rules")
+          .update({ service_id: row.service_id, pay_type: row.pay_type, rate })
+          .eq("id", row.id);
+        if (error) return false;
+      } else {
+        const { data: existing } = await supabase
+          .from("member_pay_rules")
+          .select("id")
+          .eq("team_member_id", memberId)
+          .eq("service_id", row.service_id)
+          .maybeSingle();
+        if (existing) {
+          const { error } = await supabase
+            .from("member_pay_rules")
+            .update({ pay_type: row.pay_type, rate })
+            .eq("id", existing.id);
+          if (error) return false;
+        } else {
+          const { error } = await supabase.from("member_pay_rules").insert({
+            business_id: businessId,
+            team_member_id: memberId,
+            service_id: row.service_id,
+            pay_type: row.pay_type,
+            rate,
+          });
+          if (error) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  async function removePayOverride(index: number) {
+    const row = payOverrides[index];
+    if (row?.id) {
+      const supabase = createClient();
+      const { error } = await supabase.from("member_pay_rules").delete().eq("id", row.id);
+      if (error) {
+        toast.error("Couldn't remove that pay rule — try again.");
+        return;
+      }
+    }
+    setPayOverrides((prev) => prev.filter((_, i) => i !== index));
   }
 
   const filtered = roleFilter === "all" ? members : members.filter((m) => m.role === roleFilter);
@@ -258,6 +398,13 @@ export default function TeamClient({
     if (error) {
       setEditSaving(false);
       toast.error("Couldn't save the changes — try again.");
+      return;
+    }
+
+    const rulesOk = await savePayRules(editMember.id);
+    if (!rulesOk) {
+      setEditSaving(false);
+      toast.error("Member saved, but the pay rules didn't save — try again.");
       return;
     }
 
@@ -1191,6 +1338,114 @@ export default function TeamClient({
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Pay rules */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pay</label>
+                <p className="text-[11px] text-muted-foreground -mt-1">Pay rules override the legacy hourly rate.</p>
+
+                {payLoading ? (
+                  <p className="text-xs text-muted-foreground italic py-2">Loading pay rules…</p>
+                ) : (
+                  <>
+                    {/* Default pay rule */}
+                    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-muted/20 p-3">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Default Pay Rule</span>
+                      <div className="flex gap-2">
+                        {PAY_TYPE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setPayDefault((d) => ({ ...d, pay_type: opt.value }))}
+                            className={`flex-1 rounded-xl border py-2 text-xs font-bold transition-all active:scale-95 ${
+                              payDefault.pay_type === opt.value
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-muted/40 text-foreground hover:bg-muted"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="relative">
+                        {payDefault.pay_type !== "percent" && (
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                        )}
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={payDefault.rate}
+                          onChange={(e) => setPayDefault((d) => ({ ...d, rate: e.target.value }))}
+                          placeholder={payDefault.pay_type === "percent" ? "e.g. 40" : "0.00"}
+                          className={`flex h-11 w-full rounded-xl border border-border bg-transparent text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                            payDefault.pay_type === "percent" ? "pl-3 pr-7" : "pl-7 pr-3"
+                          }`}
+                        />
+                        {payDefault.pay_type === "percent" && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Leave the rate blank to fall back to the legacy hourly rate.</p>
+                    </div>
+
+                    {/* Per-service overrides */}
+                    <div className="flex flex-col gap-2">
+                      {payOverrides.map((row, i) => (
+                        <div key={row.id ?? `new-${i}`} className="flex items-center gap-2">
+                          <select
+                            value={row.service_id}
+                            onChange={(e) => setPayOverrides((prev) => prev.map((r, idx) => idx === i ? { ...r, service_id: e.target.value } : r))}
+                            className="flex-1 min-w-0 h-10 rounded-xl border border-border bg-background px-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ring/30"
+                          >
+                            <option value="">— Service —</option>
+                            {(services ?? []).map((s) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={row.pay_type}
+                            onChange={(e) => setPayOverrides((prev) => prev.map((r, idx) => idx === i ? { ...r, pay_type: e.target.value as PayType } : r))}
+                            className="w-24 shrink-0 h-10 rounded-xl border border-border bg-background px-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ring/30"
+                          >
+                            {PAY_TYPE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={row.rate}
+                            onChange={(e) => setPayOverrides((prev) => prev.map((r, idx) => idx === i ? { ...r, rate: e.target.value } : r))}
+                            placeholder="0"
+                            className="w-20 shrink-0 h-10 rounded-xl border border-border bg-transparent px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePayOverride(i)}
+                            className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">close</span>
+                          </button>
+                        </div>
+                      ))}
+                      {(services ?? []).length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground italic">Add services on the Services page to set per-service rates.</p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setPayOverrides((prev) => [...prev, { id: null, service_id: "", pay_type: "hourly", rate: "" }])}
+                          className="w-fit text-xs font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-opacity"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">add</span>
+                          Add service rate
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               <button

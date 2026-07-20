@@ -3,6 +3,16 @@
 import { use, useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/currency";
 
+function formatProposedSchedule(date: string, time: string | null) {
+  const dateStr = new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric",
+  });
+  if (!time) return dateStr;
+  const [h, m] = time.split(":").map(Number);
+  const timeStr = `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+  return `${dateStr} at ${timeStr}`;
+}
+
 type QuoteLineItem = {
   id: string;
   description: string;
@@ -17,6 +27,8 @@ type PublicQuote = {
   notes: string | null;
   video_url: string | null;
   created_at: string;
+  proposed_date: string | null;
+  proposed_time: string | null;
   businesses: {
     name: string;
     logo_url: string | null;
@@ -187,6 +199,24 @@ export default function ClientQuotePage({
             </span>
           </div>
         </div>
+
+        {/* Proposed service time */}
+        {quote.proposed_date && (
+          <div className="rounded-2xl bg-card border border-border shadow-card px-4 py-4 flex items-start gap-3">
+            <div className="icon-primary flex size-10 shrink-0 items-center justify-center rounded-full">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Proposed service time</p>
+              <p className="text-sm font-semibold text-foreground">
+                {formatProposedSchedule(quote.proposed_date, quote.proposed_time)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Accepting sends this time to {businessName} for confirmation.</p>
+            </div>
+          </div>
+        )}
 
         {/* Notes */}
         {quote.notes && (

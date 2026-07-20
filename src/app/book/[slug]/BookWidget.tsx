@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { formatCurrency } from "@/lib/currency";
 
 // ── Calendar helpers ──────────────────────────────────────────────────────────
 
@@ -40,11 +41,23 @@ function formatSlot(slot: string) {
 type Intent = "schedule" | "quote" | "contact";
 type Step = "intent" | "info" | "details" | "done";
 
-const SERVICE_OPTIONS = [
-  "Exterior Wash","Interior Detail","Full Detail","Engine Bay",
-  "Paint Correction","Ceramic Coating","Window Tint","Odor Removal",
-  "Pressure Wash","Lawn Care","Cleaning","Painting","Other",
-];
+export type CatalogService = {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  duration_mins: number | null;
+};
+
+const UNIT_SUFFIX: Record<string, string> = {
+  per_hour: "/hr",
+  per_sqft: "/sq ft",
+  per_item: "/item",
+};
+
+function formatServicePrice(s: CatalogService) {
+  return `${formatCurrency(s.price)}${UNIT_SUFFIX[s.unit] ?? ""}`;
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -56,6 +69,7 @@ export default function BookWidget({
   unavailableDays = [],
   dayHours = {},
   blockedDates = [],
+  services: catalog = [],
 }: {
   businessId: string;
   businessName: string;
@@ -64,6 +78,7 @@ export default function BookWidget({
   unavailableDays?: number[];
   dayHours?: Record<string, { from: string; until: string }>;
   blockedDates?: string[];
+  services?: CatalogService[];
 }) {
   const [step, setStep] = useState<Step>("intent");
   const [intent, setIntent] = useState<Intent>("schedule");
@@ -77,7 +92,8 @@ export default function BookWidget({
   const [address, setAddress] = useState("");
 
   // Quote / contact details
-  const [services, setServices] = useState<string[]>([]);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [serviceText, setServiceText] = useState(""); // free-text fallback when no catalog
   const [propertyType, setPropertyType] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -127,11 +143,19 @@ export default function BookWidget({
       .catch(() => { setSlotCapacity(null); setLoadingCapacity(false); });
   }, [selectedDate, businessId, intent]);
 
-  function toggleService(s: string) {
-    setServices((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+  function toggleService(id: string) {
+    setSelectedServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
+
+  const selectedServiceNames = useMemo(
+    () =>
+      catalog
+        .filter((s) => selectedServiceIds.includes(s.id))
+        .map((s) => s.name),
+    [catalog, selectedServiceIds]
+  );
 
   async function handleSubmit() {
     setError(null);
@@ -140,12 +164,22 @@ export default function BookWidget({
     let url = "";
     let body: Record<string, unknown> = { business_id: businessId, name, email, phone, address };
 
+    // With no catalog, the free-text "What do you need done?" answer goes into notes.
+    const mergedNotes =
+      catalog.length === 0 && serviceText.trim()
+        ? [serviceText.trim(), notes.trim()].filter(Boolean).join("\n")
+        : notes;
+
     if (intent === "schedule") {
       url = "/api/booking/public";
-      body = { ...body, date: selectedDate, time: selectedTime, notes };
+      body = { ...body, date: selectedDate, time: selectedTime, notes: mergedNotes };
+      if (selectedServiceIds.length > 0) {
+        body.services = selectedServiceNames;
+        body.service_ids = selectedServiceIds;
+      }
     } else if (intent === "quote") {
       url = "/api/quotes/request";
-      body = { ...body, services, property_type: propertyType, notes };
+      body = { ...body, services: selectedServiceNames, property_type: propertyType, notes: mergedNotes };
     } else {
       url = "/api/leads/submit";
       body = { ...body, notes, source: "Website" };
@@ -368,6 +402,38 @@ export default function BookWidget({
       {/* ── Schedule ── */}
       {intent === "schedule" && (
         <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-5">
+          {catalog.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Choose Services</p>
+              <div className="flex flex-wrap gap-2">
+                {catalog.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => toggleService(s.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                      selectedServiceIds.includes(s.id)
+                        ? "bg-primary/10 text-primary border-primary"
+                        : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {s.name} · {formatServicePrice(s)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-foreground">What do you need done?</label>
+              <input
+                type="text"
+                value={serviceText}
+                onChange={(e) => setServiceText(e.target.value)}
+                placeholder="e.g. Full detail on an SUV, window cleaning…"
+                className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+          )}
+
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Pick a Date & Time</p>
 
           {/* Month nav */}
@@ -479,24 +545,37 @@ export default function BookWidget({
         <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-4">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">What do you need?</p>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-foreground">Services</label>
-            <div className="flex flex-wrap gap-2">
-              {SERVICE_OPTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => toggleService(s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                    services.includes(s)
-                      ? "bg-primary/10 text-primary border-primary"
-                      : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
+          {catalog.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-foreground">Services</label>
+              <div className="flex flex-wrap gap-2">
+                {catalog.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => toggleService(s.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                      selectedServiceIds.includes(s.id)
+                        ? "bg-primary/10 text-primary border-primary"
+                        : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {s.name} · {formatServicePrice(s)}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-foreground">What do you need done?</label>
+              <input
+                type="text"
+                value={serviceText}
+                onChange={(e) => setServiceText(e.target.value)}
+                placeholder="e.g. Full detail on an SUV, window cleaning…"
+                className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-foreground">Property Type <span className="font-normal text-muted-foreground">(optional)</span></label>

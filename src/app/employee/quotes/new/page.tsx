@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import { toast } from "@/lib/toast";
 
 type Client = { id: string; name: string };
@@ -20,6 +21,8 @@ export default function NewQuotePage() {
   const [showPicker, setShowPicker]   = useState(false);
   const [lineItems, setLineItems]     = useState<LineItem[]>([{ description: "", qty: 1, unitPrice: 0 }]);
   const [notes, setNotes]             = useState("");
+  const [proposedDate, setProposedDate] = useState("");
+  const [proposedTime, setProposedTime] = useState("");
   const [saving, setSaving]           = useState(false);
   const [savedId, setSavedId]         = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -30,16 +33,11 @@ export default function NewQuotePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: tm } = await supabase
-        .from("team_members")
-        .select("id, business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
-      if (!tm) return;
+      const { membership } = await getActiveMembership(supabase);
+      if (!membership) return;
 
-      const mid = (tm as unknown as { id: string }).id;
-      const bid = (tm as unknown as { business_id: string }).business_id;
+      const mid = membership.member_id;
+      const bid = membership.business_id;
       setMemberId(mid);
       setBusinessId(bid);
 
@@ -101,6 +99,8 @@ export default function NewQuotePage() {
         total,
         notes: notesValue,
         created_by_member_id: memberId,
+        proposed_date: proposedDate || null,
+        proposed_time: proposedTime || null,
       })
       .select("id")
       .single();
@@ -134,6 +134,8 @@ export default function NewQuotePage() {
     setClientSearch("");
     setLineItems([{ description: "", qty: 1, unitPrice: 0 }]);
     setNotes("");
+    setProposedDate("");
+    setProposedTime("");
     setSavedId(null);
   }
 
@@ -309,6 +311,35 @@ export default function NewQuotePage() {
               <span className="text-lg font-extrabold text-foreground">${total.toFixed(2)}</span>
             </div>
           </div>
+        </Card>
+      </section>
+
+      {/* Proposed schedule */}
+      <section className="flex flex-col gap-3">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Proposed Schedule <span className="normal-case font-medium text-muted-foreground/60">(optional)</span></h3>
+        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+          <div className="p-4 flex gap-2">
+            <div className="flex-1 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-muted-foreground">Date</label>
+              <input
+                type="date"
+                value={proposedDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setProposedDate(e.target.value)}
+                className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="flex-1 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-muted-foreground">Time</label>
+              <input
+                type="time"
+                value={proposedTime}
+                onChange={(e) => setProposedTime(e.target.value)}
+                className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground px-4 pb-3">If the client accepts, this time becomes a pending booking request.</p>
         </Card>
       </section>
 

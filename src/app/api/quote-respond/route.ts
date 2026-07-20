@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { sendSMS } from "@/lib/sms";
+import { notifyOwner } from "@/lib/notify-owner";
 import { verifyLinkToken } from "@/lib/link-token";
 
 function adminClient() {
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
   const { data: quote } = await supabase
     .from("quotes")
     .select(`
-      id, status, total, notes, business_id, client_id,
+      id, status, total, notes, business_id, client_id, proposed_date, proposed_time,
       clients ( id, name, phone, email ),
       businesses ( id, name, contact_phone, contact_email ),
       quote_line_items ( description, quantity, unit_price )
@@ -47,6 +48,8 @@ export async function POST(req: NextRequest) {
     notes: string | null;
     business_id: string;
     client_id: string | null;
+    proposed_date: string | null;
+    proposed_time: string | null;
     clients: { id: string; name: string; phone: string | null; email: string | null } | null;
     businesses: { id: string; name: string | null; contact_phone: string | null; contact_email: string | null } | null;
     quote_line_items: { description: string; quantity: number; unit_price: number }[];
@@ -80,6 +83,8 @@ async function handleAccepted(
     notes: string | null;
     business_id: string;
     client_id: string | null;
+    proposed_date: string | null;
+    proposed_time: string | null;
     clients: { id: string; name: string; phone: string | null; email: string | null } | null;
     businesses: { id: string; name: string | null; contact_phone: string | null; contact_email: string | null } | null;
     quote_line_items: { description: string; quantity: number; unit_price: number }[];
@@ -89,6 +94,49 @@ async function handleAccepted(
   const clientName = q.clients?.name ?? "A client";
   const clientFirstName = clientName.split(" ")[0];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const shortId = q.id.slice(0, 8);
+  const amountFmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(q.total);
+
+  // Postgres `time` comes back as "HH:MM:SS" — booking_requests.requested_time
+  // is text in "HH:MM" form (BookingsClient appends ":00" when scheduling).
+  const proposedTime = q.proposed_time ? q.proposed_time.slice(0, 5) : null;
+
+  // 0a. Proposed schedule → pending booking request in the owner's Bookings queue
+  if (q.client_id && q.proposed_date && proposedTime) {
+    const bookingNotes = `From accepted quote #${shortId} (${amountFmt})`;
+    const { data: existing } = await supabase
+      .from("booking_requests")
+      .select("id")
+      .eq("business_id", q.business_id)
+      .eq("client_id", q.client_id)
+      .eq("requested_date", q.proposed_date)
+      .eq("requested_time", proposedTime)
+      .eq("status", "pending")
+      .eq("notes", bookingNotes)
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from("booking_requests").insert({
+        client_id: q.client_id,
+        business_id: q.business_id,
+        requested_date: q.proposed_date,
+        requested_time: proposedTime,
+        notes: bookingNotes,
+        status: "pending",
+      });
+    }
+  }
+
+  // 0b. Best-effort owner notification (email + queued SMS; never throws)
+  const proposedSuffix =
+    q.proposed_date && proposedTime
+      ? ` — requested ${q.proposed_date} at ${proposedTime}`
+      : "";
+  await notifyOwner({
+    businessId: q.business_id,
+    subject: "Quote accepted",
+    text: `${clientName} accepted quote #${shortId} (${amountFmt})${proposedSuffix}`,
+  });
 
   // 1. Create the job (unscheduled — client will pick a time via portal)
   const { data: newJob } = await supabase

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add Client - HustleBricks</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#F27D16", // Orange branding for Clients
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        :root {
+            --primary-color: #F27D16;
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111418] dark:text-white">
+<div class="relative flex h-auto min-h-screen w-full max-w-md mx-auto flex-col bg-white dark:bg-background-dark shadow-sm overflow-x-hidden">
+<div class="flex items-center bg-white dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10">
+<button class="text-[#111418] dark:text-white flex size-12 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<div class="flex-1 flex justify-center items-center pr-12">
+<div class="bg-primary text-white px-4 py-1 font-black text-2xl tracking-tighter uppercase">
+                CLIENTS
+            </div>
+</div>
+</div>
+<div class="flex-1 flex flex-col pb-32">
+<div class="@container px-4 py-3">
+<div class="w-full bg-center bg-no-repeat bg-cover flex flex-col justify-end overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-xl min-h-[160px] relative shadow-inner" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAJ2lsk769m1pQThRQq19jSraNXRJCe0SW5Z_qNmd-YJ5YmmDA1rtEDj3lRW0jRRV4_pL9sDyoWuAyTcSf9qFtfl0xfbk9sL2BdptnWbg7Q3vMVdvOJweAS5UY87C0fOJOt3RIxKGOFa0TD8Ik_iMiwgoCxcWwUm7cpc-fkoTKJGaCgJdMCkn0j18Cvrab_vxVP1CnCp2vVeuaeCkjzeVQwwgRc6eebZ2pdavGR4D7xPV5VriNOUDUp5UrYPRe-8WahJCXrlsygLdk");'>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+<div class="relative p-4">
+<span class="inline-flex items-center rounded-md bg-white/20 px-2 py-1 text-xs font-medium text-white backdrop-blur-md ring-1 ring-inset ring-white/30">
+                        New Account
+                    </span>
+</div>
+</div>
+</div>
+<div class="px-4 pt-4">
+<h3 class="text-[#111418] dark:text-white text-xl font-bold leading-tight pb-4">Personal Details</h3>
+<div class="flex flex-col gap-4">
+<div class="flex gap-4">
+<label class="flex flex-col flex-1">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">First Name</span>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 px-4 text-base font-normal leading-normal transition-all" placeholder="Enter first name" type="text"/>
+</label>
+<label class="flex flex-col flex-1">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Last Name</span>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 px-4 text-base font-normal leading-normal transition-all" placeholder="Enter last name" type="text"/>
+</label>
+</div>
+<label class="flex flex-col w-full">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Phone</span>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 pl-10 pr-4 text-base font-normal leading-normal transition-all" placeholder="(555) 000-0000" type="tel"/>
+</div>
+</label>
+<label class="flex flex-col w-full">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Gmail Address</span>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+<span class="material-symbols-outlined text-[20px]">mail</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 pl-10 pr-4 text-base font-normal leading-normal transition-all" placeholder="client@gmail.com" type="email"/>
+</div>
+</label>
+<div class="flex flex-col w-full gap-2">
+<label class="flex flex-col w-full">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Physical Address</span>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+<span class="material-symbols-outlined text-[20px]">location_on</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 pl-10 pr-4 text-base font-normal leading-normal transition-all" placeholder="Search for address..." type="text"/>
+</div>
+</label>
+<div class="w-full h-32 rounded-xl overflow-hidden relative border border-gray-200 dark:border-gray-700 shadow-sm">
+<img alt="Map Preview" class="w-full h-full object-cover grayscale-[0.2] contrast-[0.9]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiKQZx-IncOjYlw-B_uxuFmtO2JTmQt_wiEiHZIqQLoJ9ZzVIK0ZtQAmDVSiS116vju3TT6BQ-6C4FdFlkTisVNTRPh8mmwDkVUeEX1e12EqC2S8FNfXVqxkO1xmMCRH17uoqdtfhR_CHokoYWubCNqDn7SBxQ3D2PmelI5WLjHzIFd3mvJW5_0Zyk3dY_SDzkA32_cUvE9B2goMRY__-bVkcSKPYNY8vUWKFAxcxXa7Jw_79ihteJRKApMlhzxeROLHMWJVpeAc4"/>
+<div class="absolute inset-0 pointer-events-none ring-1 ring-inset ring-black/5"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="h-px bg-gray-100 dark:bg-gray-800 my-6 mx-4"></div>
+<div class="px-4">
+<h3 class="text-[#111418] dark:text-white text-xl font-bold leading-tight pb-4">Notes</h3>
+<label class="flex flex-col w-full">
+<textarea class="form-textarea flex w-full min-w-0 flex-1 rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary min-h-[120px] placeholder:text-[#617189] dark:placeholder:text-gray-500 px-4 py-3 text-base font-normal leading-normal transition-all" placeholder="Add any specific details about the client, gate codes, pet names, etc."></textarea>
+</label>
+</div>
+<div class="h-px bg-gray-100 dark:bg-gray-800 my-6 mx-4"></div>
+<div class="px-4 pb-12">
+<div class="flex items-center justify-between pb-4">
+<h3 class="text-[#111418] dark:text-white text-xl font-bold leading-tight">Job History</h3>
+</div>
+<div class="flex flex-col items-center justify-center py-12 px-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
+<div class="w-16 h-16 bg-white dark:bg-gray-800 rounded-full shadow-sm flex items-center justify-center mb-4 text-gray-300 dark:text-gray-600">
+<span class="material-symbols-outlined text-4xl">history</span>
+</div>
+<p class="text-gray-500 dark:text-gray-400 text-center font-medium">No jobs recorded yet</p>
+<p class="text-gray-400 dark:text-gray-500 text-center text-xs mt-1 leading-relaxed">Job history will appear here once the client has completed their first service.</p>
+</div>
+</div>
+</div>
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 z-20 max-w-md mx-auto">
+<button class="w-full bg-primary hover:bg-[#D96C12] text-white font-bold h-14 rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined">person_add</span>
+            Save Client
+        </button>
+</div>
+</div>
+
+</body></html>

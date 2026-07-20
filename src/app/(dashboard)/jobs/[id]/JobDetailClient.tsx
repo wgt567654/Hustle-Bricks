@@ -97,6 +97,38 @@ const PAYMENT_METHODS = [
   { value: "other", label: "Other", icon: "more_horiz" },
 ];
 
+type Payout = {
+  id: string;
+  team_member_id: string;
+  pay_type: "hourly" | "percent" | "flat" | "custom";
+  rate: number | null;
+  minutes: number | null;
+  job_total: number | null;
+  amount: number;
+  status: "pending" | "paid";
+  paid_at: string | null;
+  method: string | null;
+  team_members: { name: string } | null;
+};
+
+const PAYOUT_METHODS = [
+  { value: "cash", label: "Cash" },
+  { value: "venmo", label: "Venmo" },
+  { value: "check", label: "Check" },
+  { value: "other", label: "Other" },
+];
+
+function payoutBasis(p: Payout, currency: string): string {
+  if (p.pay_type === "hourly") {
+    return `hourly · ${formatCurrency(Number(p.rate ?? 0), currency)}/hr · ${p.minutes ?? 0} min`;
+  }
+  if (p.pay_type === "percent") {
+    return `percent · ${Number(p.rate ?? 0)}% of ${formatCurrency(Number(p.job_total ?? 0), currency)}`;
+  }
+  if (p.pay_type === "flat") return "flat rate";
+  return "custom amount";
+}
+
 const FREQUENCY_OPTIONS: { value: RecurrenceFrequency; label: string; days: number }[] = [
   { value: "weekly", label: "Weekly", days: 7 },
   { value: "biweekly", label: "Biweekly", days: 14 },
@@ -233,6 +265,80 @@ export default function JobDetailClient({
   const [durationHours, setDurationHours] = useState(0);
   const [durationMinutes, setDurationMinutes] = useState(0);
   const [employeeSearch, setEmployeeSearch] = useState("");
+
+  // Crew payouts (auto-created by a DB trigger when the job completes)
+  const [payouts, setPayouts] = useState<Payout[] | null>(null);
+  const [payoutAmountDrafts, setPayoutAmountDrafts] = useState<Record<string, string>>({});
+  const [payoutMethods, setPayoutMethods] = useState<Record<string, string>>({});
+  const [payoutSavingId, setPayoutSavingId] = useState<string | null>(null);
+
+  const jobId = job?.id ?? null;
+  const jobStatus = job?.status ?? null;
+
+  const fetchPayouts = useCallback(async () => {
+    if (!jobId) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("job_payouts")
+      .select("id, team_member_id, pay_type, rate, minutes, job_total, amount, status, paid_at, method, team_members(name)")
+      .eq("job_id", jobId)
+      .order("created_at");
+    setPayouts((data as unknown as Payout[]) ?? []);
+  }, [jobId]);
+
+  useEffect(() => {
+    if (jobStatus === "completed") fetchPayouts();
+  }, [jobStatus, fetchPayouts]);
+
+  async function savePayoutAmount(p: Payout) {
+    const raw = payoutAmountDrafts[p.id];
+    const clearDraft = () =>
+      setPayoutAmountDrafts((prev) => {
+        const next = { ...prev };
+        delete next[p.id];
+        return next;
+      });
+    if (raw == null) return;
+    const amount = parseFloat(raw);
+    if (Number.isNaN(amount) || amount < 0 || amount === Number(p.amount)) {
+      clearDraft();
+      return;
+    }
+    setPayoutSavingId(p.id);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("job_payouts")
+      .update({ amount, pay_type: "custom" })
+      .eq("id", p.id);
+    if (error) toast.error("Couldn't update the payout amount — try again.");
+    clearDraft();
+    setPayoutSavingId(null);
+    await fetchPayouts();
+  }
+
+  async function markPayoutPaid(p: Payout) {
+    setPayoutSavingId(p.id);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("job_payouts")
+      .update({ status: "paid", paid_at: new Date().toISOString(), method: payoutMethods[p.id] || null })
+      .eq("id", p.id);
+    if (error) toast.error("Couldn't mark the payout paid — try again.");
+    setPayoutSavingId(null);
+    await fetchPayouts();
+  }
+
+  async function unmarkPayoutPaid(p: Payout) {
+    setPayoutSavingId(p.id);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("job_payouts")
+      .update({ status: "pending", paid_at: null, method: null })
+      .eq("id", p.id);
+    if (error) toast.error("Couldn't unmark the payout — try again.");
+    setPayoutSavingId(null);
+    await fetchPayouts();
+  }
 
   async function updateStatus(status: JobStatus) {
     if (!job) return;
@@ -1178,6 +1284,109 @@ export default function JobDetailClient({
           </button>
         )}
       </section>
+
+      {/* ── CREW PAY ── */}
+      {job.status === "completed" && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px]">payments</span>
+              Crew Pay
+            </h3>
+          </div>
+
+          {payouts === null ? (
+            <div className="flex items-center gap-2 py-4 px-4 rounded-2xl border border-border bg-card">
+              <span className="material-symbols-outlined text-[16px] text-muted-foreground animate-spin">progress_activity</span>
+              <span className="text-xs text-muted-foreground">Loading payouts…</span>
+            </div>
+          ) : payouts.length === 0 ? (
+            <div className="w-full py-6 rounded-2xl border border-dashed border-border text-muted-foreground text-sm flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">payments</span>
+              No payouts recorded
+            </div>
+          ) : (
+            <Card className="rounded-2xl border-border shadow-card overflow-hidden">
+              <div className="divide-y divide-border/50">
+                {payouts.map((p) => (
+                  <div key={p.id} className="flex flex-col gap-2.5 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-extrabold">
+                        {(p.team_members?.name ?? "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-sm font-bold text-foreground truncate">{p.team_members?.name ?? "Unknown"}</span>
+                        <span className="text-xs text-muted-foreground">{payoutBasis(p, currency)}</span>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className={`shrink-0 text-[10px] uppercase font-bold tracking-wider border-0 ${
+                          p.status === "paid" ? "icon-green " : "icon-orange "
+                        }`}
+                      >
+                        {p.status === "paid" ? "Paid" : "Pending"}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative w-28 shrink-0">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={payoutAmountDrafts[p.id] ?? String(Number(p.amount))}
+                          onChange={(e) => setPayoutAmountDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          onBlur={() => savePayoutAmount(p)}
+                          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          disabled={p.status === "paid" || payoutSavingId === p.id}
+                          className="w-full h-10 rounded-xl border border-border bg-background pl-7 pr-2 text-sm font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring/30 disabled:opacity-60"
+                        />
+                      </div>
+
+                      {p.status === "pending" ? (
+                        <>
+                          <select
+                            value={payoutMethods[p.id] ?? ""}
+                            onChange={(e) => setPayoutMethods((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                            className="flex-1 min-w-0 h-10 rounded-xl border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring/30"
+                          >
+                            <option value="">Method…</option>
+                            {PAYOUT_METHODS.map((m) => (
+                              <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => markPayoutPaid(p)}
+                            disabled={payoutSavingId === p.id}
+                            className="shrink-0 px-3 h-10 rounded-xl text-xs font-bold bg-[var(--color-status-completed)] text-white hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+                          >
+                            {payoutSavingId === p.id ? "…" : "Mark paid"}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
+                            {p.method ? `via ${PAYOUT_METHODS.find((m) => m.value === p.method)?.label ?? p.method}` : ""}
+                            {p.paid_at ? `${p.method ? " · " : ""}${formatDateShort(p.paid_at)}` : ""}
+                          </span>
+                          <button
+                            onClick={() => unmarkPayoutPaid(p)}
+                            disabled={payoutSavingId === p.id}
+                            className="shrink-0 px-3 h-10 rounded-xl text-xs font-bold text-muted-foreground border border-border bg-muted/30 hover:bg-muted transition-colors disabled:opacity-50"
+                          >
+                            {payoutSavingId === p.id ? "…" : "Unmark"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </section>
+      )}
 
       </div>{/* end left column */}
 

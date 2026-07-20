@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 
 type Note = {
   id: string;
@@ -19,13 +20,9 @@ async function buildNotifications(): Promise<Note[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: tm } = await supabase
-    .from("team_members")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .single();
-  if (!tm) return [];
+  const { membership } = await getActiveMembership(supabase);
+  if (!membership) return [];
+  const tm = { id: membership.member_id };
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

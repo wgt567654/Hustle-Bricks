@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 
 type Client = {
   id: string;
@@ -55,13 +56,9 @@ export default function EmployeeClientPage({ params }: { params: Promise<{ id: s
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: tm } = await supabase
-        .from("team_members")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
-      if (!tm) return;
+      const { membership } = await getActiveMembership(supabase);
+      if (!membership) return;
+      const tm = { id: membership.member_id };
 
       const [{ data: clientData }, { data: jobData }] = await Promise.all([
         supabase

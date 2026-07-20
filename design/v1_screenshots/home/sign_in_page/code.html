@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HustleBricks Sign-In</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;700&amp;family=Roboto:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a73e8",
+                        "google-red": "#ea4335",
+                        "google-blue": "#4285f4",
+                        "google-yellow": "#fbbc05",
+                        "google-green": "#34a853",
+                        "brand-purple": "#a855f7",
+                        "brand-orange": "#f97316",
+                        "brand-gray": "#70757a",
+                    },
+                    fontFamily: {
+                        "sans": ["Roboto", "sans-serif"],
+                        "display": ["Product Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "md": "4px",
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-white text-[#202124];
+            }
+        }
+        .brick-logo {
+            @apply flex items-center justify-center rounded-sm font-bold text-[10px] tracking-wider uppercase shadow-sm;
+            width: 52px;
+            height: 24px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-sans antialiased min-h-screen flex flex-col items-center justify-center px-6">
+<div class="relative w-full max-w-[360px] h-[240px] flex items-center justify-center mb-8">
+<div class="absolute top-[10%] left-[15%] brick-logo bg-brand-purple text-white -rotate-12">
+            JOBS
+        </div>
+<div class="absolute top-[5%] right-[20%] brick-logo bg-google-yellow text-white rotate-6">
+            TEAM
+        </div>
+<div class="absolute bottom-[20%] left-[5%] brick-logo bg-google-green text-white rotate-12">
+            SVCS
+        </div>
+<div class="absolute bottom-[15%] right-[5%] brick-logo bg-brand-orange text-white -rotate-6">
+            CLIENTS
+        </div>
+<div class="absolute top-[45%] right-[-5%] brick-logo bg-brand-gray text-white rotate-45 opacity-60">
+            ADMIN
+        </div>
+<div class="z-10 flex flex-col items-center text-center">
+<div class="flex flex-col items-center leading-none">
+<span class="text-google-red font-display text-5xl font-bold tracking-tight">Hustle</span>
+<span class="text-google-blue font-display text-5xl font-bold tracking-tight">Bricks</span>
+</div>
+<p class="text-[#5f6368] font-sans text-sm font-medium mt-4 tracking-wide">Stack Your Side Hustle</p>
+</div>
+</div>
+<div class="w-full max-w-[360px] flex flex-col">
+<h2 class="text-2xl font-normal text-center mb-8 text-[#202124]">Sign in</h2>
+<form class="flex flex-col gap-6">
+<div class="relative group">
+<input class="block px-4 pb-2.5 pt-4 w-full text-base text-[#202124] bg-transparent rounded-md border border-[#dadce0] appearance-none focus:outline-none focus:ring-1 focus:ring-google-blue focus:border-google-blue peer transition-all" id="email" placeholder=" " type="email"/>
+<label class="absolute text-base text-[#5f6368] duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-google-blue peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 left-2" for="email">
+                    Email or phone
+                </label>
+</div>
+<div class="relative group">
+<input class="block px-4 pb-2.5 pt-4 w-full text-base text-[#202124] bg-transparent rounded-md border border-[#dadce0] appearance-none focus:outline-none focus:ring-1 focus:ring-google-blue focus:border-google-blue peer transition-all" id="password" placeholder=" " type="password"/>
+<label class="absolute text-base text-[#5f6368] duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-google-blue peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 left-2" for="password">
+                    Enter your password
+                </label>
+</div>
+<div class="flex flex-col gap-8 mt-4">
+<div class="flex items-center justify-between">
+<a class="text-google-blue font-medium text-sm hover:text-blue-700" href="#">Forgot password?</a>
+</div>
+<div class="flex items-center justify-between">
+<a class="text-google-blue font-medium text-sm hover:text-blue-700" href="#">Create account</a>
+<button class="bg-google-blue text-white px-6 py-2 rounded-md font-medium text-sm shadow-sm hover:shadow-md hover:bg-[#1967d2] transition-all" type="submit">
+                        Next
+                    </button>
+</div>
+</div>
+</form>
+</div>
+<footer class="mt-auto py-8 w-full max-w-[360px] flex justify-between text-xs text-[#70757a]">
+<div class="flex gap-4">
+<span>English (United States)</span>
+</div>
+<div class="flex gap-4">
+<a class="hover:underline" href="#">Help</a>
+<a class="hover:underline" href="#">Privacy</a>
+<a class="hover:underline" href="#">Terms</a>
+</div>
+</footer>
+
+</body></html>

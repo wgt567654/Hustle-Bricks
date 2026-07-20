@@ -18,6 +18,8 @@ type Quote = {
   created_at: string;
   notes: string | null;
   video_url: string | null;
+  proposed_date: string | null;
+  proposed_time: string | null;
   client_id: string;
   clients: {
     name: string;
@@ -52,7 +54,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
 
   const { data, error } = await supabase
     .from("quotes")
-    .select("id, status, total, created_at, notes, video_url, client_id, clients(name, phone, email, address), quote_line_items(id, description, quantity, unit_price)")
+    .select("id, status, total, created_at, notes, video_url, proposed_date, proposed_time, client_id, clients(name, phone, email, address), quote_line_items(id, description, quantity, unit_price)")
     .eq("id", id)
     .single();
 

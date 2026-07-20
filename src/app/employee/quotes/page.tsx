@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 
 type Quote = {
   id: string;
@@ -35,15 +36,10 @@ export default function EmployeeQuotesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: tm } = await supabase
-        .from("team_members")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
-      if (!tm) return;
+      const { membership } = await getActiveMembership(supabase);
+      if (!membership) return;
 
-      const memberId = (tm as unknown as { id: string }).id;
+      const memberId = membership.member_id;
 
       const { data } = await supabase
         .from("quotes")

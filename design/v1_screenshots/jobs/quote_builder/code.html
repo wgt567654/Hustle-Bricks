@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Jobsblock Quote Builder</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#572d8a",
+                        "primary-dark": "#3d1f61",
+                        "primary-light": "#764baa",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221310",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#2f1f1c",
+                        "text-main-light": "#181211",
+                        "text-main-dark": "#ffffff",
+                        "text-sec-light": "#6b5d59",
+                        "text-sec-dark": "#d0b8b4",
+                        "border-light": "#e6dddb",
+                        "border-dark": "#4a3b38",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                    boxShadow: {
+                        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        'brick': '0 4px 0px 0px rgba(87, 45, 138, 0.2)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 24px;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1;
+        }
+        .bg-studs {
+            background-image: radial-gradient(rgba(87, 45, 138, 0.08) 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+        .dark .bg-studs {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #572d8a;
+        }
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: #572d8a;
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark transition-colors duration-200">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden bg-studs">
+<div class="sticky top-0 z-50 flex flex-col bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-sm border-b border-border-light dark:border-border-dark shadow-sm">
+<div class="flex items-center px-4 py-2 justify-between min-h-[64px]">
+<button class="text-text-main-light dark:text-text-main-dark flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+<div class="flex-1 flex justify-center">
+<div class="bg-primary px-3 py-1 pb-1.5 rounded-t-sm rounded-b-lg flex items-center justify-center shadow-sm">
+<span class="font-extrabold text-white tracking-tight text-xl leading-none">JOBS</span>
+</div>
+</div>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">save</span>
+</button>
+</div>
+<div class="px-5 pb-3">
+<div class="flex items-center gap-2 text-xs font-semibold text-text-sec-light dark:text-text-sec-dark uppercase tracking-wider">
+<span>Quoted by:</span>
+<input class="bg-transparent border-none p-0 focus:ring-0 text-xs font-bold text-primary dark:text-primary-light placeholder:text-text-sec-light/50 w-full" type="text" value="Alex Rivera"/>
+</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col p-4 gap-6 max-w-xl mx-auto w-full pb-64">
+<div class="flex flex-col gap-2">
+<h3 class="text-text-main-light dark:text-text-main-dark text-lg font-bold px-1">For Client</h3>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-1 shadow-soft">
+<div class="relative flex items-center">
+<span class="absolute left-3 text-text-sec-light dark:text-text-sec-dark">
+<span class="material-symbols-outlined">search</span>
+</span>
+<input class="w-full bg-transparent border-none text-text-main-light dark:text-text-main-dark placeholder:text-text-sec-light pl-10 pr-4 py-3 focus:ring-0 text-base font-medium" placeholder="Search for a client..." type="text"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-end px-1">
+<h3 class="text-text-main-light dark:text-text-main-dark text-lg font-bold">Services</h3>
+<span class="text-xs font-medium text-text-sec-light dark:text-text-sec-dark">2 items added</span>
+</div>
+<div class="group relative bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-3 shadow-soft flex flex-col gap-3 overflow-hidden">
+<div class="flex gap-4 items-start w-full relative">
+<div class="w-20 h-20 shrink-0 rounded-lg bg-background-light dark:bg-background-dark bg-cover bg-center border border-border-light dark:border-border-dark" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD5ZgWckGnBPQnLhEYHzauthyKPslB6DfVQSBRABZ27r65kGIyyMp5tE1CjIruVh2iE0YbxGSxoN38PRfJvASMb87gCu82nx5G7pEGGZ1jlTbUT47R6Szdg0Fm5kP3yB7WX7fp9oTBotrWPgA9G3oZOlvS0T7yElgeVdQepJebJHVpN3o8CwvjgyUxcI9Nx8EskaBpkv45aI9BY3P82O8CvK_vaswXBm4zK8RU68M2qHtT9NR1_FWk0GZGfHhA3tXwUXadX2iVRlC8');"></div>
+<div class="flex-1 flex flex-col justify-between h-20">
+<div>
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-text-main-light dark:text-text-main-dark leading-tight">Bike Tune-Up</h4>
+<button class="text-text-sec-light hover:text-primary transition-colors -mt-1 -mr-1 p-1">
+<span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
+</button>
+</div>
+<p class="text-xs text-text-sec-light dark:text-text-sec-dark line-clamp-1">Basic chain cleaning.</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center bg-background-light dark:bg-background-dark rounded-lg p-0.5 gap-1 border border-border-light dark:border-border-dark">
+<button class="size-6 flex items-center justify-center rounded bg-white dark:bg-surface-dark shadow-sm text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined" style="font-size: 14px;">remove</span>
+</button>
+<span class="text-sm font-bold w-4 text-center">1</span>
+<button class="size-6 flex items-center justify-center rounded bg-white dark:bg-surface-dark shadow-sm text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined" style="font-size: 14px;">add</span>
+</button>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-sm font-medium text-text-sec-light dark:text-text-sec-dark">$</span>
+<input class="w-16 bg-transparent text-right font-bold text-text-main-light dark:text-text-main-dark border-b border-border-light focus:border-primary focus:ring-0 p-0 text-lg placeholder:text-text-sec-light" type="number" value="25.00"/>
+</div>
+</div>
+</div>
+</div>
+<div class="h-px bg-border-light dark:bg-border-dark w-full"></div>
+<div class="grid grid-cols-2 gap-3 text-xs">
+<div class="flex flex-col gap-1">
+<label class="text-text-sec-light dark:text-text-sec-dark font-semibold">Tax Code</label>
+<select class="bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark rounded p-1.5 text-xs text-text-main-light dark:text-text-main-dark focus:ring-1 focus:ring-primary focus:border-primary">
+<option>Standard (5%)</option>
+<option>Exempt (0%)</option>
+<option>Service (10%)</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-text-sec-light dark:text-text-sec-dark font-semibold">Item Coupon</label>
+<select class="bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark rounded p-1.5 text-xs text-text-main-light dark:text-text-main-dark focus:ring-1 focus:ring-primary focus:border-primary">
+<option>None</option>
+<option>Student (-10%)</option>
+<option>Early Bird (-$5)</option>
+</select>
+</div>
+<div class="col-span-2 flex items-center justify-between pt-1">
+<label class="flex items-center gap-2 cursor-pointer">
+<div class="relative inline-block w-8 h-4 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 border-border-light appearance-none cursor-pointer checked:right-0 checked:border-primary focus:ring-0" name="toggle" type="checkbox"/>
+<div class="toggle-label block overflow-hidden h-4 rounded-full bg-border-light cursor-pointer checked:bg-primary"></div>
+</div>
+<span class="text-text-main-light dark:text-text-main-dark font-medium">Inc. Tax</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<span class="text-text-main-light dark:text-text-main-dark font-medium">Discountable</span>
+<div class="relative inline-block w-8 h-4 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 border-border-light appearance-none cursor-pointer checked:right-0 checked:border-primary focus:ring-0" name="toggle" type="checkbox"/>
+<div class="toggle-label block overflow-hidden h-4 rounded-full bg-border-light cursor-pointer checked:bg-primary"></div>
+</div>
+</label>
+</div>
+</div>
+</div>
+<div class="group relative bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-3 shadow-soft flex flex-col gap-3 overflow-hidden">
+<div class="flex gap-4 items-start w-full relative">
+<div class="w-20 h-20 shrink-0 rounded-lg bg-background-light dark:bg-background-dark bg-cover bg-center border border-border-light dark:border-border-dark" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAGCwp0i1mUrHh-5B1GdjMR6vAGATOFqCwGxTHIcBG7XoZZ942WovUODkmehSm_z_RSj6cWqqaTJeM22KmwL2DAqcQVBg-Bdz0cPlZTiam1ZWw4rHJwTjm3Yul78SUYaZvSMIk0tnca0DAmLpNX4L7zPAy8YAD1SzCATB2U23AP38EsRNG03_Unz8hiXm-FJ-7aBu9phgSIWa4hBrec-sclQhTWpSRTbvRRpD2fXTQBJpCMMEOvjv0Oas19SY8iwQSTuff3y1tkxsE');"></div>
+<div class="flex-1 flex flex-col justify-between h-20">
+<div>
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-text-main-light dark:text-text-main-dark leading-tight">Web Asset Pack</h4>
+<button class="text-text-sec-light hover:text-primary transition-colors -mt-1 -mr-1 p-1">
+<span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
+</button>
+</div>
+<p class="text-xs text-text-sec-light dark:text-text-sec-dark line-clamp-1">Logo, Banner, Icons.</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center bg-background-light dark:bg-background-dark rounded-lg p-0.5 gap-1 border border-border-light dark:border-border-dark">
+<button class="size-6 flex items-center justify-center rounded bg-white dark:bg-surface-dark shadow-sm text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined" style="font-size: 14px;">remove</span>
+</button>
+<span class="text-sm font-bold w-4 text-center">2</span>
+<button class="size-6 flex items-center justify-center rounded bg-white dark:bg-surface-dark shadow-sm text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined" style="font-size: 14px;">add</span>
+</button>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-sm font-medium text-text-sec-light dark:text-text-sec-dark">$</span>
+<input class="w-16 bg-transparent text-right font-bold text-text-main-light dark:text-text-main-dark border-b border-border-light focus:border-primary focus:ring-0 p-0 text-lg placeholder:text-text-sec-light" type="number" value="150.00"/>
+</div>
+</div>
+</div>
+</div>
+<div class="h-px bg-border-light dark:bg-border-dark w-full"></div>
+<div class="grid grid-cols-2 gap-3 text-xs">
+<div class="flex flex-col gap-1">
+<label class="text-text-sec-light dark:text-text-sec-dark font-semibold">Tax Code</label>
+<select class="bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark rounded p-1.5 text-xs text-text-main-light dark:text-text-main-dark focus:ring-1 focus:ring-primary focus:border-primary">
+<option>Service (10%)</option>
+<option>Standard (5%)</option>
+<option>Exempt (0%)</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-text-sec-light dark:text-text-sec-dark font-semibold">Item Coupon</label>
+<select class="bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark rounded p-1.5 text-xs text-text-main-light dark:text-text-main-dark focus:ring-1 focus:ring-primary focus:border-primary">
+<option>None</option>
+<option>Promo20 (-20%)</option>
+</select>
+</div>
+<div class="col-span-2 flex items-center justify-between pt-1">
+<label class="flex items-center gap-2 cursor-pointer">
+<div class="relative inline-block w-8 h-4 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 border-border-light appearance-none cursor-pointer checked:right-0 checked:border-primary focus:ring-0" name="toggle" type="checkbox"/>
+<div class="toggle-label block overflow-hidden h-4 rounded-full bg-border-light cursor-pointer checked:bg-primary"></div>
+</div>
+<span class="text-text-main-light dark:text-text-main-dark font-medium">Inc. Tax</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<span class="text-text-main-light dark:text-text-main-dark font-medium">Discountable</span>
+<div class="relative inline-block w-8 h-4 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 border-border-light appearance-none cursor-pointer checked:right-0 checked:border-primary focus:ring-0" name="toggle" type="checkbox"/>
+<div class="toggle-label block overflow-hidden h-4 rounded-full bg-border-light cursor-pointer checked:bg-primary"></div>
+</div>
+</label>
+</div>
+</div>
+</div>
+<button class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 border-2 border-dashed border-border-light dark:border-border-dark hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 text-text-sec-light dark:text-text-sec-dark hover:text-primary transition-all gap-2 group mt-2">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">add_circle</span>
+<span class="font-bold text-sm">Add Service Brick</span>
+</button>
+</div>
+<div class="flex flex-col gap-2">
+<h3 class="text-text-main-light dark:text-text-main-dark text-lg font-bold px-1">Notes</h3>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-1 shadow-soft">
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-text-main-light dark:text-text-main-dark placeholder:text-text-sec-light dark:placeholder:text-text-sec-dark text-sm p-3 min-h-[80px] resize-none" placeholder="Add optional notes for the client here..."></textarea>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center px-1">
+<h3 class="text-text-main-light dark:text-text-main-dark text-lg font-bold">Request Team Members</h3>
+<button class="flex items-center justify-center rounded-lg h-8 w-8 bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+</button>
+</div>
+<div class="flex flex-col gap-2">
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-3 shadow-soft">
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div class="flex-1">
+<select class="w-full bg-transparent border-none p-0 text-sm font-bold text-text-main-light dark:text-text-main-dark focus:ring-0">
+<option>Select Role or Member</option>
+<option selected="">Lead Technician</option>
+<option>Graphic Designer</option>
+<option>General Assistant</option>
+</select>
+<p class="text-[10px] text-text-sec-light dark:text-text-sec-dark font-medium uppercase tracking-tight">Personnel Role</p>
+</div>
+<button class="text-text-sec-light/40 hover:text-red-500 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">cancel</span>
+</button>
+</div>
+<div class="flex items-center justify-end px-1 border-t border-border-light dark:border-border-dark pt-2">
+<label class="flex items-center gap-2 cursor-pointer group">
+<input checked="" class="rounded border-border-light text-primary focus:ring-primary h-4 w-4 transition-colors" type="checkbox"/>
+<span class="text-xs font-semibold text-text-sec-light dark:text-text-sec-dark group-hover:text-primary">Substitutions ok</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="fixed bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark border-t border-border-light dark:border-border-dark p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
+<div class="max-w-xl mx-auto flex flex-col gap-4">
+<div class="flex items-center gap-2 bg-background-light dark:bg-background-dark p-2 rounded-lg border border-border-light dark:border-border-dark">
+<span class="material-symbols-outlined text-primary ml-1">local_offer</span>
+<select class="w-full bg-transparent border-none text-sm font-medium text-text-main-light dark:text-text-main-dark focus:ring-0 p-0">
+<option value="">Apply Quote Coupon...</option>
+<option value="welcome">Welcome Discount (-10%)</option>
+<option value="seasonal">Summer Sale (-15%)</option>
+</select>
+</div>
+<div class="flex flex-col gap-1 px-1">
+<div class="flex justify-between items-center text-sm text-text-sec-light dark:text-text-sec-dark">
+<span>Subtotal</span>
+<span class="font-medium">$325.00</span>
+</div>
+<div class="flex justify-between items-center text-sm text-text-sec-light dark:text-text-sec-dark">
+<div class="flex items-center gap-2">
+<span>Tax</span>
+</div>
+<span class="font-medium">$16.25</span>
+</div>
+<div class="flex justify-between items-end mt-2 pt-2 border-t border-border-light dark:border-border-dark">
+<span class="text-base font-bold text-text-main-light dark:text-text-main-dark">Total</span>
+<span class="text-2xl font-extrabold text-primary tracking-tight">$341.25</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary-dark active:scale-[0.99] text-white h-14 rounded-xl font-bold text-lg shadow-brick flex items-center justify-center gap-2 transition-all">
+<span>Generate Quote</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+
+</body></html>

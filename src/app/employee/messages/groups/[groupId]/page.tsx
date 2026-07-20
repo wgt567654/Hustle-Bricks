@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import { toast } from "@/lib/toast";
 
 type GroupMessage = {
@@ -93,11 +94,11 @@ export default function EmployeeGroupThreadPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled || !user) return;
 
-      const { data: tm } = await supabase.from("team_members").select("id, business_id, is_active").eq("user_id", user.id).single();
-      if (cancelled || !tm || !(tm as unknown as { is_active: boolean }).is_active) { setLoading(false); return; }
+      const { membership } = await getActiveMembership(supabase);
+      if (cancelled || !membership) { setLoading(false); return; }
 
-      const tmId = tm.id;
-      const bizId = (tm as unknown as { business_id: string }).business_id;
+      const tmId = membership.member_id;
+      const bizId = membership.business_id;
 
       const [{ data: grp }, { data: membersData }, { data: msgData }] = await Promise.all([
         supabase.from("team_groups").select("id, name, type").eq("id", groupId).single(),

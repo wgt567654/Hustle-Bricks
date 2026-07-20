@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import { toast } from "@/lib/toast";
 
 type Job = {
@@ -149,14 +150,10 @@ export default function EmployeeSchedulePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: tm } = await supabase
-        .from("team_members")
-        .select("id, business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
+      const { membership } = await getActiveMembership(supabase);
 
-      if (!tm) return;
+      if (!membership) return;
+      const tm = { id: membership.member_id, business_id: membership.business_id };
       setTeamMemberId(tm.id);
       setBusinessId(tm.business_id);
 

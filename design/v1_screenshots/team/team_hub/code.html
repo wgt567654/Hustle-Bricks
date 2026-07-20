@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Team Hub - HustleBricks</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3581f3", // Google Blue
+                        "brick": "#D32F2F", // HustleBricks Red
+                        "brick-light": "#FFEBEE",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem", 
+                        "lg": "0.5rem", 
+                        "xl": "0.75rem", 
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 8px rgba(0,0,0,0.06)',
+                        'floating': '0 8px 16px rgba(0,0,0,0.12)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-gray-100 text-[#111418] font-display antialiased">
+<!-- Mobile Container -->
+<div class="relative mx-auto flex h-screen w-full max-w-[480px] flex-col bg-background-light dark:bg-background-dark overflow-hidden shadow-2xl">
+<!-- Top App Bar -->
+<header class="flex items-center justify-between bg-white dark:bg-[#1A2633] px-4 py-3 shadow-sm z-20">
+<div class="flex items-center gap-3">
+<div class="relative">
+<div class="size-10 rounded-full bg-cover bg-center border-2 border-white shadow-sm" data-alt="Profile avatar of the user" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC5Ytkr9Y83sOWBxxktBMayS7-LbYDPeJ_98zs2SYskBBq6gg_5tHquKzlLNo-siqxuyZG_81zbO4zUndYnPdiSJleUOOkA8OSChFwXS_xebJhgNXOhR-va1zVfNyU7zaa7IPhLdNeJA6QkbyhFbP7RU3q9R4zf710kuFQNw3XXCuKDdhESRd7zBS3hF795TacPb4cSoQtTiZqUxS_MnSmza-XmNSvDnmQcysv1LUxKr1OLl7INMcpu5OxisRrJiA8fYTebnEO2YfA");'></div>
+<div class="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 ring-2 ring-white"></div>
+</div>
+<h1 class="text-xl font-extrabold tracking-tight text-[#111418] dark:text-white">Team Hub</h1>
+</div>
+<div class="flex gap-2">
+<button class="flex size-10 items-center justify-center rounded-full bg-transparent text-[#111418] hover:bg-gray-100 dark:text-white dark:hover:bg-white/10">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="flex size-10 items-center justify-center rounded-full bg-transparent text-[#111418] hover:bg-gray-100 dark:text-white dark:hover:bg-white/10">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Main Content -->
+<main class="flex-1 overflow-y-auto pb-24 scrollbar-hide">
+<!-- Hero Section -->
+<div class="px-4 pt-4 pb-2">
+<div class="relative w-full overflow-hidden rounded-2xl bg-white shadow-soft dark:bg-[#1A2633]">
+<div class="absolute inset-0 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20"></div>
+<div class="flex min-h-[140px] items-center justify-between p-6">
+<div class="flex flex-col gap-1 relative z-10 max-w-[60%]">
+<span class="text-xs font-bold uppercase tracking-wider text-brick">Daily Tip</span>
+<h2 class="text-lg font-bold leading-tight text-[#111418] dark:text-white">Rotate your crew to prevent burnout.</h2>
+<button class="mt-3 w-fit rounded-lg bg-brick px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-red-700 transition-colors">
+                                View Schedule
+                            </button>
+</div>
+<!-- 3D Lego Style Illustration -->
+<div class="absolute right-[-20px] bottom-[-20px] size-40 bg-contain bg-no-repeat bg-center" data-alt="3D render of a lego character holding a clipboard" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCyOE5dDUsWEMRkRG-t88qCrY54Twu8WRkyUT8PBioqF-Ps4eHjQTyOI5xGEkhpHQJl8Y_XMGvf-zEMxSkTozZpeqpe54AJgYGVLA-l1hmHzxLDU-zK_2yCPdGU7msp14ZcUByJ7pctnyxrZ6L2I1sRsbRAU7MylfJxZIcJBjEma0gkhv5P5ZHCzm9Kr6ns-XROFetXeyYQuJk4fBzm8zM1YlmjCmTuSYMh5sJzeoO1RTy2KI-0U85O8IAF5iZkJ47d9iRh5G6WQc4");'></div>
+</div>
+</div>
+</div>
+<!-- Stats Section -->
+<div class="flex gap-3 overflow-x-auto px-4 py-2 scrollbar-hide">
+<div class="flex min-w-[140px] flex-1 flex-col justify-between gap-1 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:bg-[#1A2633] dark:border-gray-700">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">groups</span>
+<p class="text-sm font-semibold text-gray-500 dark:text-gray-400">Team Strength</p>
+</div>
+<p class="text-2xl font-bold text-[#111418] dark:text-white">85%</p>
+</div>
+<div class="flex min-w-[140px] flex-1 flex-col justify-between gap-1 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:bg-[#1A2633] dark:border-gray-700">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-green-600 text-[20px]">check_circle</span>
+<p class="text-sm font-semibold text-gray-500 dark:text-gray-400">Active</p>
+</div>
+<p class="text-2xl font-bold text-[#111418] dark:text-white">3</p>
+</div>
+<div class="flex min-w-[140px] flex-1 flex-col justify-between gap-1 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:bg-[#1A2633] dark:border-gray-700">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-brick text-[20px]">school</span>
+<p class="text-sm font-semibold text-gray-500 dark:text-gray-400">In Training</p>
+</div>
+<p class="text-2xl font-bold text-[#111418] dark:text-white">2</p>
+</div>
+</div>
+<!-- Filters Chips -->
+<div class="sticky top-0 z-10 bg-background-light/95 px-4 py-3 backdrop-blur-sm dark:bg-background-dark/95">
+<div class="flex gap-2 overflow-x-auto scrollbar-hide">
+<button class="flex h-9 shrink-0 items-center justify-center rounded-lg bg-[#111418] px-4 text-sm font-bold text-white shadow-md dark:bg-white dark:text-black">
+                        All Helpers
+                    </button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg bg-white border border-gray-200 px-4 text-sm font-semibold text-gray-600 hover:bg-gray-50 dark:bg-[#1A2633] dark:border-gray-700 dark:text-gray-300">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+                        Certified
+                    </button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg bg-white border border-gray-200 px-4 text-sm font-semibold text-gray-600 hover:bg-gray-50 dark:bg-[#1A2633] dark:border-gray-700 dark:text-gray-300">
+<span class="material-symbols-outlined text-[18px]">school</span>
+                        Training
+                    </button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg bg-white border border-gray-200 px-4 text-sm font-semibold text-gray-600 hover:bg-gray-50 dark:bg-[#1A2633] dark:border-gray-700 dark:text-gray-300">
+                        New
+                    </button>
+</div>
+</div>
+<!-- Roster List -->
+<div class="flex flex-col gap-4 px-4 pb-4">
+<!-- Card 1: Certified -->
+<div class="group relative flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-soft transition-all hover:shadow-md dark:bg-[#1A2633]">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-xl bg-gray-100 bg-cover bg-center" data-alt="Avatar of Alex M using a lego style" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAwOP2gHIYWmudmlfIWkjaUNdD5bG8tYjoorQep_0PifaMNviP8rGQ08FQ60HxcLWa2w2Zk9ZW0OFUkjD5CFq8LFklhlUxtXwwndphD0ZezIyN7Gcwxg5ZvBHTl9-FteA2nbXWuIEXAFaLI5d9_TFlDX9C5wXj_p5SHICONp4pbkREMXm2q8DK5vrMTOIEjW5kXZZMQrTTmoZNwiBVpYwZROyddPgN5KLX-q9QLQUbslYXUnEUvm-wYxNPynx--bVxacvTJQEk2JI8");'></div>
+<div>
+<h3 class="text-lg font-bold text-[#111418] dark:text-white">Alex M.</h3>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px] fill-1">verified</span>
+<span class="text-xs font-bold uppercase tracking-wide">Certified via AI</span>
+</div>
+</div>
+</div>
+<span class="flex size-8 items-center justify-center rounded-full bg-blue-50 text-primary dark:bg-blue-900/30">
+<span class="material-symbols-outlined text-[20px]">cleaning_services</span>
+</span>
+</div>
+<div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+<div class="h-full w-full rounded-full bg-primary"></div>
+</div>
+<div class="flex justify-between text-xs font-medium text-gray-500">
+<span>Window Washing</span>
+<span>100% Ready</span>
+</div>
+</div>
+<!-- Card 2: In Training (Brick Red Theme) -->
+<div class="group relative flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-soft transition-all hover:shadow-md dark:bg-[#1A2633]">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-xl bg-gray-100 bg-cover bg-center" data-alt="Avatar of Sarah J using a lego style" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBugVKDM1tmeLpTID9urMfaSchhbS2wxAvDTL_gkPSC98VkFXPKhHRwPZwrJ9aY76c7bFZQ-0WK9LhQk9q7X7BusnvIHGLCP3izAg3L9EV12B_kWjmEw8nKpiLqroB2obJEvcyEXggoSKzBXLprY25MkyuHrzvWfX_hgkOL7BuAGLLW5khMgQOcgjLJ9u3ryAfcbDTHb6xWGcpeq-85arR-yuqW60D-RBPyOQtMLassrsGetJdgx-cIz4fOfgjdwZBygI9qwzx9PMg");'></div>
+<div>
+<h3 class="text-lg font-bold text-[#111418] dark:text-white">Sarah J.</h3>
+<div class="flex items-center gap-1 text-brick">
+<span class="material-symbols-outlined text-[16px]">timelapse</span>
+<span class="text-xs font-bold uppercase tracking-wide">In Training</span>
+</div>
+</div>
+</div>
+<span class="flex size-8 items-center justify-center rounded-full bg-red-50 text-brick dark:bg-red-900/20">
+<span class="material-symbols-outlined text-[20px]">yard</span>
+</span>
+</div>
+<div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+<div class="h-full w-[40%] rounded-full bg-brick"></div>
+</div>
+<div class="flex justify-between text-xs font-medium text-gray-500">
+<span>Lawn Care</span>
+<span>40% Complete</span>
+</div>
+</div>
+<!-- Card 3: Certified -->
+<div class="group relative flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-soft transition-all hover:shadow-md dark:bg-[#1A2633]">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-xl bg-gray-100 bg-cover bg-center" data-alt="Avatar of Mike T using a lego style" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBgss5xH7BKTGFwAZ59btlMp6KOXaitECG2-KA2WLzYi0L7IeHQyBXE5mL1ecF2PCUnDbyWS60wTHwTWi8S9Yr1hJ6MTd0xbKZ1xsp2a_0mCm8w_GmxfvC7Xcd2Z_Ue_PTY_haiFcoRwlwmttDUUFmNNYX8SM2NYs8HdTjHzZeT_qLQyEte-U3HFeJZfwf_KmGSjSwGzjPHsdPwPE0CwRRDvX1fWT8MEZlV5ISXPp-I09SYzrmQ2fsOrEuK5TmhLZ76XxCp12r60xw");'></div>
+<div>
+<h3 class="text-lg font-bold text-[#111418] dark:text-white">Mike T.</h3>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px] fill-1">verified</span>
+<span class="text-xs font-bold uppercase tracking-wide">Certified via AI</span>
+</div>
+</div>
+</div>
+<span class="flex size-8 items-center justify-center rounded-full bg-blue-50 text-primary dark:bg-blue-900/30">
+<span class="material-symbols-outlined text-[20px]">pets</span>
+</span>
+</div>
+<div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+<div class="h-full w-full rounded-full bg-primary"></div>
+</div>
+<div class="flex justify-between text-xs font-medium text-gray-500">
+<span>Dog Walking</span>
+<span>100% Ready</span>
+</div>
+</div>
+<!-- Card 4: New Recruit -->
+<div class="group relative flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-soft transition-all hover:shadow-md dark:bg-[#1A2633]">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-3">
+<div class="flex size-12 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<h3 class="text-lg font-bold text-[#111418] dark:text-white">Invited...</h3>
+<div class="flex items-center gap-1 text-gray-500">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+<span class="text-xs font-bold uppercase tracking-wide">Pending</span>
+</div>
+</div>
+</div>
+<button class="flex h-8 items-center justify-center rounded-lg bg-gray-100 px-3 text-xs font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                            Resend
+                        </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (FAB) -->
+<div class="absolute bottom-20 right-4 z-30">
+<button class="group flex h-14 w-14 items-center justify-center rounded-2xl bg-brick shadow-floating transition-transform active:scale-95 hover:bg-red-700">
+<span class="material-symbols-outlined text-3xl text-white">add</span>
+</button>
+</div>
+<!-- Bottom Navigation -->
+<nav class="flex h-[72px] items-center justify-around border-t border-gray-200 bg-white px-2 pb-4 pt-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] dark:border-gray-800 dark:bg-[#1A2633]">
+<a class="flex flex-col items-center gap-1 p-2 text-primary" href="#">
+<span class="material-symbols-outlined text-2xl font-variation-settings-fill">grid_view</span>
+<span class="text-[10px] font-bold">Hub</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" href="#">
+<span class="material-symbols-outlined text-2xl">work</span>
+<span class="text-[10px] font-medium">Jobs</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" href="#">
+<span class="material-symbols-outlined text-2xl">payments</span>
+<span class="text-[10px] font-medium">Earnings</span>
+</a>
+<a class="flex flex-col items-center gap-1 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" href="#">
+<span class="material-symbols-outlined text-2xl">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</nav>
+</div>
+</body></html>

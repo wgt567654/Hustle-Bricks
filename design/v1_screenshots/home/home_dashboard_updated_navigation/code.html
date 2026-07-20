@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HustleBricks Home Dashboard</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&amp;family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3581f3",
+                        "working": "#ef4444",
+                        "admin": "#3581f3",
+                        "background-light": "#f8f9fa",
+                        "background-dark": "#121212",
+                    },
+                    fontFamily: {
+                        "sans": ["Roboto", "sans-serif"],
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "4px",
+                        "lg": "8px",
+                        "xl": "12px",
+                        "2xl": "16px",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply font-sans;
+            }
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark antialiased text-[#111418] dark:text-gray-100">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden pb-24">
+<div class="sticky top-0 z-20 flex items-center bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm p-4 pb-2 justify-between border-b border-transparent">
+<div class="flex items-center gap-3">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700">
+<div class="bg-center bg-no-repeat bg-cover w-full h-full" data-alt="Profile avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC-trdP02gp0AlMOdMVgNtyIriZ1kXu1yhDMnXTRbUFS3pNVj0UzGO1mvldITTsFlxSQJR7-nHvbrwmE8ddolxiW-I8tG-mRppErtFzv-HoLTUZm4NYZpF4uuRYPPIa3NIWW_xFWTJyhcnxnDWAySOF4rYQ627a02fDW5gRLlK3lYrMXx2L-3yRmnSkV16jqieTzenJV_-zy-gQAHJo35kJbzK5Gw6-i7fkLqPgqSxzp-oW85pUUKsATd0lJ9zHVzOKAomXPqH7dR8");'></div>
+</div>
+<div class="flex flex-col">
+<span class="text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">Good Morning</span>
+<h2 class="text-[#111418] dark:text-white text-lg font-bold leading-tight">Ready to hustle, Alex?</h2>
+</div>
+</div>
+<button class="flex size-10 items-center justify-center rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+<div class="px-4 py-4">
+<div class="relative w-full rounded-2xl overflow-hidden shadow-sm bg-primary">
+<div class="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay" data-alt="3D blue bricks" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCsgynFwvhE4Bq46LbX3vfF3kTbN3o3LYl0VVNadkS49yeWc2-MJeJDGMZz92fA5l8RvaPwF6ivtxhYFiepi8CghM_cK05j22KLno90Gm9ct9BXQcDyX_q5SN_HnKx96K_r81sIdPBdXEvpFwFNjYTzoDnIDocrzkZR_jFIrM9jf65bIdub9w5ziepGd2mbaBue5h-aPsBGH-kerzZnQjJ-hVhIIVu6pwR_PZJoTOymFav3PxJlSTLLtoBWnzMThN4JopVMqp8wMbw");'></div>
+<div class="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary"></div>
+<div class="relative flex flex-col p-6 h-auto min-h-[160px]">
+<div class="flex justify-between items-center mb-6">
+<div class="px-2.5 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+<span class="text-[10px] font-bold text-white tracking-widest uppercase">Total Earnings</span>
+</div>
+<div class="flex bg-black/20 p-1 rounded-lg backdrop-blur-sm">
+<button class="px-3 py-1 text-[10px] font-bold text-white bg-white/20 rounded-md transition-all">THIS PERIOD</button>
+<button class="px-3 py-1 text-[10px] font-bold text-white/60 hover:text-white transition-all">TOTAL</button>
+</div>
+</div>
+<div class="flex flex-col gap-0.5 mt-auto">
+<h1 class="text-white text-4xl font-black tracking-tight">$145.00</h1>
+<p class="text-white/80 text-xs font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">stars</span>
+                            Daily goal: 75% complete
+                        </p>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between px-4 pt-2 pb-2">
+<h3 class="text-[#111418] dark:text-white text-xl font-bold tracking-tight">Upcoming Jobs</h3>
+<button class="text-sm font-semibold text-primary">View Calendar</button>
+</div>
+<div class="flex flex-col px-4 gap-4">
+<div class="relative bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col gap-3">
+<div class="absolute left-0 top-4 bottom-4 w-1 bg-working rounded-r-full"></div>
+<div class="flex justify-between items-start pl-2">
+<div class="flex flex-col gap-1.5 flex-1">
+<div class="flex items-center gap-2">
+<span class="text-working text-[10px] font-bold uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded">Working</span>
+<span class="text-gray-500 dark:text-gray-400 text-xs font-medium italic">Wednesday, April 4, 9:30 AM</span>
+</div>
+<div class="flex items-center gap-2 flex-wrap">
+<h4 class="text-[#111418] dark:text-white text-lg font-bold">Dog Walking - Mrs. Johnson</h4>
+<a class="text-primary text-[11px] font-bold hover:underline flex items-center gap-0.5" href="#">
+<span class="material-symbols-outlined text-xs">near_me</span> Directions
+                            </a>
+</div>
+<div class="flex flex-col gap-1 mt-1">
+<div class="flex items-center justify-between">
+<span class="text-xs text-gray-600 dark:text-gray-400">Dog Walking (30 min)</span>
+<span class="text-xs font-bold text-gray-500">$20.00</span>
+</div>
+<div class="h-[1px] bg-gray-50 dark:bg-gray-800 w-full mt-1"></div>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-green-600 dark:text-green-400 text-base font-bold">$20.00</span>
+<span class="text-[9px] text-gray-400 uppercase font-bold">Earned</span>
+</div>
+</div>
+<div class="flex flex-col gap-2 pl-2 border-t border-gray-50 dark:border-gray-800 pt-3">
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team Assigned</span>
+<div class="flex items-center gap-2">
+<div class="flex -space-x-2">
+<div class="size-7 rounded-full border-2 border-white dark:border-gray-900 bg-gray-200 dark:bg-gray-700 overflow-hidden ring-1 ring-working/30">
+<div class="bg-center bg-no-repeat bg-cover w-full h-full" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC-trdP02gp0AlMOdMVgNtyIriZ1kXu1yhDMnXTRbUFS3pNVj0UzGO1mvldITTsFlxSQJR7-nHvbrwmE8ddolxiW-I8tG-mRppErtFzv-HoLTUZm4NYZpF4uuRYPPIa3NIWW_xFWTJyhcnxnDWAySOF4rYQ627a02fDW5gRLlK3lYrMXx2L-3yRmnSkV16jqieTzenJV_-zy-gQAHJo35kJbzK5Gw6-i7fkLqPgqSxzp-oW85pUUKsATd0lJ9zHVzOKAomXPqH7dR8");'></div>
+</div>
+<div class="size-7 rounded-full border-2 border-white dark:border-gray-900 bg-primary flex items-center justify-center text-[10px] text-white font-bold">JD</div>
+</div>
+<span class="text-xs text-gray-600 dark:text-gray-400">You &amp; Jamie</span>
+</div>
+</div>
+</div>
+<div class="relative bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col gap-3">
+<div class="absolute left-0 top-4 bottom-4 w-1 bg-admin rounded-r-full"></div>
+<div class="flex justify-between items-start pl-2">
+<div class="flex flex-col gap-1.5 flex-1">
+<div class="flex items-center gap-2">
+<span class="text-admin text-[10px] font-bold uppercase tracking-widest bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">Managing</span>
+<span class="text-gray-500 dark:text-gray-400 text-xs font-medium italic">Wednesday, April 4, 2:30 PM</span>
+</div>
+<div class="flex items-center gap-2 flex-wrap">
+<h4 class="text-[#111418] dark:text-white text-lg font-bold">Car Wash - Mr. Smith</h4>
+<a class="text-primary text-[11px] font-bold hover:underline flex items-center gap-0.5" href="#">
+<span class="material-symbols-outlined text-xs">near_me</span> Directions
+                            </a>
+</div>
+<div class="flex flex-col gap-1 mt-1">
+<div class="flex items-center justify-between">
+<span class="text-xs text-gray-400 dark:text-gray-500 italic">No direct services assigned to you</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-green-600 dark:text-green-400 text-base font-bold">$35.00</span>
+<span class="text-[9px] text-gray-400 uppercase font-bold">Revenue</span>
+</div>
+</div>
+<div class="flex flex-col gap-2 pl-2 border-t border-gray-50 dark:border-gray-800 pt-3">
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team Assigned</span>
+<div class="flex items-center gap-2">
+<div class="flex -space-x-2">
+<div class="size-7 rounded-full border-2 border-white dark:border-gray-900 bg-orange-500 flex items-center justify-center text-[10px] text-white font-bold">MK</div>
+<div class="size-7 rounded-full border-2 border-white dark:border-gray-900 bg-purple-500 flex items-center justify-center text-[10px] text-white font-bold">RL</div>
+</div>
+<span class="text-xs text-gray-600 dark:text-gray-400">Mike &amp; Riley</span>
+</div>
+</div>
+</div>
+<div class="relative bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col gap-3">
+<div class="absolute left-0 top-4 bottom-4 w-1 bg-working rounded-r-full"></div>
+<div class="flex justify-between items-start pl-2">
+<div class="flex flex-col gap-1.5 flex-1">
+<div class="flex items-center gap-2">
+<span class="text-working text-[10px] font-bold uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded">Working</span>
+<span class="text-gray-500 dark:text-gray-400 text-xs font-medium italic">Thursday, April 5, 4:00 PM</span>
+</div>
+<div class="flex items-center gap-2 flex-wrap">
+<h4 class="text-[#111418] dark:text-white text-lg font-bold">Lawn Care - The Walkers</h4>
+<a class="text-primary text-[11px] font-bold hover:underline flex items-center gap-0.5" href="#">
+<span class="material-symbols-outlined text-xs">near_me</span> Directions
+                            </a>
+</div>
+<div class="flex flex-col gap-1 mt-1 pr-4">
+<div class="flex items-center justify-between">
+<span class="text-xs text-gray-600 dark:text-gray-400">Lawn Mowing</span>
+<span class="text-xs font-bold text-gray-500">$25.00</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs text-gray-600 dark:text-gray-400">Edging</span>
+<span class="text-xs font-bold text-gray-500">$10.00</span>
+</div>
+<div class="h-[1px] bg-gray-50 dark:bg-gray-800 w-full mt-1"></div>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-green-600 dark:text-green-400 text-base font-bold">$35.00</span>
+<span class="text-[9px] text-gray-400 uppercase font-bold">Earned</span>
+</div>
+</div>
+<div class="flex flex-col gap-2 pl-2 border-t border-gray-50 dark:border-gray-800 pt-3">
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team Assigned</span>
+<div class="flex items-center gap-2">
+<div class="flex -space-x-2">
+<div class="size-7 rounded-full border-2 border-white dark:border-gray-900 bg-gray-200 dark:bg-gray-700 overflow-hidden ring-1 ring-working/30">
+<div class="bg-center bg-no-repeat bg-cover w-full h-full" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC-trdP02gp0AlMOdMVgNtyIriZ1kXu1yhDMnXTRbUFS3pNVj0UzGO1mvldITTsFlxSQJR7-nHvbrwmE8ddolxiW-I8tG-mRppErtFzv-HoLTUZm4NYZpF4uuRYPPIa3NIWW_xFWTJyhcnxnDWAySOF4rYQ627a02fDW5gRLlK3lYrMXx2L-3yRmnSkV16jqieTzenJV_-zy-gQAHJo35kJbzK5Gw6-i7fkLqPgqSxzp-oW85pUUKsATd0lJ9zHVzOKAomXPqH7dR8");'></div>
+</div>
+</div>
+<span class="text-xs text-gray-600 dark:text-gray-400">Solo (You)</span>
+</div>
+</div>
+</div>
+</div>
+
+
+<div class="fixed bottom-0 left-0 w-full z-40 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 p-4 pb-8">
+<div class="flex gap-4 max-w-md mx-auto">
+<button class="flex-1 h-14 bg-[#facc15] hover:bg-[#eab308] text-black font-display font-black text-lg rounded-2xl shadow-[0_4px_0_0_#ca8a04] active:shadow-none active:translate-y-1 transition-all uppercase tracking-wider">
+            Teams
+        </button>
+<button class="flex-1 h-14 bg-[#f97316] hover:bg-[#ea580c] text-white font-display font-black text-lg rounded-2xl shadow-[0_4px_0_0_#c2410c] active:shadow-none active:translate-y-1 transition-all uppercase tracking-wider">
+            Clients
+        </button>
+</div>
+</div></div>
+</body></html>

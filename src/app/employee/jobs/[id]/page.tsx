@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useSwipeToDismiss } from "@/hooks/useSwipeToDismiss";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import { useVoiceNote } from "@/hooks/useVoiceNote";
 import { toast } from "@/lib/toast";
 
@@ -157,14 +158,10 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setNotFound(true); setLoading(false); return; }
 
-      const { data: tm } = await supabase
-        .from("team_members")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
+      const { membership } = await getActiveMembership(supabase);
 
-      if (!tm) { setNotFound(true); setLoading(false); return; }
+      if (!membership) { setNotFound(true); setLoading(false); return; }
+      const tm = { id: membership.member_id };
       setEmployeeId(tm.id);
 
       const [{ data: jobData }, { data: entryData }] = await Promise.all([

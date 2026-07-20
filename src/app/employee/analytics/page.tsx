@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import { Card } from "@/components/ui/card";
 import { formatCurrencyRounded } from "@/lib/currency";
 import { CHART_COLORS } from "@/lib/status-colors";
@@ -181,11 +182,13 @@ export default function EmployeeAnalyticsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const { membership } = await getActiveMembership(supabase);
+      if (!membership) return;
+
       const { data: member } = await supabase
         .from("team_members")
         .select("id, commission_rate, businesses(commission_rate)")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
+        .eq("id", membership.member_id)
         .single();
       if (!member) return;
 

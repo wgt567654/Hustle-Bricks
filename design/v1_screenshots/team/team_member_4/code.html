@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Team Member Dashboard - HustleBricks</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FBC02D",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111418] dark:text-white">
+<div class="relative flex h-auto min-h-screen w-full max-w-md mx-auto flex-col bg-background-light dark:bg-background-dark shadow-sm overflow-x-hidden">
+<div class="flex items-center bg-white dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10 border-b border-gray-100 dark:border-gray-800">
+<button class="text-[#111418] dark:text-white flex size-12 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<div class="flex-1 flex justify-center items-center pr-12">
+<div class="bg-primary text-white px-4 py-1 font-black text-2xl tracking-tighter uppercase relative select-none rounded-sm" style="font-family: 'Inter', sans-serif;">
+                    TEAM
+                </div>
+</div>
+</div>
+<div class="flex-1 flex flex-col pb-24 p-4 gap-4">
+<div class="flex flex-col bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+<div class="flex items-center gap-4 p-4 border-b border-gray-100 dark:border-gray-700">
+<div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-[32px] text-blue-600 dark:text-blue-400">local_laundry_service</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="text-lg font-bold text-[#111418] dark:text-white truncate">Sparkle Squad Inc.</h3>
+<div class="flex items-center gap-1.5 mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
+<span class="truncate">Calendar: Sparkle Ops</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="w-2.5 h-2.5 bg-green-500 rounded-full ring-2 ring-white dark:ring-gray-800"></span>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-gray-800 divide-y divide-gray-50 dark:divide-gray-700/50">
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">category</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Services</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">work</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Jobs</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">groups</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Team</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">calendar_month</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Calendar</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">admin_panel_settings</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Admin</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-gray-800 rounded-xl border-2 border-primary/50 dark:border-primary/30 shadow-md overflow-hidden relative">
+<div class="absolute top-0 right-0 bg-primary text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-xl z-10 shadow-sm">
+                    Invitation Pending
+                </div>
+<div class="flex items-center gap-4 p-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+<div class="w-16 h-16 bg-gray-50 dark:bg-gray-700 rounded-xl flex-shrink-0 flex items-center justify-center relative overflow-hidden ring-1 ring-gray-100 dark:ring-gray-600">
+<div class="absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl">BB</div>
+</div>
+<div class="flex-1 min-w-0 pr-16">
+<h3 class="text-lg font-bold text-[#111418] dark:text-white truncate">Brick Builders</h3>
+<div class="flex items-center gap-1.5 mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
+<span class="truncate">Calendar: Construction Crew</span>
+</div>
+</div>
+</div>
+<div class="p-4 bg-white dark:bg-gray-800">
+<div class="flex flex-col gap-3 mb-4">
+<h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Required Capabilities</h4>
+<div class="flex gap-2 flex-wrap">
+<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-gray-600 dark:text-gray-300">construction</span>
+<span class="text-xs font-bold text-gray-700 dark:text-gray-200">Assembly</span>
+</div>
+<div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-gray-600 dark:text-gray-300">inventory_2</span>
+<span class="text-xs font-bold text-gray-700 dark:text-gray-200">Logistics</span>
+</div>
+</div>
+</div>
+<button class="w-full py-3 px-4 bg-primary hover:bg-yellow-500 text-white font-bold rounded-lg shadow-sm flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
+<span class="material-symbols-outlined">check</span>
+                        Accept Invitation
+                    </button>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden opacity-90">
+<div class="flex items-center gap-4 p-4 border-b border-gray-100 dark:border-gray-700">
+<div class="w-16 h-16 bg-yellow-50 dark:bg-yellow-900/30 rounded-xl flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-[32px] text-yellow-700 dark:text-yellow-500">local_drink</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="text-lg font-bold text-[#111418] dark:text-white truncate">Lemonade Empire</h3>
+<div class="flex items-center gap-1.5 mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
+<span class="truncate">Calendar: Stand Shifts</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-gray-800 divide-y divide-gray-50 dark:divide-gray-700/50">
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">category</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Services</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">work</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Jobs</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">groups</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Team</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">calendar_month</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Calendar</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+<button class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors w-full text-left group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors text-[22px]">admin_panel_settings</span>
+<span class="text-sm font-medium text-[#111418] dark:text-white">View: Admin</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col items-center justify-center py-8 text-center">
+<div class="w-12 h-12 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full flex items-center justify-center mb-3 shadow-sm">
+<span class="material-symbols-outlined text-2xl text-gray-400">search</span>
+</div>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-medium">Waiting for a new invite?</p>
+<p class="text-xs text-gray-400 mt-1">Check your email or ask your team lead.</p>
+</div>
+</div>
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-background-dark/90 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 z-20 max-w-md mx-auto">
+<button class="w-full bg-white dark:bg-gray-800 hover:bg-gray-50 text-gray-900 dark:text-white font-bold h-14 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-primary">add_circle</span>
+                Join or Create Team
+            </button>
+</div>
+</div>
+
+</body></html>

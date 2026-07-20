@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add Team Member - HustleBricks</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FBC02D",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111418] dark:text-white">
+<div class="relative flex h-auto min-h-screen w-full max-w-md mx-auto flex-col bg-white dark:bg-background-dark shadow-sm overflow-x-hidden">
+<div class="flex items-center bg-white dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10">
+<button class="text-[#111418] dark:text-white flex size-12 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<div class="flex-1 flex justify-center items-center pr-12">
+<div class="bg-primary text-white px-4 py-1 font-black text-2xl tracking-tighter uppercase">
+                TEAM
+            </div>
+</div>
+</div>
+<div class="flex-1 flex flex-col pb-24">
+<div class="@container px-4 py-3">
+<div class="w-full bg-center bg-no-repeat bg-cover flex flex-col justify-end overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-xl min-h-[160px] relative shadow-inner" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAasT70Qdew1CF7WQ5J6ezJa7Gaz5IN_AYyeKnxmRgluUqNbfPBSlT66EgYcyNqDH3VNPohpPq5XAR5N5uSWb22zY5S1dBLTd58dpczqtZdDCDCm3jwqR4iY-VDdkmiRkm9vUMYtFL3Z96fDNxpksM5FEVRhqszrgPWzb1--3E6gY9UXHI7zFKVEhc7I0vo_lsSSSA_Mlbugh3n7JXlupXD2nr7svswimRRnuqTi-xB6kFw8S_QYuX_GICXFYWkXV8YTXjeZ_IALUI");'>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+<div class="relative p-4">
+<span class="inline-flex items-center rounded-md bg-white/20 px-2 py-1 text-xs font-medium text-white backdrop-blur-md ring-1 ring-inset ring-white/30">
+                        New Recruit
+                    </span>
+</div>
+</div>
+</div>
+<div class="px-4 pt-4">
+<h3 class="text-[#111418] dark:text-white text-xl font-bold leading-tight pb-4">Personal Details</h3>
+<div class="flex flex-col gap-4">
+<div class="flex gap-4">
+<label class="flex flex-col flex-1">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">First Name</span>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 px-4 text-base font-normal leading-normal transition-all" placeholder="Jane" type="text"/>
+</label>
+<label class="flex flex-col flex-1">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Last Name</span>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 px-4 text-base font-normal leading-normal transition-all" placeholder="Doe" type="text"/>
+</label>
+</div>
+<label class="flex flex-col w-full">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Phone</span>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 pl-10 pr-4 text-base font-normal leading-normal transition-all" placeholder="(555) 123-4567" type="tel"/>
+</div>
+</label>
+<label class="flex flex-col w-full">
+<div class="flex justify-between items-baseline pb-1.5">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal">Gmail Address</span>
+</div>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+<span class="material-symbols-outlined text-[20px]">mail</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 pl-10 pr-4 text-base font-normal leading-normal transition-all" placeholder="jane.doe@gmail.com" type="email"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-green-500">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+</div>
+</div>
+<span class="text-xs text-gray-500 dark:text-gray-400 pt-1 pl-1">Google account required for calendar sync</span>
+</label>
+<div class="flex flex-col w-full gap-2">
+<label class="flex flex-col w-full">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Physical Address</span>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+<span class="material-symbols-outlined text-[20px]">location_on</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 placeholder:text-[#617189] dark:placeholder:text-gray-500 pl-10 pr-4 text-base font-normal leading-normal transition-all" placeholder="123 Student Way, Apt 4B" type="text" value="123 Student Way, Apt 4B"/>
+</div>
+</label>
+<div class="w-full h-32 rounded-xl overflow-hidden relative border border-gray-200 dark:border-gray-700 shadow-sm">
+<img alt="Map Preview" class="w-full h-full object-cover grayscale-[0.2] contrast-[0.9]" onerror="this.src='https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&amp;fit=crop&amp;q=80&amp;w=400&amp;h=150'" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiKQZx-IncOjYlw-B_uxuFmtO2JTmQt_wiEiHZIqQLoJ9ZzVIK0ZtQAmDVSiS116vju3TT6BQ-6C4FdFlkTisVNTRPh8mmwDkVUeEX1e12EqC2S8FNfXVqxkO1xmMCRH17uoqdtfhR_CHokoYWubCNqDn7SBxQ3D2PmelI5WLjHzIFd3mvJW5_0Zyk3dY_SDzkA32_cUvE9B2goMRY__-bVkcSKPYNY8vUWKFAxcxXa7Jw_79ihteJRKApMlhzxeROLHMWJVpeAc4"/>
+<div class="absolute inset-0 pointer-events-none ring-1 ring-inset ring-black/5"></div>
+</div>
+</div>
+<label class="flex flex-col w-full">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Role</span>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+<span class="material-symbols-outlined text-[20px]">badge</span>
+</div>
+<select class="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark focus:border-primary h-12 pl-10 pr-10 text-base font-normal leading-normal transition-all">
+<option>Founder</option>
+<option>Admin</option>
+<option selected="">Team Member</option>
+</select>
+</div>
+</label>
+</div>
+</div>
+<div class="h-px bg-gray-100 dark:bg-gray-800 my-6 mx-4"></div>
+<div class="px-4">
+<div class="flex items-center justify-between pb-4">
+<h3 class="text-[#111418] dark:text-white text-xl font-bold leading-tight">Service Capabilities</h3>
+</div>
+<div class="bg-[#F8F9FA] dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl p-4 mb-4 shadow-sm">
+<div class="flex flex-col gap-5">
+<label class="flex flex-col w-full">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal pb-1.5">Service</span>
+<div class="relative">
+<select class="form-select w-full rounded-lg border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark text-[#111418] dark:text-white h-12 pl-4 pr-10 focus:border-primary focus:ring-primary/50 text-base">
+<option>Lawn Mowing</option>
+<option>Dog Walking</option>
+<option>Car Wash</option>
+<option>Lemonade Stand</option>
+</select>
+</div>
+</label>
+<div class="flex flex-col gap-2">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal">Pay Structure</span>
+<div class="flex gap-3">
+<div class="inline-flex bg-white dark:bg-background-dark rounded-lg border border-[#dbdfe6] dark:border-gray-600 p-1 h-12 items-center">
+<button class="px-3 h-full rounded-md text-sm font-medium bg-primary/20 text-yellow-800 dark:text-yellow-400 transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">attach_money</span> / hr
+                                </button>
+<div class="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+<button class="px-3 h-full rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">percent</span> / job
+                                </button>
+</div>
+<div class="flex-1 relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+<span class="material-symbols-outlined text-[18px]">attach_money</span>
+</div>
+<input class="form-input w-full rounded-lg border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark text-[#111418] dark:text-white h-12 pl-8 pr-4 focus:border-primary focus:ring-primary/50 text-base font-semibold" placeholder="15.00" type="number" value="15.00"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<span class="text-[#111418] dark:text-gray-300 text-sm font-medium leading-normal">Availability</span>
+<div class="flex flex-col gap-2">
+<button class="w-full flex items-center justify-between px-4 h-12 rounded-lg border border-[#dbdfe6] dark:border-gray-600 bg-white dark:bg-background-dark text-[#111418] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center text-primary">
+<svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+<path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM9 14H7V12H9V14ZM13 14H11V12H13V14ZM17 14H15V12H17V14ZM9 18H7V16H9V18ZM13 18H11V16H13V18ZM17 18H15V16H17V18Z" fill="currentColor"></path>
+</svg>
+</div>
+<span class="text-sm font-medium">Link Google Calendar</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors">add</span>
+</button>
+<div class="flex items-center gap-2 px-1">
+<div class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+<span class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">OR</span>
+<div class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+</div>
+<label class="w-full flex items-center justify-center gap-2 px-4 h-10 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
+<span class="material-symbols-outlined text-gray-500 text-xl">upload_file</span>
+<span class="text-xs font-medium text-gray-600 dark:text-gray-400">Upload Schedule (.ics)</span>
+<input accept=".ics" class="hidden" type="file"/>
+</label>
+</div>
+<p class="text-[10px] text-gray-500 dark:text-gray-400 text-center mt-1">
+                            Used to automatically calculate open slots for this service.
+                        </p>
+</div>
+</div>
+</div>
+<button class="flex items-center justify-center w-full py-3 gap-2 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors border border-dashed border-primary/50 mb-6">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="text-sm font-bold">Add Another Service</span>
+</button>
+</div>
+</div>
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-t border-gray-100 dark:border-gray-800 z-20 max-w-md mx-auto">
+<button class="w-full bg-primary hover:bg-yellow-500 text-white font-bold h-14 rounded-xl shadow-lg shadow-yellow-500/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined">person_add</span>
+            Save Member
+        </button>
+</div>
+</div>
+
+</body></html>

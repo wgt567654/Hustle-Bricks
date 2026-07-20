@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveMembership } from "@/lib/employee-membership-client";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { toast } from "@/lib/toast";
 
@@ -26,22 +27,25 @@ export default function EmployeeSettingsPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
-        .from("team_members")
-        .select("id, business_id, home_address")
-        .eq("user_id", user.id)
-        .single();
-      if (data) {
-        setMemberId(data.id);
-        setHomeAddress((data as unknown as { home_address: string | null }).home_address ?? "");
+      const { membership } = await getActiveMembership(supabase);
+      if (membership) {
+        setMemberId(membership.member_id);
 
-        const { data: teamData } = await supabase
-          .from("team_members")
-          .select("id, name, email, role")
-          .eq("business_id", (data as unknown as { business_id: string }).business_id)
-          .eq("is_active", true)
-          .neq("id", data.id)
-          .order("name");
+        const [{ data }, { data: teamData }] = await Promise.all([
+          supabase
+            .from("team_members")
+            .select("home_address")
+            .eq("id", membership.member_id)
+            .single(),
+          supabase
+            .from("team_members")
+            .select("id, name, email, role")
+            .eq("business_id", membership.business_id)
+            .eq("is_active", true)
+            .neq("id", membership.member_id)
+            .order("name"),
+        ]);
+        setHomeAddress((data as unknown as { home_address: string | null } | null)?.home_address ?? "");
         setTeammates((teamData ?? []) as Teammate[]);
       }
     }
