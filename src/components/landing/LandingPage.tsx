@@ -124,23 +124,24 @@ function Hero() {
           style={{ background: "oklch(0.470 0.082 229 / 0.08)", borderColor: "oklch(0.470 0.082 229 / 0.20)" }}
         >
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span className="text-sm font-medium" style={{ color: "oklch(0.470 0.082 229)" }}>Built for home service businesses</span>
+          <span className="text-sm font-medium" style={{ color: "oklch(0.470 0.082 229)" }}>For side hustles and micro-businesses</span>
         </div>
 
         <h1 className="text-5xl md:text-7xl font-display font-bold leading-[1.05] mb-6" style={{ color: "oklch(0.220 0.031 260)" }}>
-          Your business. Your workflow.
+          Stack your
           <br />
           <span
             className="text-transparent bg-clip-text"
             style={{ backgroundImage: "linear-gradient(90deg, oklch(0.470 0.082 229), oklch(0.685 0.148 237))" }}
           >
-            Your operating system.
+            side hustle.
           </span>
         </h1>
 
         <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed" style={{ color: "oklch(0.551 0.023 264)" }}>
-          Jobs, clients, payments, and your team in one place — in an app that
-          reshapes itself around how your company actually works.
+          Detailing cars? Washing windows? Mowing lawns? HustleBricks books the
+          jobs, wrangles your crew, and tracks the money — so the hustle grows
+          without taking over your life.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
@@ -225,10 +226,10 @@ function CustomizationShowcase() {
 // ─── Feature Cards ────────────────────────────────────────────────────────────
 
 const featureCards = [
-  { icon: "work",     color: "oklch(0.470 0.082 229)", bg: "oklch(0.470 0.082 229 / 0.08)", title: "Jobs & Scheduling",       desc: "Track every job from quote to completion. Google Calendar sync keeps your whole team in the loop." },
-  { icon: "group",    color: "oklch(0.606 0.219 293)", bg: "oklch(0.606 0.219 293 / 0.08)", title: "Clients & Quotes",        desc: "Manage your client list, send professional quotes, and convert them into invoices in one click." },
-  { icon: "payments", color: "oklch(0.627 0.170 149)", bg: "oklch(0.627 0.170 149 / 0.08)", title: "Online Payments",         desc: "Get paid faster with Stripe-powered invoices your clients can pay from any device." },
-  { icon: "badge",    color: "oklch(0.769 0.165 70)",  bg: "oklch(0.769 0.165 70  / 0.08)", title: "Team & Employee Portal",  desc: "Add crew members, assign jobs, and let your team clock in straight from their phones." },
+  { icon: "work",     color: "oklch(0.470 0.082 229)", bg: "oklch(0.470 0.082 229 / 0.08)", title: "Jobs & Scheduling",       desc: "Customers book from your page. Slots come from your crew's real availability — no double-booking, no back-and-forth." },
+  { icon: "group",    color: "oklch(0.606 0.219 293)", bg: "oklch(0.606 0.219 293 / 0.08)", title: "Clients & Quotes",        desc: "Quote at the door, text it as a link, and turn a yes into a scheduled job on the spot." },
+  { icon: "payments", color: "oklch(0.627 0.170 149)", bg: "oklch(0.627 0.170 149 / 0.08)", title: "Online Payments",         desc: "Cash, Venmo, check, or a card link. Everything's tracked, and everyone knows who's owed what." },
+  { icon: "badge",    color: "oklch(0.769 0.165 70)",  bg: "oklch(0.769 0.165 70  / 0.08)", title: "Your Friends, Your Crew",  desc: "Invite friends with a code. They get jobs on their phone, accept or decline, clock in, and get their cut." },
 ];
 
 function FeatureCards() {
@@ -238,10 +239,10 @@ function FeatureCards() {
         <div className="text-center mb-12">
           <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.470 0.082 229)" }}>Features</p>
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: "oklch(0.220 0.031 260)" }}>
-            Everything you need to run the job.
+            Everything the group chat can&apos;t do.
           </h2>
           <p className="max-w-xl mx-auto" style={{ color: "oklch(0.551 0.023 264)" }}>
-            No more juggling spreadsheets, texts, and sticky notes. HustleBricks handles the operational side so you can focus on the work.
+            Stop juggling DMs, Venmo requests, and a notes-app schedule. HustleBricks handles the boring parts so you can do the work.
           </p>
         </div>
 
@@ -271,12 +272,12 @@ function FeatureCards() {
 
 function JobBoardMockup() {
   const jobs = [
-    { title: "Roof Inspection — Johnson",      status: "In Progress", statusColor: "#f97316", date: "Today, 9:00 AM",      tech: "Mike R." },
-    { title: "Gutter Cleaning — Martinez",     status: "Scheduled",   statusColor: "#6366f1", date: "Today, 11:30 AM",    tech: "Dave S." },
-    { title: "Window Wash — Patel",            status: "Completed",   statusColor: "#22c55e", date: "Yesterday",           tech: "Mike R." },
-    { title: "Pressure Wash — Thompson",       status: "Scheduled",   statusColor: "#6366f1", date: "Tomorrow, 8:00 AM",  tech: "Dave S." },
-    { title: "HVAC Service — Williams",        status: "Completed",   statusColor: "#22c55e", date: "Jun 9",               tech: "Chris T." },
-    { title: "Landscaping — Garcia",           status: "In Progress", statusColor: "#f97316", date: "Today, 2:00 PM",     tech: "Mike R." },
+    { title: "Full Detail — Johnson",          status: "In Progress", statusColor: "#f97316", date: "Today, 9:00 AM",      tech: "Jamie R." },
+    { title: "Window Wash — Martinez",         status: "Scheduled",   statusColor: "#6366f1", date: "Today, 11:30 AM",    tech: "Dev S." },
+    { title: "Lawn + Edging — Patel",          status: "Completed",   statusColor: "#22c55e", date: "Yesterday",           tech: "Jamie R." },
+    { title: "Pressure Wash — Thompson",       status: "Scheduled",   statusColor: "#6366f1", date: "Tomorrow, 8:00 AM",  tech: "Tyler K." },
+    { title: "Gutter Clean — Williams",        status: "Completed",   statusColor: "#22c55e", date: "Jun 9",               tech: "Maya L." },
+    { title: "Move-Out Clean — Garcia",        status: "In Progress", statusColor: "#f97316", date: "Today, 2:00 PM",     tech: "Jamie R." },
   ];
   return (
     <div className="rounded-2xl overflow-hidden border" style={{ background: "white", borderColor: "oklch(0.928 0.006 265 / 0.6)", boxShadow: "0 8px 40px oklch(0 0 0 / 0.10)" }}>
@@ -471,12 +472,12 @@ function CanvasMapMockup() {
 
 function RevenueChartMockup() {
   const bars = [
-    { month: "Jan", height: 38, value: "$9.2k"  },
-    { month: "Feb", height: 50, value: "$12.4k" },
-    { month: "Mar", height: 63, value: "$15.8k" },
-    { month: "Apr", height: 55, value: "$13.7k" },
-    { month: "May", height: 78, value: "$19.5k" },
-    { month: "Jun", height: 100, value: "$24.8k" },
+    { month: "Jan", height: 12, value: "$340"  },
+    { month: "Feb", height: 22, value: "$620" },
+    { month: "Mar", height: 35, value: "$980" },
+    { month: "Apr", height: 43, value: "$1.2k" },
+    { month: "May", height: 75, value: "$2.1k" },
+    { month: "Jun", height: 100, value: "$2.8k" },
   ];
   return (
     <div className="rounded-2xl overflow-hidden border" style={{ background: "white", borderColor: "oklch(0.928 0.006 265 / 0.6)", boxShadow: "0 8px 40px oklch(0 0 0 / 0.10)" }}>
@@ -486,24 +487,24 @@ function RevenueChartMockup() {
             <span className="material-symbols-outlined" style={{ fontSize: 22, color: "oklch(0.470 0.082 229)" }}>bar_chart</span>
             <span className="font-display font-semibold text-base" style={{ color: "oklch(0.220 0.031 260)" }}>Revenue</span>
           </div>
-          <p className="text-3xl font-display font-bold" style={{ color: "oklch(0.220 0.031 260)" }}>$24,830</p>
+          <p className="text-3xl font-display font-bold" style={{ color: "oklch(0.220 0.031 260)" }}>$2,840</p>
           <p className="text-xs mt-0.5" style={{ color: "oklch(0.551 0.023 264)" }}>June 2025</p>
         </div>
         <div>
           <div className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-xl mb-2" style={{ background: "#f0fdf4", color: "#16a34a" }}>
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>trending_up</span>
-            +18% vs last month
+            +35% vs last month
           </div>
           <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl" style={{ background: "oklch(0.470 0.082 229 / 0.08)", color: "oklch(0.470 0.082 229)" }}>
             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>payments</span>
-            12 invoices paid
+            9 jobs paid
           </div>
         </div>
       </div>
       <div className="px-6 py-6">
         <div className="flex items-end gap-3" style={{ height: 180 }}>
           <div className="flex flex-col justify-between h-full pr-2 flex-shrink-0">
-            {["$25k", "$20k", "$15k", "$10k", "$5k", "$0"].map((l) => (
+            {["$3k", "$2.4k", "$1.8k", "$1.2k", "$600", "$0"].map((l) => (
               <span key={l} style={{ fontSize: 10, color: "oklch(0.551 0.023 264)" }}>{l}</span>
             ))}
           </div>
@@ -530,11 +531,11 @@ function RevenueChartMockup() {
 
 function ClientListMockup() {
   const clients = [
-    { initials: "MJ", name: "Mike Johnson",      lastJob: "Roof Inspection",      date: "Jun 10", balance: "$0",   jobs: 8,  color: "oklch(0.470 0.082 229)" },
-    { initials: "SR", name: "Sarah Rodriguez",   lastJob: "Window Cleaning",      date: "Jun 8",  balance: "$180", jobs: 5,  color: "oklch(0.606 0.219 293)" },
-    { initials: "TP", name: "Tom Patel",          lastJob: "Gutter Cleaning",      date: "Jun 5",  balance: "$0",   jobs: 12, color: "oklch(0.627 0.170 149)" },
-    { initials: "AL", name: "Amanda Lee",         lastJob: "Pressure Washing",     date: "Jun 3",  balance: "$95",  jobs: 3,  color: "oklch(0.769 0.165 70)"  },
-    { initials: "RK", name: "Robert Kim",         lastJob: "Landscaping",          date: "Jun 1",  balance: "$0",   jobs: 6,  color: "#8b5cf6"                 },
+    { initials: "MJ", name: "Mike Johnson",      lastJob: "Full Detail",          date: "Jun 10", balance: "$0",   jobs: 8,  color: "oklch(0.470 0.082 229)" },
+    { initials: "SR", name: "Sarah Rodriguez",   lastJob: "Window Wash",          date: "Jun 8",  balance: "$120", jobs: 5,  color: "oklch(0.606 0.219 293)" },
+    { initials: "TP", name: "Tom Patel",          lastJob: "Lawn Care",            date: "Jun 5",  balance: "$0",   jobs: 7,  color: "oklch(0.627 0.170 149)" },
+    { initials: "AL", name: "Amanda Lee",         lastJob: "Pressure Wash",        date: "Jun 3",  balance: "$95",  jobs: 3,  color: "oklch(0.769 0.165 70)"  },
+    { initials: "RK", name: "Robert Kim",         lastJob: "Move-Out Clean",       date: "Jun 1",  balance: "$0",   jobs: 6,  color: "#8b5cf6"                 },
   ];
   return (
     <div className="rounded-2xl overflow-hidden border" style={{ background: "white", borderColor: "oklch(0.928 0.006 265 / 0.6)", boxShadow: "0 8px 40px oklch(0 0 0 / 0.10)" }}>
@@ -616,9 +617,9 @@ function DetailSections() {
       <SectionCard className="px-8">
         <DetailSection
           eyebrow="Jobs & Scheduling"
-          title="From first call to final sign-off."
-          description="Create jobs, assign them to your crew, and track every status update in real time. HustleBricks syncs with Google Calendar so nothing falls through the cracks."
-          bullets={["Create and assign jobs in seconds", "Track job status: scheduled, in progress, completed", "Google Calendar sync for every team member", "Before & after photos captured on-site", "Client portal for booking requests"]}
+          title="From 'you free Saturday?' to paid and done."
+          description="Jobs land on your crew's phones and calendars. Everyone knows where to be, what to bring, and what it pays. Nothing lives in your head anymore."
+          bullets={["Create and assign jobs in seconds", "Track job status: scheduled, in progress, completed", "Calendar invites your crew can accept or decline", "Before & after photos captured on-site", "Public booking page with real availability"]}
           iconColor="oklch(0.470 0.082 229)"
           iconBg="oklch(0.470 0.082 229 / 0.10)"
           mockup={<JobBoardMockup />}
@@ -627,7 +628,7 @@ function DetailSections() {
         <DetailSection
           eyebrow="Canvassing"
           title="Take your team door to door."
-          description="Map your territory, track every door your team knocks, and follow up with interested homeowners — all from one live map view."
+          description="Got a friend who could sell ice in January? Give them a territory, track every knock, and pay commission on what they close."
           bullets={["Interactive map with real-time door statuses", "Color-coded pins: interested, no answer, follow-up", "Track daily knock counts per rep", "Convert leads into jobs instantly", "Team leaderboard for canvassing performance"]}
           iconColor="oklch(0.606 0.219 293)"
           iconBg="oklch(0.606 0.219 293 / 0.10)"
@@ -638,8 +639,8 @@ function DetailSections() {
         <DetailSection
           eyebrow="Payments & Invoicing"
           title="Get paid. Every time. On time."
-          description="Send professional invoices clients can pay online via Stripe. Track what's been paid, what's outstanding, and follow up automatically — all from one dashboard."
-          bullets={["Stripe-powered online payments", "Send invoice links via email or SMS", "Track paid vs. outstanding balances", "Cash and check logging for offline payments", "Tip collection at job completion"]}
+          description="Send a card link for the fancy clients, log cash and Venmo for everyone else. See who's paid, who hasn't, and nudge the ones who forgot."
+          bullets={["Card payments powered by Stripe","Send invoice links via email or SMS", "Track paid vs. outstanding balances", "Cash and check logging for offline payments", "Tip collection at job completion"]}
           iconColor="oklch(0.627 0.170 149)"
           iconBg="oklch(0.627 0.170 149 / 0.10)"
           mockup={<RevenueChartMockup />}
@@ -664,15 +665,15 @@ function DetailSections() {
 
 const plans = [
   {
-    name: "Solo", tagline: "Start solo. Scale into the next plan.", monthly: 49, yearly: 34, highlight: false,
+    name: "Solo", tagline: "Just you and a bucket of ambition.", monthly: 49, yearly: 34, highlight: false,
     features: ["1 user", "Unlimited jobs & clients", "Quotes & invoicing", "Stripe online payments", "Google Calendar sync", "Client booking portal", "Mobile-friendly"],
   },
   {
-    name: "Team", tagline: "More crew. More jobs. More revenue.", monthly: 119, yearly: 83, highlight: true,
+    name: "Team", tagline: "For when the friends start helping.", monthly: 119, yearly: 83, highlight: true,
     features: ["Up to 8 users", "Everything in Solo", "Employee portal & time tracking", "Job assignment & notifications", "Team scheduling", "Sales dashboard", "Analytics & reports"],
   },
   {
-    name: "Business", tagline: "Built for scaled operations.", monthly: 249, yearly: 174, highlight: false,
+    name: "Business", tagline: "The hustle got real.", monthly: 249, yearly: 174, highlight: false,
     features: ["Up to 30 users", "Everything in Team", "Canvassing & lead map", "Payroll reports", "Custom roles & permissions", "Priority support", "Dedicated onboarding"],
   },
 ];
@@ -686,7 +687,7 @@ function Pricing() {
         <div className="text-center mb-12">
           <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.470 0.082 229)" }}>Pricing</p>
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: "oklch(0.220 0.031 260)" }}>
-            Built and priced for growth.
+            Priced like a side hustle, built like a business.
           </h2>
           <p className="mb-8" style={{ color: "oklch(0.551 0.023 264)" }}>7-day free trial on every plan. No credit card required.</p>
 
@@ -784,9 +785,9 @@ function Pricing() {
 // ─── FAQ ──────────────────────────────────────────────────────────────────────
 
 const faqs = [
-  { q: "What kinds of businesses use HustleBricks?", a: "HustleBricks is built for home service businesses — cleaning, landscaping, pressure washing, painting, handyman, moving, and more. If you book jobs and have a crew, it works for you." },
+  { q: "What kinds of businesses use HustleBricks?", a: "Side hustles and micro-businesses: car detailing, window washing, lawn care, pressure washing, cleaning, moving help — any service you sell to your neighbors. If you book jobs and rope in friends to help, it works for you." },
   { q: "How does the free trial work?", a: "Sign up and get 7 days free on any plan. No credit card required. At the end of the trial you can subscribe or your account pauses — your data stays safe either way." },
-  { q: "Can my employees use HustleBricks from their phone?", a: "Yes. Your crew gets access to the Employee Portal, where they can view assigned jobs, clock in and out, take before/after photos, and collect payment — all from a mobile browser." },
+  { q: "Can my crew use it from their phones?", a: "Yes. Everyone you invite gets the Employee Portal, where they can view assigned jobs, clock in and out, take before/after photos, and collect payment — all from a mobile browser." },
   { q: "How do online payments work?", a: "HustleBricks uses Stripe to process payments. You send clients an invoice link, they pay by card, and the money lands in your Stripe account. You can also log cash and check payments manually." },
   { q: "Can I bring my existing clients over?", a: "Absolutely. You can add clients manually or import them. Your existing jobs and history can be entered as well during onboarding." },
 ];
@@ -801,7 +802,7 @@ function FAQ() {
           <div className="text-center mb-12">
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: "oklch(0.470 0.082 229)" }}>FAQ</p>
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: "oklch(0.220 0.031 260)" }}>
-              Everything you need before switching.
+              Real questions, straight answers.
             </h2>
           </div>
 
@@ -852,10 +853,10 @@ function FinalCTA() {
           style={{ background: "radial-gradient(ellipse at 50% 0%, oklch(0.570 0.100 229), transparent 70%)" }}
         />
         <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-4 relative">
-          Your business deserves better software.
+          Your hustle deserves better than a group chat.
         </h2>
         <p className="mb-10 max-w-md mx-auto relative" style={{ color: "rgba(255,255,255,0.70)" }}>
-          Your competitors are already running lean. Get started in minutes.
+          Set up in minutes. Bring your crew this weekend.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 relative">
           <Link

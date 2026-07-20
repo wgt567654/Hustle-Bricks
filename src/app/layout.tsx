@@ -29,8 +29,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "HustleBricks",
-  description: "Your business. Your workflow. Your operating system.",
+  title: "HustleBricks — Stack your side hustle",
+  description: "The operating system for side hustles. Bookings from your crew's real availability, jobs on everyone's phones, money tracked from quote to Venmo.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
