@@ -73,6 +73,10 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
   const [notFound, setNotFound] = useState(false);
   const [updating, setUpdating] = useState(false);
 
+  // Crew consent (null = no crew row → legacy job, treat as already-confirmed)
+  const [consentStatus, setConsentStatus] = useState<string | null>(null);
+  const [consentActing, setConsentActing] = useState(false);
+
   // Voice note
   const voice = useVoiceNote();
   const [voiceNoteText, setVoiceNoteText] = useState("");
@@ -164,7 +168,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       const tm = { id: membership.member_id };
       setEmployeeId(tm.id);
 
-      const [{ data: jobData }, { data: entryData }] = await Promise.all([
+      const [{ data: jobData }, { data: entryData }, { data: consentData }] = await Promise.all([
         supabase
           .from("jobs")
           .select("id, status, scheduled_at, total, notes, before_photo_url, after_photo_url, business_id, clients(id, name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
@@ -178,6 +182,12 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
           .eq("job_id", id)
           .is("clocked_out_at", null)
           .maybeSingle(),
+        supabase
+          .from("job_crew")
+          .select("status")
+          .eq("job_id", id)
+          .eq("team_member_id", tm.id)
+          .maybeSingle(),
       ]);
 
       if (!jobData) { setNotFound(true); setLoading(false); return; }
@@ -185,6 +195,7 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       setJob(j);
       setPayAmount(j.total.toFixed(2));
       setActiveEntry(entryData as TimeEntry | null);
+      setConsentStatus(consentData ? ((consentData as { status: string }).status ?? null) : null);
 
       const [{ data: invData }, { data: expenseData }] = await Promise.all([
         supabase
@@ -238,6 +249,25 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       setJob((j) => j ? { ...j, status } : j);
     }
     setUpdating(false);
+  }
+
+  async function submitConsent(status: "accepted" | "declined") {
+    if (!job || consentActing) return;
+    setConsentActing(true);
+    try {
+      const res = await fetch("/api/job-consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id, status }),
+      });
+      if (!res.ok) throw new Error("consent failed");
+      setConsentStatus(status);
+      toast.success(status === "accepted" ? "Job accepted" : "Job declined");
+    } catch {
+      toast.error("Couldn't update — try again");
+    } finally {
+      setConsentActing(false);
+    }
   }
 
   async function toggleClock() {
@@ -613,6 +643,10 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
   }
 
   const meta = STATUS_META[job.status];
+  // No crew row at all = legacy job assigned before consent existed → treat as confirmed.
+  const clockAllowed = consentStatus === null || consentStatus === "accepted";
+  const consentPending =
+    consentStatus !== null && consentStatus !== "accepted" && consentStatus !== "declined";
 
   return (
     <div className="flex flex-col gap-4 px-4 py-5 max-w-xl mx-auto pb-32">
@@ -763,8 +797,55 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
 
       {/* ── Actions ── */}
 
+      {/* Crew consent */}
+      {consentPending && (
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 shadow-card p-4 flex flex-col gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>help</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-extrabold text-foreground">You&apos;re requested for this job</span>
+              <span className="text-xs text-muted-foreground">
+                {job.clients?.name ?? "Client"} · {formatScheduled(job.scheduled_at)}
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => submitConsent("declined")}
+              disabled={consentActing}
+              className="flex-1 py-3 rounded-xl border border-border text-muted-foreground font-bold text-sm hover:bg-muted/50 transition-colors disabled:opacity-50"
+            >
+              Decline
+            </button>
+            <button
+              onClick={() => submitConsent("accepted")}
+              disabled={consentActing}
+              className="flex-[2] py-3 rounded-full bg-primary text-white font-bold text-sm shadow-md shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {consentActing ? "…" : "Accept Job"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {consentStatus === "accepted" && (
+        <div className="flex items-center gap-2 icon-green rounded-xl px-3 py-2.5">
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+          <span className="text-sm font-bold">You accepted this job</span>
+        </div>
+      )}
+
+      {consentStatus === "declined" && (
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 bg-muted text-muted-foreground">
+          <span className="material-symbols-outlined text-[18px]">cancel</span>
+          <span className="text-sm font-bold">You declined this job</span>
+        </div>
+      )}
+
       {/* Clock in/out */}
-      {job.status !== "completed" && job.status !== "cancelled" && (
+      {clockAllowed && job.status !== "completed" && job.status !== "cancelled" && (
         <button
           onClick={toggleClock}
           disabled={clocking}

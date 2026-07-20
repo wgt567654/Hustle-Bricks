@@ -85,7 +85,7 @@ type Job = {
     quantity: number;
     unit_price: number;
   }[];
-  job_crew: { team_member_id: string; team_members: { id: string; name: string } | null }[];
+  job_crew: { team_member_id: string; status: string; team_members: { id: string; name: string } | null }[];
 };
 
 const PAYMENT_METHODS = [
@@ -165,6 +165,13 @@ const STATUS_BADGE: Record<JobStatus, { label: string; className: string }> = {
   in_progress: { label: "In Progress", className: "icon-orange  border-0" },
   completed: { label: "Completed", className: "icon-green  border-0" },
   cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground border-0" },
+};
+
+// Per-crew-member consent badge (worker accept/decline of a job assignment)
+const CREW_CONSENT_BADGE: Record<string, { label: string; className: string }> = {
+  pending: { label: "Pending", className: "icon-orange" },
+  accepted: { label: "Accepted", className: "icon-green" },
+  declined: { label: "Declined", className: "icon-red" },
 };
 
 export default function JobDetailClient({
@@ -845,7 +852,7 @@ export default function JobDetailClient({
 
     const newCrewEntries = teamMembers
       .filter((m) => assignedIds.includes(m.id))
-      .map((m) => ({ team_member_id: m.id, team_members: { id: m.id, name: m.name } }));
+      .map((m) => ({ team_member_id: m.id, status: "pending", team_members: { id: m.id, name: m.name } }));
 
     setJob((j) =>
       j
@@ -890,6 +897,12 @@ export default function JobDetailClient({
   const badge = STATUS_BADGE[job.status];
   const title = job.job_line_items[0]?.description ?? "Job";
   const extraItems = job.job_line_items.length - 1;
+
+  // Derived "tentative" state: scheduled with crew assigned but no one has accepted yet.
+  const isTentative =
+    job.status === "scheduled" &&
+    job.job_crew.length > 0 &&
+    !job.job_crew.some((jc) => jc.status === "accepted");
 
   // Compute next scheduled date for display
   const nextScheduledDate =
@@ -963,6 +976,22 @@ export default function JobDetailClient({
           </div>
         );
       })()}
+
+      {/* Tentative — awaiting crew confirmation */}
+      {isTentative && (
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--color-status-in-progress)]/20 bg-status-in-progress/10 p-3">
+          <span
+            className="material-symbols-outlined text-[22px] text-[var(--color-status-in-progress)] shrink-0"
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
+            hourglass_top
+          </span>
+          <div className="flex flex-col flex-1 min-w-0">
+            <p className="text-sm font-bold text-foreground">Tentative — awaiting crew confirmation</p>
+            <p className="text-xs text-muted-foreground">No assigned crew member has accepted this job yet.</p>
+          </div>
+        </div>
+      )}
 
       {/* Two-column body on desktop */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
@@ -1110,6 +1139,14 @@ export default function JobDetailClient({
                     {(jc.team_members?.name ?? "?").charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm font-bold text-foreground flex-1">{jc.team_members?.name ?? "Unknown"}</span>
+                  {(() => {
+                    const consent = CREW_CONSENT_BADGE[jc.status];
+                    return consent ? (
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${consent.className}`}>
+                        {consent.label}
+                      </span>
+                    ) : null;
+                  })()}
                   {i === 0 && (
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Lead</span>
                   )}
