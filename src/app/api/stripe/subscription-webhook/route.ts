@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
           const resend = new Resend(process.env.RESEND_API_KEY);
           const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://hustlebricks.com";
           await resend.emails.send({
-            from: "HustleBricks <notifications@hustlebricks.com>",
+            from: "HustleBricks <notifications@hustlebricks.ai>",
             to: email,
             subject: "Your HustleBricks trial ends in 3 days",
             html: `

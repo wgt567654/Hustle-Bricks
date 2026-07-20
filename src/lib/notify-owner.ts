@@ -34,7 +34,7 @@ export async function notifyOwner({ businessId, subject, text }: NotifyOwnerOpti
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
-          from: "HustleBricks <notifications@hustlebricks.com>",
+          from: "HustleBricks <notifications@hustlebricks.ai>",
           to: biz.contact_email,
           subject: `${subject} — ${biz.name}`,
           text,

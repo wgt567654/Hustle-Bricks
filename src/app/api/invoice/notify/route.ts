@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     const emailHtml = buildInvoiceEmail({ firstName, bizName, amount, invoiceUrl, replyTo });
 
     const sendOpts: Parameters<typeof resend.emails.send>[0] = {
-      from: `${bizName} <notifications@hustlebricks.com>`,
+      from: `${bizName} <notifications@hustlebricks.ai>`,
       to: client.email,
       subject: `Your invoice from ${bizName} — ${amount}`,
       html: emailHtml,

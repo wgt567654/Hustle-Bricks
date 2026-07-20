@@ -199,7 +199,7 @@ async function handleAccepted(
     const replyTo = q.businesses?.contact_email ?? undefined;
 
     const sendOpts: Parameters<typeof resend.emails.send>[0] = {
-      from: `${bizName} <notifications@hustlebricks.com>`,
+      from: `${bizName} <notifications@hustlebricks.ai>`,
       to: q.clients.email,
       subject: `Your quote is approved — let's get you scheduled!`,
       html: buildBookingEmail({ firstName: clientFirstName, bizName, bookingUrl, replyTo }),

@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   const jobUrl = `${process.env.NEXT_PUBLIC_APP_URL}/employee/jobs/${jobId}`;
 
   await resend.emails.send({
-    from: `${businessName} <jobs@hustlebricks.com>`,
+    from: `${businessName} <jobs@hustlebricks.ai>`,
     to: employee.email,
     subject: `New job assigned: ${scheduledStr}`,
     html: `

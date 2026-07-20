@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const serviceList = j.job_line_items.map((li) => `<li>${li.description}</li>`).join("");
     await resend.emails.send({
-      from: `${bizName} <jobs@hustlebricks.com>`,
+      from: `${bizName} <jobs@hustlebricks.ai>`,
       to: match.memberEmail,
       subject: `New job assigned: ${scheduledStr}`,
       html: `

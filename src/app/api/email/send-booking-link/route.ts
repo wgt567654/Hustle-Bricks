@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL}/portal/${c.id}`;
 
   await resend.emails.send({
-    from: `${businessName} <bookings@hustlebricks.com>`,
+    from: `${businessName} <bookings@hustlebricks.ai>`,
     to: c.email,
     subject: `Book your appointment with ${businessName}`,
     html: `

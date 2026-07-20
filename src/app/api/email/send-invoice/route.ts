@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
   });
 
   const sendOptions: Parameters<typeof resend.emails.send>[0] = {
-    from: `${businessName} <notifications@hustlebricks.com>`,
+    from: `${businessName} <notifications@hustlebricks.ai>`,
     to: client.email,
     subject,
     html,
