@@ -25,11 +25,13 @@ export async function findBestMember({
   scheduledAt,
   durationMins = 60,
   excludeJobId,
+  serviceIds,
 }: {
   businessId: string;
   scheduledAt: string;
   durationMins?: number;
   excludeJobId?: string;
+  serviceIds?: string[];
 }): Promise<DispatchResult> {
   const jobStart = new Date(scheduledAt);
   const jobEnd = new Date(jobStart.getTime() + durationMins * 60_000);
@@ -83,8 +85,43 @@ export async function findBestMember({
   );
 
   type MemberRow = { id: string; name: string; email: string | null; phone: string | null };
+  const memberRows = (members ?? []) as MemberRow[];
 
-  for (const m of (members ?? []) as MemberRow[]) {
+  // Qualification filter (skipped when no serviceIds provided → backward compatible).
+  // Rule: for each distinct non-null job service, if at least one ACTIVE member of the
+  // business is certified for it, only certified members qualify for that service;
+  // if none are certified (data not set up), everyone qualifies for that service.
+  // A member qualifies for the job iff they qualify for EVERY service on the job.
+  let qualifiedIds: Set<string> | null = null;
+  const jobServiceIds = Array.from(new Set((serviceIds ?? []).filter(Boolean)));
+  if (jobServiceIds.length > 0) {
+    const { data: caps } = await supabaseAdmin
+      .from("member_service_capabilities")
+      .select("team_member_id, service_id")
+      .eq("business_id", businessId)
+      .in("service_id", jobServiceIds);
+
+    const activeIds = new Set(memberRows.map((m) => m.id));
+    const certifiedByService = new Map<string, Set<string>>();
+    for (const c of (caps ?? []) as { team_member_id: string; service_id: string }[]) {
+      if (!activeIds.has(c.team_member_id)) continue; // only active members count as "certified"
+      if (!certifiedByService.has(c.service_id)) certifiedByService.set(c.service_id, new Set());
+      certifiedByService.get(c.service_id)!.add(c.team_member_id);
+    }
+
+    qualifiedIds = new Set<string>();
+    for (const m of memberRows) {
+      const ok = jobServiceIds.every((sid) => {
+        const certified = certifiedByService.get(sid);
+        // No active member certified for this service → everyone qualifies for it.
+        return !certified || certified.size === 0 || certified.has(m.id);
+      });
+      if (ok) qualifiedIds.add(m.id);
+    }
+  }
+
+  for (const m of memberRows) {
+    if (qualifiedIds && !qualifiedIds.has(m.id)) continue; // not certified for the job's services
     if (busyIds.has(m.id)) continue;
 
     const a = availMap.get(m.id);

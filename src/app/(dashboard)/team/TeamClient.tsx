@@ -135,6 +135,8 @@ export default function TeamClient({
   const [payLoading, setPayLoading] = useState(false);
   const [payDefault, setPayDefault] = useState<{ id: string | null; pay_type: PayType; rate: string }>({ id: null, pay_type: "hourly", rate: "" });
   const [payOverrides, setPayOverrides] = useState<PayRuleRow[]>([]);
+  const [certifiedServiceIds, setCertifiedServiceIds] = useState<Set<string>>(new Set());
+  const [certifiedInitial, setCertifiedInitial] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [confirmDeleteAccountMember, setConfirmDeleteAccountMember] = useState<TeamMember | null>(null);
@@ -191,8 +193,10 @@ export default function TeamClient({
     setPayLoading(true);
     setPayDefault({ id: null, pay_type: "hourly", rate: "" });
     setPayOverrides([]);
+    setCertifiedServiceIds(new Set());
+    setCertifiedInitial(new Set());
     const supabase = createClient();
-    const [rulesRes, servicesRes] = await Promise.all([
+    const [rulesRes, servicesRes, capsRes] = await Promise.all([
       supabase
         .from("member_pay_rules")
         .select("id, service_id, pay_type, rate")
@@ -200,9 +204,17 @@ export default function TeamClient({
       services === null && businessId
         ? supabase.from("services").select("id, name").eq("business_id", businessId).eq("is_active", true).order("name")
         : Promise.resolve({ data: null }),
+      supabase
+        .from("member_service_capabilities")
+        .select("service_id")
+        .eq("team_member_id", memberId),
     ]);
 
     if (servicesRes.data) setServices(servicesRes.data as ServiceOption[]);
+
+    const capIds = new Set(((capsRes.data ?? []) as { service_id: string }[]).map((c) => c.service_id));
+    setCertifiedServiceIds(new Set(capIds));
+    setCertifiedInitial(capIds);
 
     const rules = (rulesRes.data ?? []) as { id: string; service_id: string | null; pay_type: PayType; rate: number }[];
     const def = rules.find((r) => r.service_id === null);
@@ -289,6 +301,40 @@ export default function TeamClient({
         }
       }
     }
+    return true;
+  }
+
+  // Diff desired certified services vs. what was loaded: insert newly-checked
+  // ('owner' source), delete unchecked. certified_by is left null — RLS
+  // validates ownership.
+  async function saveCertifications(memberId: string): Promise<boolean> {
+    if (!businessId) return true;
+    const supabase = createClient();
+
+    const toAdd = [...certifiedServiceIds].filter((id) => !certifiedInitial.has(id));
+    const toRemove = [...certifiedInitial].filter((id) => !certifiedServiceIds.has(id));
+
+    if (toAdd.length > 0) {
+      const { error } = await supabase.from("member_service_capabilities").insert(
+        toAdd.map((service_id) => ({
+          business_id: businessId,
+          team_member_id: memberId,
+          service_id,
+          source: "owner",
+        }))
+      );
+      if (error) return false;
+    }
+
+    if (toRemove.length > 0) {
+      const { error } = await supabase
+        .from("member_service_capabilities")
+        .delete()
+        .eq("team_member_id", memberId)
+        .in("service_id", toRemove);
+      if (error) return false;
+    }
+
     return true;
   }
 
@@ -405,6 +451,13 @@ export default function TeamClient({
     if (!rulesOk) {
       setEditSaving(false);
       toast.error("Member saved, but the pay rules didn't save — try again.");
+      return;
+    }
+
+    const capsOk = await saveCertifications(editMember.id);
+    if (!capsOk) {
+      setEditSaving(false);
+      toast.error("Member saved, but the certified services didn't save — try again.");
       return;
     }
 
@@ -1304,6 +1357,38 @@ export default function TeamClient({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Certified services (owner-direct) */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Certified Services</label>
+                <p className="text-[11px] text-muted-foreground -mt-1">Mark services this worker is qualified to perform.</p>
+                {payLoading ? (
+                  <p className="text-xs text-muted-foreground italic py-2">Loading certified services…</p>
+                ) : (services ?? []).length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic">Add services first to certify workers.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {(services ?? []).map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setCertifiedServiceIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(s.id)) next.delete(s.id); else next.add(s.id);
+                          return next;
+                        })}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all active:scale-95 ${
+                          certifiedServiceIds.has(s.id)
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {certifiedServiceIds.has(s.id) && "✓ "}{s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3">

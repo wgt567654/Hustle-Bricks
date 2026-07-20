@@ -43,6 +43,7 @@ type Job = {
     description: string;
     quantity: number;
     unit_price: number;
+    service_id: string | null;
   }[];
   job_crew: { team_member_id: string; status: string; team_members: { id: string; name: string } | null }[];
 };
@@ -104,7 +105,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const [{ data, error }, { data: expData }] = await Promise.all([
     supabase
       .from("jobs")
-      .select("id, status, total, scheduled_at, completed_at, notes, service_type, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, duration_mins, assigned_member_id, crew_size, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price), job_crew(team_member_id, status, team_members(id, name))")
+      .select("id, status, total, scheduled_at, completed_at, notes, service_type, recurrence_frequency, recurrence_interval_days, business_id, client_id, quote_id, before_photo_url, after_photo_url, duration_mins, assigned_member_id, crew_size, clients(name, phone, email, address), job_line_items(id, description, quantity, unit_price, service_id), job_crew(team_member_id, status, team_members(id, name))")
       .eq("id", id)
       .eq("business_id", bizId)
       .single(),

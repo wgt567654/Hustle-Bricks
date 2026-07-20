@@ -84,6 +84,7 @@ type Job = {
     description: string;
     quantity: number;
     unit_price: number;
+    service_id: string | null;
   }[];
   job_crew: { team_member_id: string; status: string; team_members: { id: string; name: string } | null }[];
 };
@@ -267,6 +268,8 @@ export default function JobDetailClient({
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
   const [memberAvailability, setMemberAvailability] = useState<Record<string, AvailabilityStatus>>({});
+  // Skill-aware qualification for the current job's services (empty → job has no services, show no badges)
+  const [memberQualification, setMemberQualification] = useState<Record<string, boolean>>({});
   const [assignSaving, setAssignSaving] = useState(false);
   const [editDurationMins, setEditDurationMins] = useState<number | null>(null);
   const [durationHours, setDurationHours] = useState(0);
@@ -425,6 +428,7 @@ export default function JobDetailClient({
                   description: item.description,
                   quantity: item.quantity,
                   unit_price: item.unit_price,
+                  service_id: item.service_id,
                 }))
               );
             }
@@ -751,6 +755,42 @@ export default function JobDetailClient({
     );
   }
 
+  // Compute per-member qualification for the CURRENT job's services using the same rule
+  // as server-side dispatch: for each distinct non-null job service, if at least one active
+  // member is certified, only certified members qualify for it; if none are certified, everyone
+  // qualifies. A member qualifies iff they qualify for every service. No services → {} (no badges).
+  async function computeQualification(members: TeamMember[]): Promise<Record<string, boolean>> {
+    const jobServiceIds = Array.from(
+      new Set((job?.job_line_items ?? []).map((li) => li.service_id).filter((s): s is string => !!s))
+    );
+    if (jobServiceIds.length === 0) return {};
+
+    const supabase = createClient();
+    const { data: caps } = await supabase
+      .from("member_service_capabilities")
+      .select("team_member_id, service_id")
+      .eq("business_id", businessId)
+      .in("service_id", jobServiceIds);
+
+    const activeIds = new Set(members.map((m) => m.id));
+    const certifiedByService = new Map<string, Set<string>>();
+    for (const c of (caps ?? []) as { team_member_id: string; service_id: string }[]) {
+      if (!activeIds.has(c.team_member_id)) continue; // only active members count as "certified"
+      if (!certifiedByService.has(c.service_id)) certifiedByService.set(c.service_id, new Set());
+      certifiedByService.get(c.service_id)!.add(c.team_member_id);
+    }
+
+    return Object.fromEntries(
+      members.map((m) => [
+        m.id,
+        jobServiceIds.every((sid) => {
+          const certified = certifiedByService.get(sid);
+          return !certified || certified.size === 0 || certified.has(m.id);
+        }),
+      ])
+    );
+  }
+
   function sortMembers(members: TeamMember[], avail: Record<string, AvailabilityStatus>): TeamMember[] {
     const priority = (s: AvailabilityStatus) => {
       if (s === "available") return 0;
@@ -788,6 +828,9 @@ export default function JobDetailClient({
     const avail = await computeAvailability(memberList, duration);
     setMemberAvailability(avail);
     setTeamMembers(sortMembers(memberList, avail));
+
+    const qual = await computeQualification(memberList);
+    setMemberQualification(qual);
 
     setAssignModalOpen(true);
   }
@@ -1991,6 +2034,17 @@ export default function JobDetailClient({
                             }
                           </div>
                           <span className="text-sm font-bold text-foreground flex-1 text-left">{m.name}</span>
+                          {m.id in memberQualification && (
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                memberQualification[m.id]
+                                  ? "bg-[var(--color-status-completed)]/15 text-[var(--color-status-completed)]"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {memberQualification[m.id] ? "Qualified" : "Not certified"}
+                            </span>
+                          )}
                           {status !== "unknown" && (
                             <div className="flex items-center gap-1.5 shrink-0">
                               <div className={`size-2 rounded-full ${statusConfig.dot}`} />

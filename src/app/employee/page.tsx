@@ -117,15 +117,30 @@ export default function EmployeeHomePage() {
       const endOfToday = new Date(now);
       endOfToday.setHours(23, 59, 59, 999);
 
+      // "Jobs I'm on" = jobs where I'm the primary (assigned_member_id) OR I have a
+      // job_crew row. Fetch this member's crew job ids first, then widen the filter.
+      const { data: crewRows } = await supabase
+        .from("job_crew")
+        .select("job_id")
+        .eq("team_member_id", tm.id);
+      const crewJobIds = (crewRows ?? []).map((r) => (r as { job_id: string }).job_id);
+
+      let jobsQuery = supabase
+        .from("jobs")
+        .select("id, status, scheduled_at, total, notes, route_order, clients(name, address), job_line_items(description)");
+      // Guard: an empty in-list `id.in.()` is invalid PostgREST, so only widen with
+      // .or() when we actually have crew job ids; otherwise filter by primary only.
+      jobsQuery = crewJobIds.length > 0
+        ? jobsQuery.or(`assigned_member_id.eq.${tm.id},id.in.(${crewJobIds.join(",")})`)
+        : jobsQuery.eq("assigned_member_id", tm.id);
+      jobsQuery = jobsQuery
+        .in("status", ["scheduled", "in_progress"])
+        .gte("scheduled_at", startOfToday.toISOString())
+        .lte("scheduled_at", endOfToday.toISOString())
+        .order("scheduled_at");
+
       const [{ data: todayJobs }, { data: openEntry }] = await Promise.all([
-        supabase
-          .from("jobs")
-          .select("id, status, scheduled_at, total, notes, route_order, clients(name, address), job_line_items(description)")
-          .eq("assigned_member_id", tm.id)
-          .in("status", ["scheduled", "in_progress"])
-          .gte("scheduled_at", startOfToday.toISOString())
-          .lte("scheduled_at", endOfToday.toISOString())
-          .order("scheduled_at"),
+        jobsQuery,
         supabase
           .from("time_entries")
           .select("id, job_id, clocked_in_at, clocked_out_at")

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       id, scheduled_at, duration_mins, business_id, assigned_member_id, total,
       clients ( name, address, phone ),
       businesses ( name, contact_email, owner_id ),
-      job_line_items ( description )
+      job_line_items ( description, service_id )
     `)
     .eq("id", jobId)
     .single();
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     total: number;
     clients: { name: string; address: string | null; phone: string | null } | null;
     businesses: { name: string | null; contact_email: string | null; owner_id: string } | null;
-    job_line_items: { description: string }[];
+    job_line_items: { description: string; service_id: string | null }[];
   };
 
   const j = job as unknown as JobRow;
@@ -54,11 +54,17 @@ export async function POST(req: NextRequest) {
   if (!j.scheduled_at) return NextResponse.json({ assigned: null, reason: "no_scheduled_at" });
   if (j.assigned_member_id) return NextResponse.json({ assigned: j.assigned_member_id, reason: "already_assigned" });
 
+  // Collect the job's distinct non-null service_ids for skill-aware qualification
+  const serviceIds = j.job_line_items
+    .map((li) => li.service_id)
+    .filter((s): s is string => !!s);
+
   const match = await findBestMember({
     businessId: j.business_id,
     scheduledAt: j.scheduled_at,
     durationMins: j.duration_mins ?? 60,
     excludeJobId: j.id,
+    serviceIds,
   });
 
   if (!match) return NextResponse.json({ assigned: null, reason: "no_available_member" });

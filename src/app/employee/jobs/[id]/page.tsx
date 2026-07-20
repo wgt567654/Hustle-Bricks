@@ -169,12 +169,14 @@ export default function EmployeeJobDetailPage({ params }: { params: Promise<{ id
       setEmployeeId(tm.id);
 
       const [{ data: jobData }, { data: entryData }, { data: consentData }] = await Promise.all([
+        // Fetch by id alone. RLS already restricts reads to jobs this worker is on
+        // (primary or job_crew), so an assigned_member_id filter would wrongly hide
+        // jobs where they're only a secondary crew member.
         supabase
           .from("jobs")
           .select("id, status, scheduled_at, total, notes, before_photo_url, after_photo_url, business_id, clients(id, name, phone, email, address), job_line_items(id, description, quantity, unit_price)")
           .eq("id", id)
-          .eq("assigned_member_id", tm.id)
-          .single(),
+          .maybeSingle(),
         supabase
           .from("time_entries")
           .select("id, clocked_in_at, clocked_out_at")
