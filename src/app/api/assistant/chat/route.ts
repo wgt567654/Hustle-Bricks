@@ -18,7 +18,13 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Lazily constructed so a missing ANTHROPIC_API_KEY doesn't throw at module
+// load (which breaks `next build` when the key isn't set at build time).
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return _anthropic;
+}
 
 const TOOLS: Anthropic.Tool[] = [
   {
@@ -377,7 +383,7 @@ export async function POST(req: NextRequest) {
       : "");
 
   // Agentic loop — keep going until Claude stops calling tools (max 5 rounds)
-  let response = await anthropic.messages.create({
+  let response = await getAnthropic().messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 1024,
     system: systemPrompt,
@@ -401,7 +407,7 @@ export async function POST(req: NextRequest) {
     messages.push({ role: "assistant", content: response.content });
     messages.push({ role: "user", content: toolResults });
 
-    response = await anthropic.messages.create({
+    response = await getAnthropic().messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       system: systemPrompt,
