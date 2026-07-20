@@ -165,7 +165,11 @@ Reviewed github.com/wgt567654/Hustle-Bricks @ `23c4300` (2026-07-12). The co-dev
 5b. **Quote → schedule chain** ✅ DONE 2026-07-19 (late night): quotes carry optional proposed_date/time (owner + employee builders; supabase/quote_proposed_schedule.sql applied); public /q page shows "Proposed service time"; acceptance auto-creates a pending booking request + notifies owner (alongside pre-existing job creation + SMS). Verified live: accept → request in owner inbox w/ quote reference → approve → scheduled job. Gap-fill applied: quotes.video_url column was missing from all SQL files (ad-hoc dashboard column) — added to DB; get-business.ts limit(1) made deterministic with created_at ordering.
 6. **CFoam onboarding + deploy** to hustlebricks.ai from this repo (standalone repo — mono-repo split no longer needed).
 
-## 9. Sprint 2 — Quoting & Money (spec drafted 2026-07-20, pre-grill)
+## 9. Sprint 2 — Quoting & Money ✅ BUILT, VERIFIED & DEPLOYED 2026-07-20
+
+All four items live in production. Verified end-to-end: 3.5-hr two-service booking → 30-min slots correctly truncated at end-of-day → 210-min request → accepted job carries duration/website/owner-sold; Frankie quote ($240, self-gen, proposed time) → accept → sold_by propagated + 120-min booking request → completion → commission pending 15%/$36 → cash payment → owed → Mark paid. Geo ships degraded: GOOGLE_MAPS_API_KEY in Vercel was saved as an empty string — Mike to re-enter the real AIza… key, then chips/ranking activate (redeploy after fixing so the new value applies).
+
+(original spec below)
 
 Three interlocking items, ordered by dependency and effort. Everything here builds on verified Sprint 1 systems (services catalog w/ existing `duration_mins`, quote builders, booking capacity API, canvassing conversion, commission report, pay rules).
 
