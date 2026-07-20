@@ -735,19 +735,32 @@ function Pricing() {
               </div>
 
               <div>
-                {yearly && (
-                  <p className="text-sm line-through mb-0.5" style={{ color: plan.highlight ? "rgba(255,255,255,0.40)" : "oklch(0.551 0.023 264 / 0.60)" }}>
-                    ${plan.monthly}/mo
-                  </p>
-                )}
-                <div className="flex items-end gap-1">
-                  <span className="text-4xl font-display font-bold" style={{ color: plan.highlight ? "white" : "oklch(0.220 0.031 260)" }}>
-                    ${yearly ? plan.yearly : plan.monthly}
-                  </span>
-                  <span className="text-sm mb-1.5" style={{ color: plan.highlight ? "rgba(255,255,255,0.60)" : "oklch(0.551 0.023 264)" }}>USD/mo</span>
-                </div>
-                {yearly && (
-                  <p className="text-xs" style={{ color: plan.highlight ? "rgba(255,255,255,0.50)" : "oklch(0.551 0.023 264)" }}>Billed yearly · 30% OFF</p>
+                {plan.name === "Solo" ? (
+                  <>
+                    <div className="flex items-end gap-1">
+                      <span className="text-4xl font-display font-bold" style={{ color: plan.highlight ? "white" : "oklch(0.220 0.031 260)" }}>
+                        $0
+                      </span>
+                    </div>
+                    <p className="text-xs" style={{ color: plan.highlight ? "rgba(255,255,255,0.50)" : "oklch(0.551 0.023 264)" }}>Free forever</p>
+                  </>
+                ) : (
+                  <>
+                    {yearly && (
+                      <p className="text-sm line-through mb-0.5" style={{ color: plan.highlight ? "rgba(255,255,255,0.40)" : "oklch(0.551 0.023 264 / 0.60)" }}>
+                        ${plan.monthly}/mo
+                      </p>
+                    )}
+                    <div className="flex items-end gap-1">
+                      <span className="text-4xl font-display font-bold" style={{ color: plan.highlight ? "white" : "oklch(0.220 0.031 260)" }}>
+                        ${yearly ? plan.yearly : plan.monthly}
+                      </span>
+                      <span className="text-sm mb-1.5" style={{ color: plan.highlight ? "rgba(255,255,255,0.60)" : "oklch(0.551 0.023 264)" }}>USD/mo</span>
+                    </div>
+                    {yearly && (
+                      <p className="text-xs" style={{ color: plan.highlight ? "rgba(255,255,255,0.50)" : "oklch(0.551 0.023 264)" }}>Billed yearly · 30% OFF</p>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -758,7 +771,7 @@ function Pricing() {
                   ? { background: "white", color: "oklch(0.470 0.082 229)" }
                   : { background: "oklch(0.470 0.082 229)", color: "white" }}
               >
-                Start Free Trial
+                {plan.name === "Solo" ? "Start Free" : "Start Free Trial"}
               </Link>
 
               <ul className="space-y-3">

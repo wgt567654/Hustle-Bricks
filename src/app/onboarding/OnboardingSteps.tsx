@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import type { ComponentType } from "react";
 import { BUSINESS_TYPE_OPTIONS } from "@/lib/businessTypes";
@@ -1238,6 +1239,7 @@ function suggestedPlan(teamSize: string | null): string {
 }
 
 function PlanStep({ a, businessId }: StepProps) {
+  const router = useRouter();
   const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1247,6 +1249,22 @@ function PlanStep({ a, businessId }: StepProps) {
     if (!businessId) return;
     setCheckoutLoading(planId);
     setError(null);
+
+    // Solo is free — no card, no Stripe. Activate the business and drop the
+    // owner straight into the app. Team/Business still go through checkout.
+    if (planId === "solo") {
+      const { error: activateError } = await createClient()
+        .from("businesses")
+        .update({ subscription_status: "active", plan: "solo" })
+        .eq("id", businessId);
+      if (activateError) {
+        setError(activateError.message);
+        setCheckoutLoading(null);
+        return;
+      }
+      router.push("/");
+      return;
+    }
 
     const res = await fetch("/api/stripe/create-checkout-session", {
       method: "POST",
@@ -1334,12 +1352,23 @@ function PlanStep({ a, businessId }: StepProps) {
                 </p>
                 <p className="mt-0.5 text-sm text-muted-foreground">{plan.tagline}</p>
               </div>
-              <div className="flex items-end gap-1">
-                <span className="tnum text-4xl font-extrabold text-foreground">${price}</span>
-                <span className="mb-1.5 text-sm text-muted-foreground">/ mo</span>
-              </div>
-              {billingInterval === "yearly" && (
-                <p className="-mt-3 text-xs text-muted-foreground">Billed yearly · 30% off</p>
+              {plan.id === "solo" ? (
+                <div>
+                  <div className="flex items-end gap-1">
+                    <span className="tnum text-4xl font-extrabold text-foreground">$0</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Free forever</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-end gap-1">
+                    <span className="tnum text-4xl font-extrabold text-foreground">${price}</span>
+                    <span className="mb-1.5 text-sm text-muted-foreground">/ mo</span>
+                  </div>
+                  {billingInterval === "yearly" && (
+                    <p className="-mt-3 text-xs text-muted-foreground">Billed yearly · 30% off</p>
+                  )}
+                </>
               )}
               <ul className="flex flex-col gap-1.5">
                 {plan.features.map((f) => (
@@ -1359,7 +1388,13 @@ function PlanStep({ a, businessId }: StepProps) {
                     : "border border-border bg-muted text-foreground hover:bg-muted/80"
                 }`}
               >
-                {isLoading ? "Redirecting…" : `Start ${plan.name}`}
+                {isLoading
+                  ? plan.id === "solo"
+                    ? "Setting up…"
+                    : "Redirecting…"
+                  : plan.id === "solo"
+                    ? "Start Free"
+                    : `Start ${plan.name}`}
               </button>
             </div>
           );
