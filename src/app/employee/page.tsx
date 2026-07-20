@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getActiveMembership } from "@/lib/employee-membership-client";
 import { buildGoogleMapsRouteUrls } from "@/lib/routeOptimizer";
+import { formatCurrencyRounded } from "@/lib/currency";
 import { toast } from "@/lib/toast";
 
 type Job = {
@@ -69,6 +70,7 @@ export default function EmployeeHomePage() {
   const [odometerStart, setOdometerStart] = useState("");
   const [odometerEnd, setOdometerEnd] = useState("");
   const [todayWeather, setTodayWeather] = useState<WeatherDay | null>(null);
+  const [owedTotal, setOwedTotal] = useState(0);
 
   const now = new Date();
   const greeting =
@@ -164,6 +166,35 @@ export default function EmployeeHomePage() {
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Isolated: sum what the worker is owed (labor + commission), for the summary
+  // card that links to /employee/earnings. Kept separate from the main load()
+  // so it can't affect the jobs/clock-in flow.
+  useEffect(() => {
+    async function loadOwed() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { membership } = await getActiveMembership(supabase);
+      if (!membership) return;
+      const [{ data: labor }, { data: comm }] = await Promise.all([
+        supabase
+          .from("job_payouts")
+          .select("amount")
+          .eq("team_member_id", membership.member_id)
+          .eq("status", "owed"),
+        supabase
+          .from("commission_entries")
+          .select("amount")
+          .eq("member_id", membership.member_id)
+          .eq("status", "owed"),
+      ]);
+      const sum = (rows: { amount: number }[] | null) =>
+        (rows ?? []).reduce((s, r) => s + Number(r.amount ?? 0), 0);
+      setOwedTotal(sum(labor as { amount: number }[] | null) + sum(comm as { amount: number }[] | null));
+    }
+    loadOwed();
   }, []);
 
   function getLocation(): Promise<{ lat: number; lng: number } | null> {
@@ -279,6 +310,25 @@ export default function EmployeeHomePage() {
             </span>
           )}
         </div>
+      )}
+
+      {/* You're owed — links to full earnings view */}
+      {owedTotal > 0 && (
+        <Link
+          href="/employee/earnings"
+          className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/8 px-4 py-3.5 hover:bg-primary/12 active:scale-[0.99] transition-all"
+        >
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              account_balance_wallet
+            </span>
+          </div>
+          <div className="flex flex-col flex-1 min-w-0">
+            <span className="text-xs font-semibold text-muted-foreground">You&apos;re owed</span>
+            <span className="font-black text-lg text-foreground leading-tight">{formatCurrencyRounded(owedTotal)}</span>
+          </div>
+          <span className="material-symbols-outlined text-primary/60 text-[18px]">chevron_right</span>
+        </Link>
       )}
 
       {/* Clock in/out card */}

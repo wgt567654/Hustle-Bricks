@@ -516,6 +516,13 @@ export default function AnalyticsClient({
             Commission
           </button>
           <button
+            onClick={() => router.push("/payouts")}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[15px]">payments</span>
+            Payouts
+          </button>
+          <button
             onClick={() => router.push("/reports/payroll")}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
           >

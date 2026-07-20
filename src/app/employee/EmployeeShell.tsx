@@ -12,6 +12,7 @@ const NAV = [
   { href: "/employee/canvassing",   label: "Canvass",   icon: "door_front",    exact: false },
   { href: "/employee/schedule",     label: "Schedule",  icon: "calendar_month", exact: false },
   { href: "/employee/analytics",    label: "My Stats",  icon: "leaderboard",   exact: false },
+  { href: "/employee/earnings",     label: "Earnings",  icon: "payments",      exact: false },
   { href: "/employee/settings",     label: "Settings",  icon: "settings",      exact: false },
 ];
 
