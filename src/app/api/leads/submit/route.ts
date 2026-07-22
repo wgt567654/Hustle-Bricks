@@ -6,7 +6,9 @@ import {
   isOptionalStringArray,
   isRequiredString,
   isUuid,
+  LONG_MAX,
 } from "@/lib/validation";
+import { attachLeadPhotos, isValidPhotoUrls } from "@/lib/lead-photos";
 
 // Uses the service role key so this works without user auth.
 // The service role key is NEVER exposed to the browser — this runs server-side only.
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  const { business_id, name, email, phone, property_type, services, frequency, address, source } = body;
+  const { business_id, name, email, phone, property_type, services, frequency, address, source, notes, photo_urls } = body;
 
   if (!business_id || !name) {
     return NextResponse.json({ error: "business_id and name are required" }, { status: 400 });
@@ -49,7 +51,9 @@ export async function POST(req: NextRequest) {
     !isOptionalString(property_type) ||
     !isOptionalString(frequency) ||
     !isOptionalString(source) ||
-    !isOptionalStringArray(services)
+    !isOptionalString(notes, LONG_MAX) ||
+    !isOptionalStringArray(services) ||
+    !isValidPhotoUrls(photo_urls, business_id)
   ) {
     return NextResponse.json(
       { error: "One or more fields are invalid or too long" },
@@ -70,26 +74,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid business" }, { status: 404 });
   }
 
-  // Build notes summary from form data so it's visible in the existing leads UI
+  // Build notes summary from form data so it's visible in the existing leads UI.
+  // The caller's own notes (customer message, external forms' packed details)
+  // go last so the structured fields stay scannable.
   const notesParts: string[] = [];
   if (property_type) notesParts.push(`Property: ${property_type}`);
   if (services && services.length > 0) notesParts.push(`Services: ${(services as string[]).join(", ")}`);
   if (frequency) notesParts.push(`Frequency: ${frequency}`);
+  if (notes) notesParts.push(String(notes));
 
-  const { error } = await supabase.from("leads").insert({
-    business_id,
-    name: String(name).trim(),
-    email: email || null,
-    phone: phone || null,
-    address: address || null,
-    stage: "new",
-    source: source || "Website",
-    notes: notesParts.length > 0 ? notesParts.join(" · ") : null,
-    property_type: property_type || null,
-    services: services || null,
-    frequency: frequency || null,
-  });
+  const { data: lead, error } = await supabase
+    .from("leads")
+    .insert({
+      business_id,
+      name: String(name).trim(),
+      email: email || null,
+      phone: phone || null,
+      address: address || null,
+      stage: "new",
+      source: source || "Website",
+      notes: notesParts.length > 0 ? notesParts.join(" · ") : null,
+      property_type: property_type || null,
+      services: services || null,
+      frequency: frequency || null,
+    })
+    .select("id")
+    .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error || !lead) {
+    return NextResponse.json(
+      { error: error?.message ?? "Failed to save lead" },
+      { status: 500 }
+    );
+  }
+
+  await attachLeadPhotos(supabase, lead.id, business_id, photo_urls as string[] | undefined);
+
   return NextResponse.json({ success: true });
 }

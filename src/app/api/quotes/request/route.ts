@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { attachLeadPhotos, isValidPhotoUrls } from "@/lib/lead-photos";
 import {
   isOptionalString,
   isOptionalStringArray,
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  const { business_id, name, email, phone, address, services, property_type, notes } = body;
+  const { business_id, name, email, phone, address, services, property_type, notes, photo_urls } = body;
 
   if (!business_id || !name) {
     return NextResponse.json(
@@ -54,7 +55,8 @@ export async function POST(req: NextRequest) {
     !isOptionalString(address) ||
     !isOptionalString(property_type) ||
     !isOptionalString(notes, LONG_MAX) ||
-    !isOptionalStringArray(services)
+    !isOptionalStringArray(services) ||
+    !isValidPhotoUrls(photo_urls, business_id)
   ) {
     return NextResponse.json(
       { error: "One or more fields are invalid or too long" },
@@ -79,19 +81,31 @@ export async function POST(req: NextRequest) {
   if (services && services.length > 0) notesParts.push(`Services: ${(services as string[]).join(", ")}`);
   if (notes) notesParts.push(notes);
 
-  const { error } = await supabase.from("leads").insert({
-    business_id,
-    name: String(name).trim(),
-    email: email || null,
-    phone: phone || null,
-    address: address || null,
-    stage: "new",
-    source: "Quote Request",
-    notes: notesParts.join(" · "),
-    property_type: property_type || null,
-    services: services || null,
-  });
+  const { data: lead, error } = await supabase
+    .from("leads")
+    .insert({
+      business_id,
+      name: String(name).trim(),
+      email: email || null,
+      phone: phone || null,
+      address: address || null,
+      stage: "new",
+      source: "Quote Request",
+      notes: notesParts.join(" · "),
+      property_type: property_type || null,
+      services: services || null,
+    })
+    .select("id")
+    .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error || !lead) {
+    return NextResponse.json(
+      { error: error?.message ?? "Failed to save request" },
+      { status: 500 }
+    );
+  }
+
+  await attachLeadPhotos(supabase, lead.id, business_id, photo_urls as string[] | undefined);
+
   return NextResponse.json({ success: true });
 }

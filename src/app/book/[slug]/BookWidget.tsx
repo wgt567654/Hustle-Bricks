@@ -38,13 +38,44 @@ function formatSlot(slot: string) {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Intent = "schedule" | "quote" | "contact";
-type Step = "intent" | "info" | "details" | "done";
+type Step = "intent" | "gate" | "info" | "details" | "done";
 
-const SERVICE_OPTIONS = [
+// Generic fallback shown only when a business hasn't configured services yet.
+const DEFAULT_SERVICE_OPTIONS = [
   "Exterior Wash","Interior Detail","Full Detail","Engine Bay",
   "Paint Correction","Ceramic Coating","Window Tint","Odor Removal",
   "Pressure Wash","Lawn Care","Cleaning","Painting","Other",
 ];
+
+const MAX_PHOTOS = 8;
+
+type PendingPhoto = { file: File; previewUrl: string };
+
+// Downscale/compress a photo before upload (max 1600px, JPEG ~80%).
+// Falls back to the original file for formats the browser can't decode
+// (e.g. HEIC in some browsers) — the server enforces the 10MB cap.
+async function compressImage(file: File): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.8)
+    );
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", {
+      type: "image/jpeg",
+    });
+  } catch {
+    return file;
+  }
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -56,6 +87,9 @@ export default function BookWidget({
   unavailableDays = [],
   dayHours = {},
   blockedDates = [],
+  serviceOptions = [],
+  requireQuoteBeforeScheduling = true,
+  introText = null,
 }: {
   businessId: string;
   businessName: string;
@@ -64,7 +98,12 @@ export default function BookWidget({
   unavailableDays?: number[];
   dayHours?: Record<string, { from: string; until: string }>;
   blockedDates?: string[];
+  serviceOptions?: string[];
+  requireQuoteBeforeScheduling?: boolean;
+  introText?: string | null;
 }) {
+  const availableServices =
+    serviceOptions.length > 0 ? serviceOptions : DEFAULT_SERVICE_OPTIONS;
   const [step, setStep] = useState<Step>("intent");
   const [intent, setIntent] = useState<Intent>("schedule");
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +119,11 @@ export default function BookWidget({
   const [services, setServices] = useState<string[]>([]);
   const [propertyType, setPropertyType] = useState("");
   const [notes, setNotes] = useState("");
+
+  // Quote photos
+  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   // Booking calendar state
   const [calMonth, setCalMonth] = useState(() => {
@@ -133,6 +177,28 @@ export default function BookWidget({
     );
   }
 
+  async function addPhotos(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    setPhotoError(null);
+    const room = MAX_PHOTOS - photos.length;
+    const files = Array.from(list).slice(0, room);
+    if (list.length > room) {
+      setPhotoError(`You can attach up to ${MAX_PHOTOS} photos.`);
+    }
+    const compressed = await Promise.all(files.map(compressImage));
+    setPhotos((prev) => [
+      ...prev,
+      ...compressed.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
+    ].slice(0, MAX_PHOTOS));
+  }
+
+  function removePhoto(idx: number) {
+    setPhotos((prev) => {
+      URL.revokeObjectURL(prev[idx]?.previewUrl);
+      return prev.filter((_, i) => i !== idx);
+    });
+  }
+
   async function handleSubmit() {
     setError(null);
     setSubmitting(true);
@@ -140,29 +206,57 @@ export default function BookWidget({
     let url = "";
     let body: Record<string, unknown> = { business_id: businessId, name, email, phone, address };
 
-    if (intent === "schedule") {
-      url = "/api/booking/public";
-      body = { ...body, date: selectedDate, time: selectedTime, notes };
-    } else if (intent === "quote") {
-      url = "/api/quotes/request";
-      body = { ...body, services, property_type: propertyType, notes };
-    } else {
-      url = "/api/leads/submit";
-      body = { ...body, notes, source: "Website" };
-    }
+    try {
+      if (intent === "schedule") {
+        url = "/api/booking/public";
+        // booking_requests has no services column — pack them into notes so
+        // they show up in the owner's booking view.
+        const scheduleNotes = [
+          services.length > 0 ? `Services: ${services.join(", ")}` : null,
+          notes.trim() || null,
+        ].filter(Boolean).join(" · ");
+        body = { ...body, date: selectedDate, time: selectedTime, notes: scheduleNotes || null };
+      } else if (intent === "quote") {
+        url = "/api/quotes/request";
+        let photoUrls: string[] = [];
+        if (photos.length > 0) {
+          setUploadingPhotos(true);
+          const form = new FormData();
+          form.append("business_id", businessId);
+          photos.forEach((p) => form.append("photos", p.file));
+          const upRes = await fetch("/api/leads/photos", { method: "POST", body: form });
+          const upData = await upRes.json();
+          setUploadingPhotos(false);
+          if (upData.error) {
+            setError(upData.error);
+            setSubmitting(false);
+            return;
+          }
+          photoUrls = upData.urls ?? [];
+        }
+        body = { ...body, services, property_type: propertyType, notes, photo_urls: photoUrls };
+      } else {
+        url = "/api/leads/submit";
+        body = { ...body, notes, source: "Website" };
+      }
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    const data = await res.json();
-    if (data.error) {
-      setError(data.error);
+      const data = await res.json();
+      if (data.error) {
+        setError(data.error);
+        setSubmitting(false);
+      } else {
+        setStep("done");
+      }
+    } catch {
+      setError("Something went wrong. Please check your connection and try again.");
+      setUploadingPhotos(false);
       setSubmitting(false);
-    } else {
-      setStep("done");
     }
   }
 
@@ -171,7 +265,7 @@ export default function BookWidget({
     const messages: Record<Intent, { title: string; body: string }> = {
       schedule: {
         title: "Request sent!",
-        body: `We received your booking request for ${selectedDate ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "your chosen date"}${selectedTime ? ` at ${formatSlot(selectedTime)}` : ""}. We'll be in touch to confirm.`,
+        body: `We received your booking request for ${selectedDate ? new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "your chosen date"}${selectedTime ? ` at ${formatSlot(selectedTime)}` : ""}. We'll be in touch to confirm.${!requireQuoteBeforeScheduling ? " This is a request — we confirm pricing before your appointment." : ""}`,
       },
       quote: {
         title: "Quote request received!",
@@ -253,7 +347,12 @@ export default function BookWidget({
         {options.map((opt) => (
           <button
             key={opt.id}
-            onClick={() => { setIntent(opt.id); setStep("info"); }}
+            onClick={() => {
+              setIntent(opt.id);
+              // Gate the schedule path behind "do you have a quote?" when the
+              // business requires it.
+              setStep(opt.id === "schedule" && requireQuoteBeforeScheduling ? "gate" : "info");
+            }}
             className="bg-card border border-border shadow-card rounded-3xl p-5 flex items-center gap-4 hover:border-primary/40 hover:bg-primary/5 transition-all group text-left active:scale-[0.98]"
           >
             <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors">
@@ -272,12 +371,52 @@ export default function BookWidget({
     );
   }
 
+  // ── Step: Quote gate ────────────────────────────────────────────────────────
+  // Shown before scheduling when the business requires a quote first.
+  if (step === "gate") {
+    return (
+      <div className="flex flex-col gap-5">
+        <button onClick={() => setStep("intent")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
+          </svg>
+          Back
+        </button>
+
+        <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-4">
+          <div>
+            <p className="font-extrabold text-foreground text-base">Have you received a quote from us?</p>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              We schedule service for customers who already have a quote, so your appointment time is accurate.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setStep("info")}
+            className="w-full py-4 rounded-full bg-primary text-white font-extrabold text-sm shadow-md shadow-primary/25 hover:bg-primary/90 active:scale-95 transition-all"
+          >
+            Yes, I have a quote
+          </button>
+          <button
+            onClick={() => { setIntent("quote"); setStep("info"); }}
+            className="w-full py-4 rounded-full border border-border text-foreground font-extrabold text-sm hover:bg-muted active:scale-95 transition-all"
+          >
+            Not yet — get me a quote
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Step: Info ──────────────────────────────────────────────────────────────
   if (step === "info") {
     const isValid = name.trim().length > 0 && (email.trim().length > 0 || phone.trim().length > 0);
     return (
       <div className="flex flex-col gap-5">
-        <button onClick={() => setStep("intent")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit">
+        <button
+          onClick={() => setStep(intent === "schedule" && requireQuoteBeforeScheduling ? "gate" : "intent")}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
             <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
           </svg>
@@ -368,6 +507,26 @@ export default function BookWidget({
       {/* ── Schedule ── */}
       {intent === "schedule" && (
         <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-5">
+          {/* Service selector */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-foreground">What service do you need? <span className="font-normal text-muted-foreground">(optional)</span></label>
+            <div className="flex flex-wrap gap-2">
+              {availableServices.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => toggleService(s)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                    services.includes(s)
+                      ? "bg-primary/10 text-primary border-primary"
+                      : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Pick a Date & Time</p>
 
           {/* Month nav */}
@@ -479,10 +638,16 @@ export default function BookWidget({
         <div className="bg-card border border-border shadow-card rounded-3xl p-5 flex flex-col gap-4">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">What do you need?</p>
 
+          {introText && (
+            <p className="text-sm text-muted-foreground leading-relaxed bg-primary/5 rounded-2xl px-4 py-3 whitespace-pre-line">
+              {introText}
+            </p>
+          )}
+
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-foreground">Services</label>
             <div className="flex flex-wrap gap-2">
-              {SERVICE_OPTIONS.map((s) => (
+              {availableServices.map((s) => (
                 <button
                   key={s}
                   onClick={() => toggleService(s)}
@@ -523,6 +688,46 @@ export default function BookWidget({
               className="w-full rounded-xl border border-border bg-transparent px-3 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
           </div>
+
+          {/* Photos */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-foreground">
+              Photos <span className="font-normal text-muted-foreground">(optional — helps us quote accurately)</span>
+            </label>
+            {photos.length > 0 && (
+              <div className="grid grid-cols-4 gap-2">
+                {photos.map((p, i) => (
+                  <div key={p.previewUrl} className="relative aspect-square rounded-xl overflow-hidden border border-border">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.previewUrl} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removePhoto(i)}
+                      aria-label={`Remove photo ${i + 1}`}
+                      className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-white text-xs font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {photos.length < MAX_PHOTOS && (
+              <label className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm font-bold text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                  <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clipRule="evenodd" />
+                </svg>
+                Add photos
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }}
+                />
+              </label>
+            )}
+            {photoError && <p className="text-xs text-amber-600 dark:text-amber-500">{photoError}</p>}
+          </div>
         </div>
       )}
 
@@ -549,6 +754,11 @@ export default function BookWidget({
               {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
             <p className="text-sm text-muted-foreground mt-0.5">{formatSlot(selectedTime)}</p>
+            {!requireQuoteBeforeScheduling && (
+              <p className="text-xs text-muted-foreground mt-2">
+                This is a request. We confirm pricing before your appointment.
+              </p>
+            )}
           </div>
         )}
 
@@ -561,7 +771,8 @@ export default function BookWidget({
           disabled={submitting || !canSubmit}
           className="w-full py-4 rounded-full bg-primary text-white font-extrabold text-sm hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all shadow-md shadow-primary/25"
         >
-          {submitting ? "Sending…" :
+          {uploadingPhotos ? "Uploading photos…" :
+            submitting ? "Sending…" :
             intent === "schedule" ? "Request This Time" :
             intent === "quote" ? "Send Quote Request" :
             "Send Message"}

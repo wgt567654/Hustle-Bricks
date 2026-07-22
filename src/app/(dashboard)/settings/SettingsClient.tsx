@@ -43,6 +43,8 @@ export type SettingsBusiness = {
   stale_quote_days: number | null;
   rebooking_enabled: boolean | null;
   rebooking_after_days: number | null;
+  require_quote_before_scheduling: boolean | null;
+  booking_intro: string | null;
   auto_invoice_enabled: boolean | null;
   payment_reminders_enabled: boolean | null;
   morning_briefing_enabled: boolean | null;
@@ -182,6 +184,13 @@ export default function SettingsClient({
   const [morningBriefingEnabled, setMorningBriefingEnabled] = useState(business.morning_briefing_enabled ?? false);
   const [aiSmsEnabled, setAiSmsEnabled] = useState(business.ai_sms_enabled ?? false);
   const [savingAutomation, setSavingAutomation] = useState<string | null>(null);
+
+  // Booking flow (public widget)
+  const [requireQuoteGate, setRequireQuoteGate] = useState(business.require_quote_before_scheduling ?? true);
+  const [savingQuoteGate, setSavingQuoteGate] = useState(false);
+  const [bookingIntro, setBookingIntro] = useState(business.booking_intro ?? "");
+  const [editingBookingIntro, setEditingBookingIntro] = useState(false);
+  const [savingBookingIntro, setSavingBookingIntro] = useState(false);
 
   // Rebooking threshold
   const [rebookingAfterDays, setRebookingAfterDays] = useState(business.rebooking_after_days != null ? String(business.rebooking_after_days) : "60");
@@ -620,6 +629,40 @@ export default function SettingsClient({
       toast.error("Couldn't update that setting — try again.");
     }
     setSavingAutomation(null);
+  }
+
+  async function toggleQuoteGate() {
+    const next = !requireQuoteGate;
+    setRequireQuoteGate(next);
+    if (!businessId) return;
+    setSavingQuoteGate(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("businesses")
+      .update({ require_quote_before_scheduling: next } as Record<string, unknown>)
+      .eq("id", businessId);
+    if (error) {
+      setRequireQuoteGate(!next);
+      toast.error("Couldn't update that setting — try again.");
+    }
+    setSavingQuoteGate(false);
+  }
+
+  async function saveBookingIntro() {
+    if (!businessId) return;
+    setSavingBookingIntro(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("businesses")
+      .update({ booking_intro: bookingIntro.trim() || null } as Record<string, unknown>)
+      .eq("id", businessId);
+    setSavingBookingIntro(false);
+    if (error) {
+      toast.error("Couldn't save the intro text — try again.");
+      return;
+    }
+    toast.success("Booking page intro saved");
+    setEditingBookingIntro(false);
   }
 
   async function saveGoogleReviewUrl() {
@@ -1290,6 +1333,69 @@ export default function SettingsClient({
                 <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                 Preview your booking page
               </a>
+
+              <Separator className="bg-border/50" />
+
+              {/* Quote-before-scheduling gate */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-sm text-foreground">Require a Quote Before Scheduling</span>
+                  <span className="text-xs text-muted-foreground">
+                    Customers without a quote are routed to the quote form instead of the calendar.
+                  </span>
+                </div>
+                <button
+                  onClick={toggleQuoteGate}
+                  disabled={savingQuoteGate}
+                  className={`w-12 h-6 rounded-full relative shadow-inner transition-colors duration-200 shrink-0 disabled:opacity-60 ${requireQuoteGate ? "bg-primary" : "bg-muted"}`}
+                >
+                  <div className={`size-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform duration-200 ${requireQuoteGate ? "translate-x-6" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+
+              {/* Quote form intro text */}
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-bold text-sm text-foreground">Quote Form Intro</span>
+                  <span className="text-xs text-muted-foreground">
+                    Optional note shown at the top of your public quote form (instructions, service area, what to include).
+                  </span>
+                </div>
+                {editingBookingIntro ? (
+                  <div className="flex flex-col gap-2">
+                    <textarea
+                      value={bookingIntro}
+                      onChange={(e) => setBookingIntro(e.target.value)}
+                      rows={3}
+                      maxLength={500}
+                      placeholder="e.g. Tell us how many windows and stories your home has — photos help us quote fast."
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveBookingIntro}
+                        disabled={savingBookingIntro}
+                        className="flex-1 py-2 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {savingBookingIntro ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingBookingIntro(false); setBookingIntro(business.booking_intro ?? ""); }}
+                        className="px-4 py-2 rounded-xl border border-border text-xs font-bold text-muted-foreground hover:bg-muted/50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setEditingBookingIntro(true)}
+                    className="text-xs font-bold text-primary hover:underline text-left"
+                  >
+                    {bookingIntro ? "Edit intro text" : "Add intro text"}
+                  </button>
+                )}
+              </div>
             </div>
           </Card>
 

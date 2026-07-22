@@ -44,18 +44,50 @@ export default async function BookPage({
 
   if (!biz) notFound();
 
-  // Fetch scheduling settings and blocked dates for the calendar
-  const [{ data: schedData }, { data: blockedData }] = await Promise.all([
-    supabase
-      .from("scheduling_settings")
-      .select("unavailable_days, day_hours")
-      .eq("business_id", biz.id)
-      .maybeSingle(),
-    supabase
-      .from("blocked_dates")
-      .select("blocked_date")
-      .eq("business_id", biz.id),
-  ]);
+  // Booking-flow settings live in columns added by booking_flow.sql; select
+  // them separately so the page still works if the owner hasn't run it yet.
+  let requireQuote = true;
+  let bookingIntro: string | null = null;
+  {
+    const { data: flowData } = await supabase
+      .from("businesses")
+      .select("require_quote_before_scheduling, booking_intro")
+      .eq("id", biz.id)
+      .maybeSingle();
+    if (flowData) {
+      requireQuote = flowData.require_quote_before_scheduling ?? true;
+      bookingIntro = flowData.booking_intro ?? null;
+    }
+  }
+
+  // Fetch scheduling settings, blocked dates, and this business's services
+  const [{ data: schedData }, { data: blockedData }, { data: servicesData }] =
+    await Promise.all([
+      supabase
+        .from("scheduling_settings")
+        .select("unavailable_days, day_hours")
+        .eq("business_id", biz.id)
+        .maybeSingle(),
+      supabase
+        .from("blocked_dates")
+        .select("blocked_date")
+        .eq("business_id", biz.id),
+      supabase
+        .from("services")
+        .select("name")
+        .eq("business_id", biz.id)
+        .eq("is_active", true)
+        .order("name"),
+    ]);
+
+  // Widget falls back to its generic list when a business has no services yet.
+  const serviceNames = [
+    ...new Set(
+      (servicesData ?? [])
+        .map((s: { name: string | null }) => s.name?.trim())
+        .filter((n): n is string => !!n)
+    ),
+  ].slice(0, 24);
 
   const unavailableDays: number[] = schedData?.unavailable_days ?? [0, 6];
   const dayHours: Record<string, { from: string; until: string }> =
@@ -93,6 +125,9 @@ export default async function BookPage({
           unavailableDays={unavailableDays}
           dayHours={dayHours}
           blockedDates={blockedDates}
+          serviceOptions={serviceNames}
+          requireQuoteBeforeScheduling={requireQuote}
+          introText={bookingIntro}
         />
 
         <p className="text-center text-xs text-muted-foreground mt-8">

@@ -1,19 +1,12 @@
 import type { NextConfig } from "next";
 
-// Lock CORS on public intake routes to the app's own origin.
-// NOTE: if the booking widget is ever embedded on customers' own websites,
-// this must become a per-business origin allowlist instead of a single origin.
-function appOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_APP_URL ?? "https://hustlebricks.com";
-  try {
-    return new URL(raw).origin;
-  } catch {
-    return "https://hustlebricks.com";
-  }
-}
-
+// Public intake routes (lead/quote/booking submission) are called directly
+// from customers' own websites (e.g. a business's marketing site posting to
+// /api/leads/submit), so they allow any origin. They are unauthenticated,
+// cookie-free, rate-limited endpoints — CORS is not a security boundary here,
+// the same submissions can always be made server-to-server.
 const corsHeaders = [
-  { key: "Access-Control-Allow-Origin", value: appOrigin() },
+  { key: "Access-Control-Allow-Origin", value: "*" },
   { key: "Access-Control-Allow-Methods", value: "GET,POST,OPTIONS" },
   { key: "Access-Control-Allow-Headers", value: "Content-Type" },
 ];
@@ -67,6 +60,7 @@ const nextConfig: NextConfig = {
       { source: "/book/:path*", headers: embedHeaders },
       ...devHeaders,
       { source: "/api/leads/submit", headers: corsHeaders },
+      { source: "/api/leads/photos", headers: corsHeaders },
       { source: "/api/booking/capacity", headers: corsHeaders },
       { source: "/api/booking/public", headers: corsHeaders },
       { source: "/api/quotes/request", headers: corsHeaders },

@@ -64,6 +64,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/portal/") ||
     pathname.startsWith("/quote-request/") ||
     pathname.startsWith("/api/leads/submit") ||
+    pathname.startsWith("/api/leads/photos") ||
     pathname.startsWith("/api/booking/capacity") ||
     pathname.startsWith("/api/booking/public") ||
     pathname.startsWith("/api/booking") ||
