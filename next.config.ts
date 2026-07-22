@@ -33,6 +33,21 @@ const securityHeaders = [
   },
 ];
 
+// /book/* is embedded in <iframe>s on customers' own websites, so it must not
+// send X-Frame-Options. frame-ancestors * is the Calendly/Acuity model for a
+// public booking widget; tighten to a per-business allowlist if ever needed.
+// The widget's API calls originate from our own origin inside the frame, so
+// the CORS allowlist above is unaffected.
+const embedHeaders = [
+  { key: "Content-Security-Policy", value: "frame-ancestors *" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=()",
+  },
+];
+
 const nextConfig: NextConfig = {
   async headers() {
     const devHeaders =
@@ -46,7 +61,10 @@ const nextConfig: NextConfig = {
         : [];
 
     return [
-      { source: "/:path*", headers: securityHeaders },
+      // Everything except /book/* gets the frame-blocking security headers;
+      // /book/* gets the embeddable variant instead.
+      { source: "/((?!book/|book$).*)", headers: securityHeaders },
+      { source: "/book/:path*", headers: embedHeaders },
       ...devHeaders,
       { source: "/api/leads/submit", headers: corsHeaders },
       { source: "/api/booking/capacity", headers: corsHeaders },
